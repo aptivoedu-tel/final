@@ -1,0 +1,279 @@
+'use client';
+
+import React, { useEffect, useState } from 'react';
+import {
+    TrendingUp, Award, Calendar, Clock,
+    ChevronRight, BookOpen, CheckCircle2,
+    BarChart2, PieChart, Activity, Zap
+} from 'lucide-react';
+import {
+    ResponsiveContainer, AreaChart, Area,
+    XAxis, YAxis, Tooltip, CartesianGrid,
+    BarChart, Bar, Cell
+} from 'recharts';
+import Sidebar from '@/components/layout/Sidebar';
+import Header from '@/components/layout/Header';
+import { AuthService } from '@/lib/services/authService';
+import { DashboardService } from '@/lib/services/dashboardService';
+import jsPDF from 'jspdf';
+import { toPng } from 'html-to-image';
+
+export default function ProgressPage() {
+    const [user, setUser] = useState<any>(null);
+    const [loading, setLoading] = useState(true);
+    const [stats, setStats] = useState<any>(null);
+    const [performanceData, setPerformanceData] = useState<any[]>([]);
+    const [exporting, setExporting] = useState(false);
+
+    useEffect(() => {
+        const loadProgress = async () => {
+            const currentUser = AuthService.getCurrentUser();
+            if (!currentUser) {
+                window.location.href = '/login';
+                return;
+            }
+            setUser(currentUser);
+            setLoading(false);
+
+            try {
+                const [statsRes, perfRes] = await Promise.all([
+                    DashboardService.getStudentStats(currentUser.id),
+                    DashboardService.getPerformanceBySubject(currentUser.id)
+                ]);
+
+                if (statsRes.stats) setStats(statsRes.stats);
+                if (perfRes.data) setPerformanceData(perfRes.data);
+            } catch (error) {
+                console.error("Error loading progress data", error);
+            }
+        };
+
+        loadProgress();
+    }, []);
+
+    const handleDownloadReport = async () => {
+        if (exporting) return;
+        setExporting(true);
+
+        try {
+            // Wait for any animations to finish
+            await new Promise(r => setTimeout(r, 600));
+
+            const element = document.getElementById('report-content');
+            if (!element) throw new Error("Report content not found");
+
+            const dataUrl = await toPng(element, {
+                quality: 0.95,
+                cacheBust: true,
+                backgroundColor: '#f9fafb'
+            });
+
+            const pdf = new jsPDF('p', 'mm', 'a4');
+            const pdfWidth = pdf.internal.pageSize.getWidth();
+            const pdfHeight = pdf.internal.pageSize.getHeight();
+
+            // Create a temporary image for dimensions
+            const img = new Image();
+            img.src = dataUrl;
+            await new Promise(r => img.onload = r);
+
+            const imgWidth = img.width;
+            const imgHeight = img.height;
+            const ratio = Math.min(pdfWidth / imgWidth, pdfHeight / imgHeight);
+
+            const imgScaledWidth = imgWidth * ratio;
+            const imgScaledHeight = imgHeight * ratio;
+
+            // Center the image
+            const x = (pdfWidth - imgScaledWidth) / 2;
+            const y = 10; // Top margin
+
+            pdf.addImage(dataUrl, 'PNG', x, y, imgScaledWidth, imgScaledHeight);
+            pdf.save(`Aptivo_Performance_Report_${user?.full_name?.replace(/\s+/g, '_')}.pdf`);
+        } catch (error: any) {
+            console.error("PDF Export Fail:", error);
+            alert(`Failed to generate PDF: ${error.message || 'Please try again'}`);
+        } finally {
+            setExporting(false);
+        }
+    };
+
+    const formatStudyTime = (seconds: number) => {
+        const hours = Math.floor(seconds / 3600);
+        const remainingMinutes = Math.floor((seconds % 3600) / 60);
+        if (hours === 0) return `${remainingMinutes}m`;
+        return `${hours}h ${remainingMinutes}m`;
+    };
+
+    if (loading) return null;
+
+    return (
+        <div className="min-h-screen bg-gray-50 font-sans">
+            <Sidebar userRole="student" />
+            <Header userName={user?.full_name || 'Student'} userEmail={user?.email} />
+
+            <main className="ml-64 mt-16 p-8" id="report-content">
+                {/* Hero Header */}
+                <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">
+                    <div>
+                        <h1 className="text-3xl font-bold text-slate-900 tracking-tight">Your Learning Journey</h1>
+                        <p className="text-slate-500 mt-1">Track your performance and master your subjects.</p>
+                    </div>
+                    <div className="flex items-center gap-3">
+                        <div className="bg-white px-4 py-2 rounded-xl border border-gray-100 shadow-sm flex items-center gap-2">
+                            <Clock className="w-4 h-4 text-indigo-500" />
+                            <span className="text-sm font-semibold text-slate-700">Total Study: {formatStudyTime(stats?.totalStudyTime || 0)}</span>
+                        </div>
+                        <button
+                            onClick={handleDownloadReport}
+                            disabled={exporting}
+                            className="bg-indigo-600 text-white px-4 py-2 rounded-xl text-sm font-bold shadow-lg shadow-indigo-200 hover:bg-indigo-700 transition-all active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+                        >
+                            {exporting ? 'Generating...' : 'Download PDF Report'}
+                        </button>
+                    </div>
+                </div>
+
+                {/* Achievement Cards */}
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+                    <div className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm relative overflow-hidden group">
+                        <div className="relative z-10">
+                            <div className="w-12 h-12 bg-indigo-50 rounded-xl flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
+                                <Award className="w-6 h-6 text-indigo-600" />
+                            </div>
+                            <h3 className="text-slate-500 text-xs font-bold uppercase tracking-wider mb-1">Rank Position</h3>
+                            <div className="flex items-baseline gap-2">
+                                <span className="text-3xl font-bold text-slate-900">#42</span>
+                                <span className="text-xs font-semibold text-teal-600 px-1.5 py-0.5 bg-teal-50 rounded-lg">↑ 4 places</span>
+                            </div>
+                        </div>
+                        <Award className="absolute -right-4 -bottom-4 w-24 h-24 text-indigo-50 opacity-50" />
+                    </div>
+
+                    <div className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm relative overflow-hidden group">
+                        <div className="relative z-10">
+                            <div className="w-12 h-12 bg-teal-50 rounded-xl flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
+                                <Activity className="w-6 h-6 text-teal-600" />
+                            </div>
+                            <h3 className="text-slate-500 text-xs font-bold uppercase tracking-wider mb-1">Overall Accuracy</h3>
+                            <div className="flex items-baseline gap-2">
+                                <span className="text-3xl font-bold text-slate-900">{stats?.overallAccuracy || 0}%</span>
+                                <span className="text-xs font-semibold text-indigo-600 px-1.5 py-0.5 bg-indigo-50 rounded-lg">Top 15%</span>
+                            </div>
+                        </div>
+                        <Activity className="absolute -right-4 -bottom-4 w-24 h-24 text-teal-50 opacity-50" />
+                    </div>
+
+                    <div className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm relative overflow-hidden group">
+                        <div className="relative z-10">
+                            <div className="w-12 h-12 bg-orange-50 rounded-xl flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
+                                <Calendar className="w-6 h-6 text-orange-600" />
+                            </div>
+                            <h3 className="text-slate-500 text-xs font-bold uppercase tracking-wider mb-1">Learning Streak</h3>
+                            <div className="flex items-baseline gap-2">
+                                <span className="text-3xl font-bold text-slate-900">{stats?.currentStreak || 0} Days</span>
+                                <span className="text-xs font-semibold text-orange-600 px-1.5 py-0.5 bg-orange-50 rounded-lg">Personal Best</span>
+                            </div>
+                        </div>
+                        <Calendar className="absolute -right-4 -bottom-4 w-24 h-24 text-orange-50 opacity-50" />
+                    </div>
+                </div>
+
+                <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
+                    {/* Activity Area Chart */}
+                    <div className="lg:col-span-2 bg-white p-6 rounded-2xl border border-gray-100 shadow-sm">
+                        <div className="flex items-center justify-between mb-8">
+                            <h3 className="font-bold text-slate-800 flex items-center gap-2">
+                                <TrendingUp className="w-5 h-5 text-indigo-500" />
+                                Study Activity
+                            </h3>
+                            <div className="flex gap-2">
+                                <button className="px-3 py-1 text-xs font-bold rounded-lg bg-gray-50 text-slate-400">Week</button>
+                                <button className="px-3 py-1 text-xs font-bold rounded-lg bg-indigo-50 text-indigo-600">Month</button>
+                            </div>
+                        </div>
+                        <div className="h-[300px]">
+                            <ResponsiveContainer width="100%" height="100%">
+                                <AreaChart data={performanceData.map((p, i) => ({
+                                    day: p.subject.substring(0, 3).toUpperCase(),
+                                    hours: (p.score / 20) // Normalizing score for visual activity representation
+                                }))}>
+                                    <defs>
+                                        <linearGradient id="colorHours" x1="0" y1="0" x2="0" y2="1">
+                                            <stop offset="5%" stopColor="#6366f1" stopOpacity={0.1} />
+                                            <stop offset="95%" stopColor="#6366f1" stopOpacity={0} />
+                                        </linearGradient>
+                                    </defs>
+                                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
+                                    <XAxis dataKey="day" axisLine={false} tickLine={false} tick={{ fill: '#94a3b8', fontSize: 12 }} dy={10} />
+                                    <YAxis axisLine={false} tickLine={false} tick={{ fill: '#94a3b8', fontSize: 12 }} />
+                                    <Tooltip
+                                        contentStyle={{ backgroundColor: '#fff', borderRadius: '12px', border: 'none', boxShadow: '0 4px 12px rgba(0,0,0,0.05)' }}
+                                    />
+                                    <Area type="monotone" dataKey="hours" stroke="#6366f1" strokeWidth={3} fillOpacity={1} fill="url(#colorHours)" />
+                                </AreaChart>
+                            </ResponsiveContainer>
+                        </div>
+                    </div>
+
+                    {/* Subject Radar / Breakdown */}
+                    <div className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm">
+                        <h3 className="font-bold text-slate-800 mb-6 flex items-center gap-2">
+                            <PieChart className="w-5 h-5 text-teal-500" />
+                            Subject Mastery
+                        </h3>
+                        <div className="space-y-6">
+                            {performanceData.length > 0 ? performanceData.map((item, i) => (
+                                <div key={i}>
+                                    <div className="flex justify-between items-center text-sm mb-2">
+                                        <span className="font-semibold text-slate-700">{item.subject}</span>
+                                        <span className={`font-bold ${item.score > 80 ? 'text-teal-600' : item.score > 50 ? 'text-indigo-600' : 'text-orange-600'}`}>
+                                            {item.score}%
+                                        </span>
+                                    </div>
+                                    <div className="h-2.5 bg-gray-50 rounded-full overflow-hidden border border-gray-100">
+                                        <div
+                                            className={`h-full rounded-full transition-all duration-1000 ${item.score > 80 ? 'bg-teal-500' : item.score > 50 ? 'bg-indigo-500' : 'bg-orange-500'
+                                                }`}
+                                            style={{ width: `${item.score}%` }}
+                                        ></div>
+                                    </div>
+                                </div>
+                            )) : (
+                                <div className="text-center py-12 text-slate-400">
+                                    <BookOpen className="w-8 h-8 mx-auto mb-2 opacity-20" />
+                                    <p className="text-sm">Start practicing to see mastery.</p>
+                                </div>
+                            )}
+                        </div>
+                    </div>
+                </div>
+
+                {/* Milestones / Recent Completion */}
+                <div className="bg-white p-8 rounded-3xl border border-gray-100 shadow-sm">
+                    <h3 className="font-bold text-slate-800 mb-6 flex items-center gap-2">
+                        <Award className="w-6 h-6 text-orange-400" />
+                        Recent Milestones
+                    </h3>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        {[
+                            { title: 'Algebra Master', desc: 'Solved 100+ Algebra questions', icon: Zap, color: 'text-yellow-500', bg: 'bg-yellow-50' },
+                            { title: 'Perfect Accuracy', desc: 'Got 20 questions right in a row', icon: CheckCircle2, color: 'text-teal-500', bg: 'bg-teal-50' }
+                        ].map((m, i) => (
+                            <div key={i} className="flex items-center gap-4 p-4 rounded-2xl border border-gray-50 hover:bg-gray-50 transition-colors cursor-pointer group">
+                                <div className={`w-14 h-14 ${m.bg} rounded-2xl flex items-center justify-center shrink-0`}>
+                                    <m.icon className={`w-7 h-7 ${m.color}`} />
+                                </div>
+                                <div>
+                                    <h4 className="font-bold text-slate-800 group-hover:text-indigo-600 transition-colors">{m.title}</h4>
+                                    <p className="text-sm text-slate-500">{m.desc}</p>
+                                </div>
+                                <ChevronRight className="w-5 h-5 text-slate-300 ml-auto" />
+                            </div>
+                        ))}
+                    </div>
+                </div>
+            </main>
+        </div>
+    );
+}
