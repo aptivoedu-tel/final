@@ -6,7 +6,7 @@ import { supabase } from '@/lib/supabase/client';
 import { toast } from 'sonner';
 import { AnalyticsService } from '@/lib/services/analyticsService';
 import jsPDF from 'jspdf';
-import { toPng } from 'html-to-image';
+import autoTable from 'jspdf-autotable';
 
 export default function PerformanceAnalyticsPage() {
     const [loading, setLoading] = useState(true);
@@ -73,45 +73,69 @@ export default function PerformanceAnalyticsPage() {
         setExporting(true);
 
         try {
-            // Give charts a moment to stabilize
-            await new Promise(r => setTimeout(r, 500));
+            const pdf = new jsPDF();
+            const pageWidth = pdf.internal.pageSize.getWidth();
 
-            const element = document.getElementById('institution-report');
-            if (!element) throw new Error("Report element not found");
+            // Header
+            pdf.setFillColor(15, 23, 42); // slate-900
+            pdf.rect(0, 0, pageWidth, 40, 'F');
 
-            const dataUrl = await toPng(element, {
-                quality: 0.95,
-                cacheBust: true,
-                backgroundColor: '#f9fafb'
+            pdf.setTextColor(255, 255, 255);
+            pdf.setFontSize(22);
+            pdf.setFont('helvetica', 'bold');
+            pdf.text("Aptivo Institutional Intelligence", 14, 20);
+
+            pdf.setFontSize(10);
+            pdf.setFont('helvetica', 'normal');
+            pdf.text(`Generated: ${new Date().toLocaleString()}`, 14, 30);
+            pdf.text(`Total Students: ${stats.overall.totalStudents} | Avg Performance: ${stats.overall.averageScore}%`, 14, 35);
+
+            // University Table
+            pdf.setTextColor(15, 23, 42);
+            pdf.setFontSize(16);
+            pdf.setFont('helvetica', 'bold');
+            pdf.text("Campus Performance Leaderboard", 14, 55);
+
+            autoTable(pdf, {
+                startY: 60,
+                head: [['#', 'University Name', 'Students', 'Avg Score', 'Sessions']],
+                body: stats.universityStats.map((u: any, i: number) => [
+                    i + 1,
+                    u.name,
+                    u.studentCount,
+                    `${u.averageScore}%`,
+                    u.totalSessions
+                ]),
+                theme: 'striped',
+                headStyles: { fillColor: [79, 70, 229] }, // indigo-600
+                styles: { fontSize: 9 }
             });
 
-            const pdf = new jsPDF('p', 'mm', 'a4');
-            const pdfWidth = pdf.internal.pageSize.getWidth();
-            const pdfHeight = pdf.internal.pageSize.getHeight();
+            // Student Table
+            const finalY = (pdf as any).lastAutoTable.cursor.y;
+            pdf.setFontSize(16);
+            pdf.setFont('helvetica', 'bold');
+            pdf.text("Student Performance Breakdown", 14, finalY + 20);
 
-            // Create a temporary image to get dimensions
-            const img = new Image();
-            img.src = dataUrl;
-            await new Promise(r => img.onload = r);
+            autoTable(pdf, {
+                startY: finalY + 25,
+                head: [['Student Name', 'Avg Score', 'Sessions', 'Status']],
+                body: stats.studentStats.map((s: any) => [
+                    s.name,
+                    `${s.averageScore}%`,
+                    s.totalSessions,
+                    s.status
+                ]),
+                theme: 'grid',
+                headStyles: { fillColor: [15, 23, 42] }, // slate-900
+                styles: { fontSize: 9 }
+            });
 
-            const imgWidth = img.width;
-            const imgHeight = img.height;
-            const ratio = Math.min(pdfWidth / imgWidth, (pdfHeight - 20) / imgHeight);
-
-            const imgScaledWidth = imgWidth * ratio;
-            const imgScaledHeight = imgHeight * ratio;
-
-            pdf.setFontSize(18);
-            pdf.text("Aptivo Institutional Intelligence Report", 10, 15);
-            pdf.setFontSize(10);
-            pdf.text(`Generated on: ${new Date().toLocaleString()}`, 10, 22);
-
-            pdf.addImage(dataUrl, 'PNG', (pdfWidth - imgScaledWidth) / 2, 30, imgScaledWidth, imgScaledHeight);
-            pdf.save(`Institutional_Intelligence_Report_${new Date().toLocaleDateString()}.pdf`);
-            toast.success("Intelligence PDF Generated");
+            pdf.save(`Aptivo_Institutional_Report_${new Date().toLocaleDateString()}.pdf`);
+            toast.success("Standardized PDF Generated");
         } catch (error: any) {
             console.error("PDF Export Fail:", error);
-            toast.error(`PDF Generation Error: ${error.message || 'Check browser console for details'}`);
+            toast.error(`PDF Generation Error: ${error.message}`);
         } finally {
             setExporting(false);
         }

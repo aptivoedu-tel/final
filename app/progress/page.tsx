@@ -16,7 +16,8 @@ import Header from '@/components/layout/Header';
 import { AuthService } from '@/lib/services/authService';
 import { DashboardService } from '@/lib/services/dashboardService';
 import jsPDF from 'jspdf';
-import { toPng } from 'html-to-image';
+import autoTable from 'jspdf-autotable';
+import { toast } from 'sonner';
 
 export default function ProgressPage() {
     const [user, setUser] = useState<any>(null);
@@ -56,43 +57,64 @@ export default function ProgressPage() {
         setExporting(true);
 
         try {
-            // Wait for any animations to finish
-            await new Promise(r => setTimeout(r, 600));
+            const pdf = new jsPDF();
+            const pageWidth = pdf.internal.pageSize.getWidth();
 
-            const element = document.getElementById('report-content');
-            if (!element) throw new Error("Report content not found");
+            // Header
+            pdf.setFillColor(79, 70, 229); // indigo-600
+            pdf.rect(0, 0, pageWidth, 45, 'F');
 
-            const dataUrl = await toPng(element, {
-                quality: 0.95,
-                cacheBust: true,
-                backgroundColor: '#f9fafb'
+            pdf.setTextColor(255, 255, 255);
+            pdf.setFontSize(24);
+            pdf.setFont('helvetica', 'bold');
+            pdf.text("Student Performance Report", 14, 22);
+
+            pdf.setFontSize(11);
+            pdf.setFont('helvetica', 'normal');
+            pdf.text(`Student: ${user?.full_name}`, 14, 32);
+            pdf.text(`Email: ${user?.email}`, 14, 37);
+            pdf.text(`Generated: ${new Date().toLocaleDateString()}`, 14, 42);
+
+            // Quick Stats
+            pdf.setTextColor(15, 23, 42);
+            pdf.setFontSize(16);
+            pdf.setFont('helvetica', 'bold');
+            pdf.text("Learning Overview", 14, 60);
+
+            autoTable(pdf, {
+                startY: 65,
+                head: [['Metric', 'Value']],
+                body: [
+                    ['Total Study Time', formatStudyTime(stats?.totalStudyTime || 0)],
+                    ['Overall Accuracy', `${stats?.overallAccuracy || 0}%`],
+                    ['Current Streak', `${stats?.currentStreak || 0} Days`],
+                    ['Total Questions Solved', stats?.questionsSolved || 0]
+                ],
+                theme: 'striped',
+                headStyles: { fillColor: [79, 70, 229] }
             });
 
-            const pdf = new jsPDF('p', 'mm', 'a4');
-            const pdfWidth = pdf.internal.pageSize.getWidth();
-            const pdfHeight = pdf.internal.pageSize.getHeight();
+            // Subject Mastery
+            const statsY = (pdf as any).lastAutoTable.cursor.y;
+            pdf.text("Subject Mastery", 14, statsY + 15);
 
-            // Create a temporary image for dimensions
-            const img = new Image();
-            img.src = dataUrl;
-            await new Promise(r => img.onload = r);
+            autoTable(pdf, {
+                startY: statsY + 20,
+                head: [['Subject', 'Mastery Level', 'Status']],
+                body: performanceData.map(p => [
+                    p.subject,
+                    `${p.score}%`,
+                    p.score > 80 ? 'Excellent' : p.score > 50 ? 'Steady' : 'Needs Review'
+                ]),
+                theme: 'grid',
+                headStyles: { fillColor: [15, 23, 42] }
+            });
 
-            const imgWidth = img.width;
-            const imgHeight = img.height;
-            const ratio = Math.min(pdfWidth / imgWidth, pdfHeight / imgHeight);
-
-            const imgScaledWidth = imgWidth * ratio;
-            const imgScaledHeight = imgHeight * ratio;
-
-            // Center the image
-            const x = (pdfWidth - imgScaledWidth) / 2;
-            const y = 10; // Top margin
-
-            pdf.addImage(dataUrl, 'PNG', x, y, imgScaledWidth, imgScaledHeight);
-            pdf.save(`Aptivo_Performance_Report_${user?.full_name?.replace(/\s+/g, '_')}.pdf`);
+            pdf.save(`Aptivo_Report_${user?.full_name?.replace(/\s+/g, '_')}.pdf`);
+            toast.success("Standardized Report Generated");
         } catch (error: any) {
             console.error("PDF Export Fail:", error);
-            alert(`Failed to generate PDF: ${error.message || 'Please try again'}`);
+            toast.error("Failed to generate PDF");
         } finally {
             setExporting(false);
         }
