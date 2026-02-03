@@ -4,6 +4,7 @@ import React, { useEffect, useState } from 'react';
 import {
     Bell, Check, Trash2, Filter, AlertTriangle, Info, CheckCircle, Clock
 } from 'lucide-react';
+import { useUI } from '@/lib/context/UIContext';
 import Sidebar from '@/components/layout/Sidebar';
 import Header from '@/components/layout/Header';
 import { AuthService } from '@/lib/services/authService';
@@ -15,6 +16,7 @@ export default function NotificationsPage() {
     const [loading, setLoading] = useState(true);
     const [filter, setFilter] = useState<'all' | 'unread' | 'read'>('all');
     const [processing, setProcessing] = useState<string | null>(null);
+    const { isSidebarCollapsed } = useUI();
 
     useEffect(() => {
         loadNotifications();
@@ -125,7 +127,7 @@ export default function NotificationsPage() {
             <Sidebar userRole="student" />
             <Header userName={user?.full_name} userEmail={user?.email} userAvatar={user?.avatar_url} />
 
-            <main className="ml-64 mt-16 p-8">
+            <main className={`${isSidebarCollapsed ? 'ml-20' : 'ml-72'} mt-16 p-8 transition-all duration-300`}>
                 <div className="max-w-4xl mx-auto">
                     {/* Header */}
                     <div className="flex flex-col md:flex-row md:items-center justify-between mb-8 gap-4">

@@ -5,6 +5,7 @@ import { supabase } from '@/lib/supabase/client';
 import Sidebar from '@/components/layout/Sidebar';
 import Header from '@/components/layout/Header';
 import { Save, CheckCircle, AlertCircle, RefreshCw, ChevronRight, ChevronDown, ChevronUp, Layers, BookOpen, FileText } from 'lucide-react';
+import { useUI } from '@/lib/context/UIContext';
 
 type HierarchyNode = {
     id: number;
@@ -26,6 +27,7 @@ export default function UniversityContentMapperPage() {
     const [hierarchy, setHierarchy] = useState<HierarchyNode[]>([]);
     const [saving, setSaving] = useState(false);
     const [statusMsg, setStatusMsg] = useState<{ type: 'success' | 'error', text: string } | null>(null);
+    const { isSidebarCollapsed } = useUI();
 
     // Load initial data
     useEffect(() => {
@@ -297,10 +299,10 @@ export default function UniversityContentMapperPage() {
     return (
         <div className="min-h-screen bg-gray-50 flex font-sans">
             <Sidebar userRole="super_admin" />
-            <div className="flex-1 flex flex-col">
+            <div className="flex-1 flex flex-col transition-all duration-300">
                 <Header userName="Admin" userEmail="admin@system.com" />
 
-                <main className="p-8">
+                <main className={`${isSidebarCollapsed ? 'ml-20' : 'ml-72'} mt-16 p-8 transition-all duration-300`}>
                     <div className="max-w-4xl mx-auto">
                         <div className="mb-8">
                             <h1 className="text-3xl font-bold text-slate-900">University Content Mapper</h1>

@@ -16,6 +16,7 @@ import Header from '@/components/layout/Header';
 import { AuthService } from '@/lib/services/authService';
 import { AnalyticsService } from '@/lib/services/analyticsService';
 import { ProfileService } from '@/lib/services/profileService';
+import { useUI } from '@/lib/context/UIContext';
 
 export default function InstitutionAnalyticsPage() {
     const [user, setUser] = useState<any>(null);
@@ -24,6 +25,7 @@ export default function InstitutionAnalyticsPage() {
     const [institutions, setInstitutions] = useState<any[]>([]);
     const [selectedInstId, setSelectedInstId] = useState<number | null>(null);
     const [dataLoading, setDataLoading] = useState(false);
+    const { isSidebarCollapsed } = useUI();
 
     useEffect(() => {
         loadInitialData();
@@ -93,7 +95,7 @@ export default function InstitutionAnalyticsPage() {
             <Sidebar userRole="super_admin" />
             <Header userName={user?.full_name} userEmail={user?.email} userAvatar={user?.avatar_url} />
 
-            <main className="ml-64 mt-16 p-8">
+            <main className={`${isSidebarCollapsed ? 'ml-28' : 'ml-80'} mt-16 p-8 min-h-[calc(100vh-64px)] transition-all duration-300 relative z-10`}>
                 <div className="max-w-7xl mx-auto">
                     {/* Header with Switcher */}
                     <div className="flex flex-col md:flex-row md:items-center justify-between mb-8 gap-4">

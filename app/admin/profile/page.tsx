@@ -10,6 +10,7 @@ import Sidebar from '@/components/layout/Sidebar';
 import Header from '@/components/layout/Header';
 import { AuthService } from '@/lib/services/authService';
 import { ProfileService, ProfileData } from '@/lib/services/profileService';
+import { useUI } from '@/lib/context/UIContext';
 
 export default function AdminProfilePage() {
     const [user, setUser] = useState<any>(null);
@@ -18,6 +19,7 @@ export default function AdminProfilePage() {
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
     const [uploading, setUploading] = useState(false);
+    const { isSidebarCollapsed } = useUI();
 
     // Form States
     const [fullName, setFullName] = useState('');
@@ -140,7 +142,7 @@ export default function AdminProfilePage() {
             <Sidebar userRole="super_admin" />
             <Header userName={user?.full_name} userEmail={user?.email} userAvatar={user?.avatar_url} />
 
-            <main className="ml-64 mt-16 p-8">
+            <main className={`${isSidebarCollapsed ? 'ml-28' : 'ml-80'} mt-16 p-8 transition-all duration-300`}>
                 <div className="max-w-6xl mx-auto">
                     {/* Header */}
                     <div className="mb-8">

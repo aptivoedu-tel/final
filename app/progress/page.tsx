@@ -11,6 +11,7 @@ import {
     XAxis, YAxis, Tooltip, CartesianGrid,
     BarChart, Bar, Cell
 } from 'recharts';
+import { useUI } from '@/lib/context/UIContext';
 import Sidebar from '@/components/layout/Sidebar';
 import Header from '@/components/layout/Header';
 import { AuthService } from '@/lib/services/authService';
@@ -25,6 +26,9 @@ export default function ProgressPage() {
     const [stats, setStats] = useState<any>(null);
     const [performanceData, setPerformanceData] = useState<any[]>([]);
     const [exporting, setExporting] = useState(false);
+    const [rankData, setRankData] = useState<any>({ rank: '--', change: '→ 0' });
+    const [milestones, setMilestones] = useState<any[]>([]);
+    const { isSidebarCollapsed } = useUI();
 
     useEffect(() => {
         const loadProgress = async () => {
@@ -37,13 +41,17 @@ export default function ProgressPage() {
             setLoading(false);
 
             try {
-                const [statsRes, perfRes] = await Promise.all([
+                const [statsRes, perfRes, rankRes, milestonesRes] = await Promise.all([
                     DashboardService.getStudentStats(currentUser.id),
-                    DashboardService.getPerformanceBySubject(currentUser.id)
+                    DashboardService.getPerformanceBySubject(currentUser.id),
+                    DashboardService.getStudentRank(currentUser.id),
+                    DashboardService.getRecentMilestones(currentUser.id)
                 ]);
 
                 if (statsRes.stats) setStats(statsRes.stats);
                 if (perfRes.data) setPerformanceData(perfRes.data);
+                if (rankRes) setRankData(rankRes);
+                if (milestonesRes) setMilestones(milestonesRes);
             } catch (error) {
                 console.error("Error loading progress data", error);
             }
@@ -69,11 +77,11 @@ export default function ProgressPage() {
             pdf.setFont('helvetica', 'bold');
             pdf.text("Student Performance Report", 14, 22);
 
-            pdf.setFontSize(11);
+            pdf.setFontSize(10);
             pdf.setFont('helvetica', 'normal');
             pdf.text(`Student: ${user?.full_name}`, 14, 32);
             pdf.text(`Email: ${user?.email}`, 14, 37);
-            pdf.text(`Generated: ${new Date().toLocaleDateString()}`, 14, 42);
+            pdf.text(`Generated: ${new Date().toLocaleDateString()} ${new Date().toLocaleTimeString()}`, 14, 42);
 
             // Quick Stats
             pdf.setTextColor(15, 23, 42);
@@ -91,11 +99,14 @@ export default function ProgressPage() {
                     ['Total Questions Solved', stats?.questionsSolved || 0]
                 ],
                 theme: 'striped',
-                headStyles: { fillColor: [172, 200, 162] }
+                headStyles: { fillColor: [15, 118, 110] }, // Aptivo Teal
+                styles: { textColor: [71, 85, 105] } // Slate-600
             });
 
             // Subject Mastery
-            const statsY = (pdf as any).lastAutoTable.cursor.y;
+            const statsY = (pdf as any).lastAutoTable?.finalY || 100;
+            pdf.setTextColor(15, 23, 42);
+            pdf.setFontSize(14);
             pdf.text("Subject Mastery", 14, statsY + 15);
 
             autoTable(pdf, {
@@ -130,11 +141,11 @@ export default function ProgressPage() {
     if (loading) return null;
 
     return (
-        <div className="min-h-screen bg-gray-50 font-sans">
+        <div className="min-h-screen bg-slate-50 font-sans">
             <Sidebar userRole="student" />
             <Header userName={user?.full_name || 'Student'} userEmail={user?.email} />
 
-            <main className="ml-64 mt-16 p-8" id="report-content">
+            <main className={`${isSidebarCollapsed ? 'ml-24' : 'ml-72'} mt-20 p-8 transition-all duration-300`} id="report-content">
                 {/* Hero Header */}
                 <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">
                     <div>
@@ -165,8 +176,10 @@ export default function ProgressPage() {
                             </div>
                             <h3 className="text-slate-500 text-xs font-bold uppercase tracking-wider mb-1">Rank Position</h3>
                             <div className="flex items-baseline gap-2">
-                                <span className="text-3xl font-bold text-slate-900">#42</span>
-                                <span className="text-xs font-semibold text-teal-600 px-1.5 py-0.5 bg-teal-50 rounded-lg">↑ 4 places</span>
+                                <span className="text-3xl font-bold text-slate-900">#{rankData.rank}</span>
+                                <span className={`text-xs font-semibold px-1.5 py-0.5 rounded-lg ${rankData.change.includes('↑') ? 'text-teal-600 bg-teal-50' : 'text-slate-400 bg-slate-50'}`}>
+                                    {rankData.change}
+                                </span>
                             </div>
                         </div>
                         <Award className="absolute -right-4 -bottom-4 w-24 h-24 text-primary opacity-20" />
@@ -277,21 +290,21 @@ export default function ProgressPage() {
                         Recent Milestones
                     </h3>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                        {[
-                            { title: 'Algebra Master', desc: 'Solved 100+ Algebra questions', icon: Zap, color: 'text-primary-dark', bg: 'bg-primary/10' },
-                            { title: 'Perfect Accuracy', desc: 'Got 20 questions right in a row', icon: CheckCircle2, color: 'text-primary-dark', bg: 'bg-primary/10' }
-                        ].map((m, i) => (
-                            <div key={i} className="flex items-center gap-4 p-4 rounded-2xl border border-gray-50 hover:bg-gray-50 transition-colors cursor-pointer group">
-                                <div className={`w-14 h-14 ${m.bg} rounded-2xl flex items-center justify-center shrink-0`}>
-                                    <m.icon className={`w-7 h-7 ${m.color}`} />
+                        {milestones.map((m, i) => {
+                            const Icon = TrendingUp; // Simple fallback if icon string is used
+                            return (
+                                <div key={i} className="flex items-center gap-4 p-4 rounded-2xl border border-gray-50 hover:bg-gray-50 transition-colors cursor-pointer group">
+                                    <div className={`w-14 h-14 ${m.bg} rounded-2xl flex items-center justify-center shrink-0`}>
+                                        <TrendingUp className={`w-7 h-7 ${m.color}`} />
+                                    </div>
+                                    <div>
+                                        <h4 className="font-bold text-slate-800 group-hover:text-primary-dark transition-colors">{m.title}</h4>
+                                        <p className="text-sm text-slate-500">{m.desc}</p>
+                                    </div>
+                                    <ChevronRight className="w-5 h-5 text-slate-300 ml-auto" />
                                 </div>
-                                <div>
-                                    <h4 className="font-bold text-slate-800 group-hover:text-primary-dark transition-colors">{m.title}</h4>
-                                    <p className="text-sm text-slate-500">{m.desc}</p>
-                                </div>
-                                <ChevronRight className="w-5 h-5 text-slate-300 ml-auto" />
-                            </div>
-                        ))}
+                            );
+                        })}
                     </div>
                 </div>
             </main>

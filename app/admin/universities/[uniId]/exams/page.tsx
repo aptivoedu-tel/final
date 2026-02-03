@@ -13,6 +13,7 @@ import {
 } from 'lucide-react';
 import { toast } from 'sonner';
 import * as XLSX from 'xlsx';
+import { useUI } from '@/lib/context/UIContext';
 
 type ExamType = 'mock' | 'module' | 'final';
 type QuestionType = 'mcq_single' | 'mcq_multiple' | 'true_false' | 'numerical' | 'essay' | 'passage';
@@ -63,6 +64,7 @@ export default function UniversityExamsPage() {
     const params = useParams();
     const router = useRouter();
     const uniId = parseInt(params.uniId as string);
+    const { isSidebarCollapsed } = useUI();
 
     const [loading, setLoading] = useState(true);
     const [university, setUniversity] = useState<any>(null);
@@ -218,7 +220,7 @@ export default function UniversityExamsPage() {
             <div className="flex-1 flex flex-col">
                 <Header userName="Admin" userEmail="admin@system.com" />
 
-                <main className="ml-64 mt-16 p-8">
+                <main className={`${isSidebarCollapsed ? 'ml-20' : 'ml-72'} mt-16 p-8 transition-all duration-300`}>
                     <div className="max-w-7xl mx-auto">
                         {/* Breadcrumbs & Header */}
                         <div className="mb-8 flex items-center justify-between">
@@ -991,7 +993,7 @@ function QuestionManager({ section, onClose, onBulkUpload }: { section: Section,
                                                             } else {
                                                                 const current = Array.isArray(form.correct_answer) ? form.correct_answer : [form.correct_answer];
                                                                 const next = current.includes(opt.id)
-                                                                    ? current.filter(id => id !== opt.id)
+                                                                    ? current.filter((id: any) => id !== opt.id)
                                                                     : [...current, opt.id];
                                                                 setForm({ ...form, correct_answer: next });
                                                             }

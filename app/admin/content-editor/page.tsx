@@ -2,6 +2,7 @@
 
 import React from 'react';
 import { Save, FileText, Eye, ChevronDown } from 'lucide-react';
+import { useUI } from '@/lib/context/UIContext';
 import ReactMarkdown from 'react-markdown';
 import Sidebar from '@/components/layout/Sidebar';
 import Header from '@/components/layout/Header';
@@ -14,6 +15,7 @@ export default function ContentEditorPage() {
     const [content, setContent] = React.useState<string>('');
     const [loading, setLoading] = React.useState(false);
     const [saving, setSaving] = React.useState(false);
+    const { isSidebarCollapsed } = useUI();
 
     // Hierarchy State
     const [subjects, setSubjects] = React.useState<any[]>([]);
@@ -115,7 +117,7 @@ export default function ContentEditorPage() {
             <Sidebar userRole="super_admin" />
             <Header userName={user?.full_name || 'Admin'} userEmail={user?.email || 'admin@aptivo.edu'} />
 
-            <main className="ml-64 mt-16 p-8 h-[calc(100vh-64px)] flex flex-col">
+            <main className={`${isSidebarCollapsed ? 'ml-28' : 'ml-80'} mt-16 p-8 h-[calc(100vh-64px)] flex flex-col transition-all duration-300`}>
                 {/* Header Section */}
                 <div className="flex justify-between items-start mb-6 flex-shrink-0">
                     <div>

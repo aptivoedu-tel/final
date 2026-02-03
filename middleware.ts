@@ -140,7 +140,6 @@ export const config = {
         '/dashboard/:path*',
         '/admin/:path*',
         '/university/:path*',
-        '/practice/:path*',
         '/profile/:path*'
     ],
 };

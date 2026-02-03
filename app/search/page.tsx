@@ -39,6 +39,8 @@ export default function SearchPage() {
         setLoading(true);
         try {
             const searchResults: SearchResult[] = [];
+            const isSuperAdmin = user?.role === 'super_admin';
+            const isInstitutionAdmin = user?.role === 'institution_admin';
 
             // 1. Search Universities
             const { data: unis } = await supabase
@@ -48,12 +50,16 @@ export default function SearchPage() {
                 .limit(5);
 
             unis?.forEach(u => {
+                let link = '/university';
+                if (isSuperAdmin) link = '/admin/universities';
+                else if (isInstitutionAdmin) link = '/institution-admin/universities';
+
                 searchResults.push({
                     id: u.id,
                     title: u.name,
                     type: 'university',
                     description: 'Partner Institution',
-                    link: `/university`,
+                    link,
                     metadata: { logo: u.logo_url }
                 });
             });
@@ -66,12 +72,15 @@ export default function SearchPage() {
                 .limit(5);
 
             subjects?.forEach(s => {
+                let link = '/university';
+                if (isSuperAdmin) link = '/admin/content-library';
+
                 searchResults.push({
                     id: s.id,
                     title: s.name,
                     type: 'subject',
                     description: 'Curriculum Subject',
-                    link: `/university`
+                    link
                 });
             });
 
@@ -83,12 +92,15 @@ export default function SearchPage() {
                 .limit(10);
 
             topics?.forEach(t => {
+                let link = '/university';
+                if (isSuperAdmin) link = '/admin/content-library';
+
                 searchResults.push({
                     id: t.id,
                     title: t.name,
                     type: 'topic',
                     description: 'Learning Topic',
-                    link: `/university`
+                    link
                 });
             });
 
@@ -100,12 +112,15 @@ export default function SearchPage() {
                 .limit(10);
 
             subtopics?.forEach(st => {
+                let link = '/university';
+                if (isSuperAdmin) link = '/admin/content-library';
+
                 searchResults.push({
                     id: st.id,
                     title: st.name,
                     type: 'subtopic',
                     description: 'Lesson Content',
-                    link: `/university` // Ideally direct to lesson but need uniId
+                    link
                 });
             });
 

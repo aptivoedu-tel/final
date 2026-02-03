@@ -6,7 +6,7 @@ import { supabase } from '@/lib/supabase/client';
 import { AuthService } from '@/lib/services/authService';
 import {
     Clock, ChevronLeft, ChevronRight, X, AlertCircle,
-    CheckCircle, Flag, Info, Maximize2, ZoomIn, Search
+    CheckCircle, Flag, Info, Maximize2, ZoomIn, Search, Layers, GraduationCap, ChevronDown
 } from 'lucide-react';
 import { toast } from 'sonner';
 
@@ -300,7 +300,13 @@ export default function StudentExamPage() {
         }
     };
 
-    if (loading) return <div className="h-screen flex items-center justify-center bg-slate-900 text-white font-black animate-pulse">SYSTEM INITIALIZING...</div>;
+    if (loading) return (
+        <div className="h-screen flex flex-col items-center justify-center bg-[#0a0f1d] text-white">
+            <div className="w-16 h-16 border-4 border-teal-500/20 border-t-teal-500 rounded-full animate-spin mb-6"></div>
+            <h2 className="text-sm font-black uppercase tracking-[0.4em] text-teal-500">System Initializing</h2>
+            <p className="text-slate-500 text-xs mt-4 font-bold uppercase tracking-widest">Securing Examination Environment...</p>
+        </div>
+    );
 
     if (status === 'completed') {
         const scorePercentage = results ? Math.round((results.score / results.total) * 100) : 0;
@@ -405,26 +411,27 @@ export default function StudentExamPage() {
     }
 
     return (
-        <div className="h-screen flex flex-col bg-slate-50 overflow-hidden select-none">
-            {/* Top Navigation / Status Bar */}
-            <div className="bg-slate-900 text-white px-8 py-4 flex items-center justify-between shadow-2xl z-40">
-                <div className="flex items-center gap-6">
-                    <div className="flex items-center gap-3 pr-6 border-r border-slate-700">
-                        <button
-                            onClick={toggleFullScreen}
-                            className="w-10 h-10 bg-indigo-600 rounded-xl flex items-center justify-center shadow-lg hover:bg-indigo-700 transition-all active:scale-95"
-                            title="Toggle Fullscreen"
-                        >
-                            <Maximize2 className="w-5 h-5" />
-                        </button>
+        <div className="h-screen flex flex-col bg-[#f8fafc] overflow-hidden select-none font-sans">
+            {/* Top Navigation / Status Bar - SLEEK DARK THEME */}
+            <div className="bg-[#0f172a] text-white px-10 h-20 flex items-center justify-between shadow-2xl z-40 relative">
+                <div className="absolute bottom-0 left-0 h-[2px] bg-gradient-to-r from-transparent via-teal-500/50 to-transparent w-full" />
+
+                <div className="flex items-center gap-10">
+                    <div className="flex items-center gap-5 pr-8 border-r border-slate-800">
+                        <div className="w-12 h-12 bg-teal-600 rounded-2xl flex items-center justify-center shadow-lg shadow-teal-900/40 border border-teal-500/30">
+                            <GraduationCap className="w-6 h-6 text-white" />
+                        </div>
                         <div>
-                            <h1 className="text-sm font-black uppercase tracking-widest">{exam?.name}</h1>
-                            <p className="text-[10px] font-black text-indigo-400 uppercase tracking-tighter">Official Examination Environment</p>
+                            <h1 className="text-sm font-black uppercase tracking-widest text-slate-100">{exam?.name || 'Academic Assessment'}</h1>
+                            <div className="flex items-center gap-2 mt-0.5">
+                                <span className="w-2 h-2 bg-teal-500 rounded-full animate-pulse" />
+                                <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Secure Environment Active</p>
+                            </div>
                         </div>
                     </div>
 
-                    {/* Section Switcher */}
-                    <div className="flex items-center gap-1">
+                    {/* Section Switcher - Premium Pills */}
+                    <div className="flex items-center gap-2 bg-slate-900/50 p-1 rounded-2xl border border-slate-800">
                         {sections.map(s => {
                             const isLocked = completedSectionIds.includes(s.id);
                             return (
@@ -435,10 +442,20 @@ export default function StudentExamPage() {
                                         setActiveSectionId(s.id);
                                         setActiveQuestionIdx(0);
                                     }}
-                                    className={`px-6 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${activeSectionId === s.id ? 'bg-white text-slate-900 shadow-xl scale-105' : isLocked ? 'bg-slate-800 text-slate-600 cursor-not-allowed' : 'text-slate-400 hover:text-white'}`}
+                                    className={`
+                                        px-6 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all relative overflow-hidden group
+                                        ${activeSectionId === s.id
+                                            ? 'bg-white text-slate-900 shadow-xl'
+                                            : isLocked
+                                                ? 'text-slate-600 cursor-not-allowed'
+                                                : 'text-slate-400 hover:text-white hover:bg-white/5'
+                                        }
+                                    `}
                                 >
-                                    {s.name}
-                                    {isLocked && <span className="ml-2">🔒</span>}
+                                    <span className="relative z-10 flex items-center gap-2">
+                                        {s.name}
+                                        {isLocked && <span className="text-[8px]">🔒</span>}
+                                    </span>
                                 </button>
                             );
                         })}
@@ -446,23 +463,32 @@ export default function StudentExamPage() {
                 </div>
 
                 <div className="flex items-center gap-8">
-                    <div className={`flex items-center gap-3 px-6 py-2.5 rounded-2xl border-2 transition-all ${timeLeft < 300 ? 'bg-rose-500/20 border-rose-500 animate-pulse text-rose-400' : 'bg-slate-800 border-slate-700 text-indigo-400'}`}>
-                        <Clock className="w-5 h-5" />
-                        <div className="flex flex-col items-start leading-none">
-                            <span className="text-xl font-black font-mono tracking-widest">{formatTime(timeLeft)}</span>
-                            {sectionTimeLeft !== null && (
-                                <span className="text-[8px] font-black uppercase tracking-tighter text-rose-400 mt-1">Section: {formatTime(sectionTimeLeft)}</span>
-                            )}
+                    {/* Timer - High Visibility */}
+                    <div className={`flex items-center gap-4 px-6 py-2.5 rounded-2xl border transition-all ${timeLeft < 300 ? 'bg-rose-500/10 border-rose-500/50 text-rose-500' : 'bg-slate-900 border-slate-800 text-teal-400'}`}>
+                        <Clock className={`w-5 h-5 ${timeLeft < 300 ? 'animate-pulse' : ''}`} />
+                        <div className="flex flex-col items-center">
+                            <span className="text-2xl font-black font-mono tracking-[0.1em]">{formatTime(timeLeft)}</span>
+                            <span className="text-[8px] font-black uppercase tracking-widest opacity-50 mt-[-2px]">Total Time Remaining</span>
                         </div>
                     </div>
-                    <button
-                        onClick={() => {
-                            if (confirm('Finish and submit your exam? This cannot be undone.')) finalizeAttempt(attemptId!);
-                        }}
-                        className="px-8 py-3 bg-white text-slate-900 rounded-2xl text-[10px] font-black uppercase tracking-widest hover:bg-slate-100 transition-all shadow-xl active:scale-95"
-                    >
-                        Finish Test
-                    </button>
+
+                    <div className="flex items-center gap-4 border-l border-slate-800 pl-8">
+                        <button
+                            onClick={toggleFullScreen}
+                            className="p-3 bg-slate-800 text-slate-400 rounded-xl hover:bg-slate-700 hover:text-white transition-all active:scale-95"
+                            title="Toggle Fullscreen"
+                        >
+                            <Maximize2 className="w-5 h-5" />
+                        </button>
+                        <button
+                            onClick={() => {
+                                if (confirm('Finish and submit your exam? This cannot be undone.')) finalizeAttempt(attemptId!);
+                            }}
+                            className="px-8 py-4 bg-teal-600 text-white rounded-2xl text-[10px] font-black uppercase tracking-[0.2em] hover:bg-teal-700 transition-all shadow-xl shadow-teal-900/20 active:scale-95"
+                        >
+                            Finalize Assessment
+                        </button>
+                    </div>
                 </div>
             </div>
 
@@ -481,8 +507,8 @@ export default function StudentExamPage() {
                     </div>
                 )}
 
-                {/* Main Content Area */}
-                <div className="flex-1 overflow-y-auto p-12 custom-scrollbar relative bg-white">
+                {/* Main Content Area - Clean Workspace */}
+                <div className="flex-1 overflow-y-auto p-12 custom-scrollbar relative bg-[#fcfdfe]">
                     {activeQuestion ? (
                         <div className={`max-w-4xl mx-auto ${activeQuestion.passage_id ? 'w-full' : ''}`}>
                             <div className="flex items-center gap-4 mb-10">
@@ -497,7 +523,7 @@ export default function StudentExamPage() {
 
                             <div className="space-y-10">
                                 <div className="prose prose-slate max-w-none">
-                                    <p className="text-2xl font-black text-slate-800 leading-relaxed">
+                                    <p className="text-3xl font-bold text-slate-900 leading-snug tracking-tight">
                                         {activeQuestion.question_text}
                                     </p>
                                 </div>
@@ -542,12 +568,12 @@ export default function StudentExamPage() {
                                                                 handleAnswer(activeQuestion.id, next);
                                                             }
                                                         }}
-                                                        className={`p-6 rounded-[2rem] border-2 text-left transition-all flex items-center gap-5 group ${isSelected ? 'bg-indigo-600 border-indigo-600 text-white shadow-2xl shadow-indigo-200' : 'bg-white border-slate-100 hover:border-indigo-200 hover:bg-indigo-50/50'}`}
+                                                        className={`p-7 rounded-[2.5rem] border-2 text-left transition-all flex items-center gap-6 group ${isSelected ? 'bg-teal-600 border-teal-600 text-white shadow-2xl shadow-teal-100' : 'bg-white border-slate-100 hover:border-teal-200 hover:bg-teal-50/30'}`}
                                                     >
-                                                        <div className={`w-8 h-8 rounded-full border-2 flex items-center justify-center font-black text-xs transition-all ${isSelected ? 'bg-white text-indigo-600 border-white' : 'bg-slate-50 text-slate-400 border-slate-200 group-hover:bg-white group-hover:text-indigo-600 group-hover:border-indigo-600'}`}>
+                                                        <div className={`w-10 h-10 rounded-2xl border-2 flex items-center justify-center font-black text-sm transition-all ${isSelected ? 'bg-white text-teal-600 border-white shadow-sm' : 'bg-slate-50 text-slate-400 border-slate-200 group-hover:bg-white group-hover:text-teal-600 group-hover:border-teal-600'}`}>
                                                             {opt.id.toUpperCase()}
                                                         </div>
-                                                        <span className="text-sm font-bold">{opt.text}</span>
+                                                        <span className="text-base font-semibold">{opt.text}</span>
                                                     </button>
                                                 );
                                             })}
@@ -573,8 +599,8 @@ export default function StudentExamPage() {
                                             <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-4">Numerical Response</label>
                                             <input
                                                 type="text"
-                                                className="w-full p-8 bg-white border-2 border-slate-100 rounded-[2.5rem] outline-none focus:border-indigo-600 focus:ring-4 focus:ring-indigo-600/10 font-black text-2xl text-slate-900 shadow-sm"
-                                                placeholder="Enter value..."
+                                                className="w-full p-10 bg-white border-2 border-slate-100 rounded-[3rem] outline-none focus:border-teal-600 focus:ring-[12px] focus:ring-teal-600/5 font-black text-4xl text-slate-900 shadow-sm transition-all"
+                                                placeholder="Type numerical answer..."
                                                 value={answers[activeQuestion.id] || ''}
                                                 onChange={(e) => handleAnswer(activeQuestion.id, e.target.value)}
                                             />
@@ -635,10 +661,10 @@ export default function StudentExamPage() {
                                             }
                                         }
                                     }}
-                                    className="flex items-center gap-3 px-10 py-4 bg-slate-900 text-white rounded-2xl text-xs font-black uppercase tracking-widest hover:bg-indigo-600 transition-all shadow-xl active:scale-95"
+                                    className="flex items-center gap-4 px-12 py-5 bg-[#0f172a] text-white rounded-[2rem] text-xs font-black uppercase tracking-[0.2em] hover:bg-teal-600 transition-all shadow-2xl shadow-slate-200 active:scale-95 group"
                                 >
-                                    {activeQuestionIdx < currentSectionQuestions.length - 1 ? 'Save & Next' : 'Finish Section'}
-                                    <ChevronRight className="w-5 h-5" />
+                                    {activeQuestionIdx < currentSectionQuestions.length - 1 ? 'Save & Continue' : 'Finish Section Partition'}
+                                    <ChevronRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
                                 </button>
                             </div>
                         </div>
@@ -649,53 +675,70 @@ export default function StudentExamPage() {
                     )}
                 </div>
 
-                {/* Right Sidebar - Palette */}
-                <div className="w-96 bg-white border-l border-slate-200 flex flex-col shadow-inner">
-                    <div className="p-8 border-b border-slate-50">
-                        <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-4">Question Navigator</h4>
-                        <div className="flex items-center gap-4">
+                {/* Right Sidebar - Intelligent Palette */}
+                <div className="w-[380px] bg-white border-l border-slate-100 flex flex-col z-10">
+                    <div className="p-10 border-b border-slate-50 bg-slate-50/30">
+                        <div className="flex items-center justify-between mb-8">
+                            <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-[0.3em]">Navigation Matrix</h4>
+                            <div className="px-3 py-1 bg-white rounded-full border border-slate-100 shadow-sm text-[9px] font-black text-teal-600 uppercase">
+                                Section Partition
+                            </div>
+                        </div>
+                        <div className="flex items-center gap-6">
                             <div className="flex items-center gap-2">
-                                <div className="w-3 h-3 bg-indigo-600 rounded-sm" />
-                                <span className="text-[9px] font-black text-slate-500 uppercase">Answered</span>
+                                <div className="w-3 h-3 bg-teal-600 rounded-[4px] shadow-lg shadow-teal-500/20" />
+                                <span className="text-[9px] font-black text-slate-500 uppercase tracking-widest">Logged</span>
                             </div>
                             <div className="flex items-center gap-2">
-                                <div className="w-3 h-3 bg-slate-100 border border-slate-200 rounded-sm" />
-                                <span className="text-[9px] font-black text-slate-500 uppercase">Pending</span>
+                                <div className="w-3 h-3 bg-slate-100 border border-slate-200 rounded-[4px]" />
+                                <span className="text-[9px] font-black text-slate-500 uppercase tracking-widest">Pending</span>
                             </div>
                         </div>
                     </div>
 
-                    <div className="flex-1 overflow-y-auto p-8 custom-scrollbar">
-                        <div className="grid grid-cols-4 gap-4">
+                    <div className="flex-1 overflow-y-auto p-10 custom-scrollbar">
+                        <div className="grid grid-cols-5 gap-3">
                             {currentSectionQuestions.map((q, idx) => {
                                 const isAnswered = answers[q.id] !== undefined && answers[q.id] !== '';
                                 return (
                                     <button
                                         key={q.id}
                                         onClick={() => setActiveQuestionIdx(idx)}
-                                        className={`w-full aspect-square rounded-xl flex items-center justify-center text-xs font-black border-2 transition-all ${activeQuestionIdx === idx ? 'scale-110 shadow-lg border-slate-900 bg-slate-900 text-white' :
-                                            isAnswered ? 'bg-indigo-50 border-indigo-200 text-indigo-600' :
-                                                'bg-white border-slate-100 text-slate-400 hover:border-slate-300'
+                                        className={`w-full aspect-square rounded-2xl flex items-center justify-center text-[10px] font-black border-2 transition-all relative group
+                                            ${activeQuestionIdx === idx
+                                                ? 'scale-110 shadow-2xl z-10 border-slate-900 bg-slate-900 text-white'
+                                                : isAnswered
+                                                    ? 'bg-teal-50 border-teal-100 text-teal-700 hover:border-teal-300'
+                                                    : 'bg-white border-slate-50 text-slate-400 hover:bg-slate-50 hover:border-slate-200'
                                             }`}
                                     >
                                         {idx + 1}
+                                        {isAnswered && activeQuestionIdx !== idx && (
+                                            <div className="absolute -top-1 -right-1 w-2 h-2 bg-teal-500 rounded-full border-2 border-white" />
+                                        )}
                                     </button>
                                 );
                             })}
                         </div>
                     </div>
 
-                    <div className="p-8 bg-slate-50/50 border-t border-slate-100">
-                        <div className="p-6 bg-white rounded-2xl border border-slate-200 shadow-sm">
-                            <div className="flex items-center justify-between mb-2">
-                                <span className="text-[10px] font-black text-slate-400 uppercase">Overall Progress</span>
-                                <span className="text-xs font-black text-slate-900">
-                                    {Math.round((Object.keys(answers).length / questions.length) * 100)}%
-                                </span>
+                    <div className="p-10 bg-slate-50/50 border-t border-slate-100">
+                        <div className="p-8 bg-white rounded-[2.5rem] border border-slate-100 shadow-2xl shadow-slate-200/50">
+                            <div className="flex items-center justify-between mb-4">
+                                <div className="flex flex-col">
+                                    <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Curriculum Performance</span>
+                                    <span className="text-xl font-black text-slate-900">Partition Mapping</span>
+                                </div>
+                                <div className="text-right">
+                                    <span className="text-2xl font-black text-teal-600 block">
+                                        {Math.round((Object.keys(answers).length / questions.length) * 100)}%
+                                    </span>
+                                    <span className="text-[8px] font-black text-slate-400 uppercase tracking-widest">Total Complete</span>
+                                </div>
                             </div>
-                            <div className="w-full h-2 bg-slate-100 rounded-full overflow-hidden">
+                            <div className="w-full h-3 bg-slate-100 rounded-full overflow-hidden p-[2px] border border-slate-50">
                                 <div
-                                    className="h-full bg-indigo-600 transition-all duration-1000"
+                                    className="h-full bg-gradient-to-r from-teal-500 to-teal-600 rounded-full transition-all duration-1000 shadow-lg"
                                     style={{ width: `${(Object.keys(answers).length / questions.length) * 100}%` }}
                                 />
                             </div>

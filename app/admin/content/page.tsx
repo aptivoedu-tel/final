@@ -6,6 +6,7 @@ import Sidebar from '@/components/layout/Sidebar';
 import Header from '@/components/layout/Header';
 import { AuthService } from '@/lib/services/authService';
 import { ContentService } from '@/lib/services/contentService';
+import { useUI } from '@/lib/context/UIContext';
 
 export default function ContentManagementPage() {
     const [user, setUser] = useState<any>(null);
@@ -24,6 +25,7 @@ export default function ContentManagementPage() {
         sequence: 1
     });
     const [editingItem, setEditingItem] = useState<any | null>(null);
+    const { isSidebarCollapsed } = useUI();
 
     useEffect(() => {
         const currentUser = AuthService.getCurrentUser();
@@ -157,7 +159,7 @@ export default function ContentManagementPage() {
                 userEmail={user?.email || ''}
             />
 
-            <main className="ml-64 mt-16 p-8">
+            <main className={`${isSidebarCollapsed ? 'ml-28' : 'ml-80'} mt-16 p-8 transition-all duration-300`}>
                 {/* Header */}
                 <div className="flex items-center justify-between mb-8 animate-fade-in">
                     <div>

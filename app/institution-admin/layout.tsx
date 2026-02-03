@@ -5,14 +5,17 @@ import Sidebar from '@/components/layout/Sidebar';
 import Header from '@/components/layout/Header';
 import { Toaster } from 'sonner';
 
+import { useUI } from '@/lib/context/UIContext';
+
 export default function InstitutionAdminLayout({ children }: { children: React.ReactNode }) {
     // In a real app, verify user role here or in middleware
     const userRole = 'institution_admin';
+    const { isSidebarCollapsed } = useUI();
 
     return (
-        <div className="flex h-screen bg-gray-50 font-sans">
+        <div className="flex h-screen bg-gray-50 font-sans transition-all duration-300">
             <Sidebar userRole={userRole} />
-            <div className="flex-1 flex flex-col overflow-hidden ml-64">
+            <div className={`flex-1 flex flex-col overflow-hidden transition-all duration-300 ${isSidebarCollapsed ? 'ml-28' : 'ml-80'}`}>
                 <Header
                     userName="Institution Admin"
                     userEmail="admin@institution.edu"

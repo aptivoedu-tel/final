@@ -10,8 +10,10 @@ import { BookOpen, ChevronLeft, Play, GraduationCap, Clock, CheckCircle, BarChar
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import Link from 'next/link';
+import { useUI } from '@/lib/context/UIContext';
 
 export default function LessonReaderPage() {
+    const { isSidebarCollapsed } = useUI();
     const params = useParams();
     const router = useRouter();
     const uniId = params.uniId as string;
@@ -93,10 +95,6 @@ export default function LessonReaderPage() {
         }
     }, [user, subtopicId]);
 
-    const handleStartPractice = () => {
-        // Redirect to practice with topic and subtopic context
-        router.push(`/practice/session?subtopic=${subtopicId}&topic=${topic?.id}&university=${uniId}`);
-    };
 
     if (loading) return (
         <div className="min-h-screen bg-gray-50 flex items-center justify-center">
@@ -129,7 +127,7 @@ export default function LessonReaderPage() {
             <div className="flex-1 flex flex-col">
                 <Header userName={user?.full_name} userEmail={user?.email} />
 
-                <main className="ml-64 mt-16 p-8">
+                <main className={`transition-all duration-300 ${isSidebarCollapsed ? 'lg:ml-28' : 'lg:ml-80'} mt-16 p-8`}>
                     <div className="max-w-4xl mx-auto">
                         {/* Breadcrumbs */}
                         <nav className="flex items-center gap-2 text-sm font-bold text-slate-400 mb-8 overflow-x-auto whitespace-nowrap pb-2">
@@ -190,32 +188,6 @@ export default function LessonReaderPage() {
                                     )}
                                 </div>
 
-                                {/* Practice CTA */}
-                                <div className="mt-16 bg-slate-900 rounded-[2.5rem] shadow-2xl shadow-indigo-200/50 p-10 relative overflow-hidden group border border-slate-800">
-                                    <div className="absolute top-0 right-0 w-96 h-96 bg-indigo-600/10 rounded-full blur-3xl translate-x-1/3 -translate-y-1/3" />
-
-                                    <div className="relative z-10 flex flex-col md:flex-row items-center justify-between gap-10">
-                                        <div className="flex-1 text-center md:text-left">
-                                            <div className="inline-flex items-center gap-2 px-3 py-1 bg-indigo-500/20 rounded-full text-[10px] font-black text-indigo-300 uppercase tracking-widest mb-4">
-                                                <GraduationCap className="w-3 h-3" />
-                                                Institution-Aligned Assessment
-                                            </div>
-                                            <h3 className="text-3xl font-black text-white mb-4 leading-tight uppercase tracking-tight">Convert Knowledge into Mastery</h3>
-                                            <p className="text-slate-400 text-sm font-medium leading-relaxed max-w-md">
-                                                Launch a contextual practice session. The engine will generate a quiz based on <b>{subject?.name} ({topic?.name})</b> using your university's specific difficulty and time-limit rules.
-                                            </p>
-                                        </div>
-
-                                        <button
-                                            onClick={handleStartPractice}
-                                            className="w-full md:w-auto flex items-center justify-center gap-4 bg-white text-slate-900 px-10 py-5 rounded-[1.5rem] font-black uppercase tracking-widest hover:bg-indigo-600 hover:text-white transition-all shadow-xl group/btn active:scale-95"
-                                        >
-                                            <Play className="w-5 h-5 fill-current" />
-                                            Start Session
-                                            <MoveRight className="w-5 h-5 group-hover/btn:translate-x-2 transition-transform" />
-                                        </button>
-                                    </div>
-                                </div>
                             </div>
 
                             {/* Sidebar / Stats */}

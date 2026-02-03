@@ -12,26 +12,23 @@ import {
 } from 'recharts';
 import Sidebar from '@/components/layout/Sidebar';
 import Header from '@/components/layout/Header';
+import { useUI } from '@/lib/context/UIContext';
 import { AuthService } from '@/lib/services/authService';
-import { AnalyticsService, SystemStats, GrowthData, PerformanceData } from '@/lib/services/analyticsService';
+import { AnalyticsService, TotalStats, GrowthData, WeakTopic } from '@/lib/services/analyticsService';
 
 export default function AnalyticsPage() {
     const [user, setUser] = useState<any>(null);
     const [loading, setLoading] = useState(true);
     const [dateRange, setDateRange] = useState<'7d' | '30d' | '90d'>('30d');
+    const { isSidebarCollapsed } = useUI();
 
     // Data States
-    const [stats, setStats] = useState<SystemStats | null>(null);
+    const [stats, setStats] = useState<TotalStats | null>(null);
     const [growth, setGrowth] = useState<GrowthData[]>([]);
-    const [performance, setPerformance] = useState<PerformanceData[]>([]);
+    const [performance, setPerformance] = useState<WeakTopic[]>([]);
 
     // Mock Distribution for Pie Chart (assuming service provided generic or we mock for visual)
-    const distributionData = [
-        { name: 'Mathematics', value: 400, color: '#6366f1' },
-        { name: 'Physics', value: 300, color: '#10b981' },
-        { name: 'Chemistry', value: 300, color: '#f59e0b' },
-        { name: 'Biology', value: 200, color: '#ec4899' },
-    ];
+    const [distributionData, setDistributionData] = useState<any[]>([]);
 
     useEffect(() => {
         loadAnalytics();
@@ -50,17 +47,24 @@ export default function AnalyticsPage() {
         setUser(activeUser);
 
         try {
-            // Check calling convention of service. 
-            // In analyticsService.ts: getSystemStats(), getStudentGrowth(period), getPerformanceMetrics()
-            const [statsRes, growthRes, perfRes] = await Promise.all([
-                AnalyticsService.getSystemStats(),
-                AnalyticsService.getStudentGrowth(dateRange),
-                AnalyticsService.getPerformanceMetrics()
+            // Map date range to service parameters
+            const periodMap: Record<string, 'week' | 'month' | 'year'> = {
+                '7d': 'week',
+                '30d': 'month',
+                '90d': 'year'
+            };
+
+            const [statsRes, growthRes, perfRes, distRes] = await Promise.all([
+                AnalyticsService.getTotalStats(),
+                AnalyticsService.getStudentGrowth(periodMap[dateRange]),
+                AnalyticsService.getWeakestTopics(10),
+                AnalyticsService.getSubjectDistribution()
             ]);
 
             if (statsRes.stats) setStats(statsRes.stats);
             if (growthRes.data) setGrowth(growthRes.data);
-            if (perfRes.data) setPerformance(perfRes.data);
+            if (perfRes.topics) setPerformance(perfRes.topics);
+            if (distRes.data) setDistributionData(distRes.data);
 
         } catch (error) {
             console.error("Error loading analytics:", error);
@@ -72,11 +76,11 @@ export default function AnalyticsPage() {
     if (loading) return null; // Or a loader
 
     return (
-        <div className="min-h-screen bg-gray-50 font-sans">
+        <div className="min-h-screen bg-gray-50 font-sans transition-all duration-300">
             <Sidebar userRole="super_admin" />
             <Header userName={user?.full_name} userEmail={user?.email} userAvatar={user?.avatar_url} />
 
-            <main className="ml-64 mt-16 p-8">
+            <main className={`${isSidebarCollapsed ? 'ml-28' : 'ml-80'} mt-16 p-8 transition-all duration-300`}>
                 <div className="max-w-7xl mx-auto">
                     {/* Header */}
                     <div className="flex justify-between items-center mb-8">
@@ -110,34 +114,30 @@ export default function AnalyticsPage() {
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
                         {[
                             {
-                                label: 'Total Students',
-                                value: stats?.totalStudents.toLocaleString() || '0',
-                                change: '+12%', // Mock change for visual flair if API doesn't return
-                                trend: 'up',
-                                icon: Users,
+                                label: 'Total Subjects',
+                                value: stats?.totalSubjects.toLocaleString() || '0',
+                                change: '+2%',
+                                icon: BookOpen,
                                 color: 'bg-blue-500'
                             },
                             {
-                                label: 'Active Sessions',
-                                value: stats?.activeSessions.toLocaleString() || '0',
-                                change: '+8%',
-                                trend: 'up',
-                                icon: Activity,
+                                label: 'Total Students',
+                                value: stats?.totalStudents.toLocaleString() || '0',
+                                change: '+12%',
+                                icon: Users,
                                 color: 'bg-green-500'
                             },
                             {
-                                label: 'Questions Solved',
-                                value: stats?.questionsSolved.toLocaleString() || '0',
-                                change: '+24%',
-                                trend: 'up',
-                                icon: BookOpen,
+                                label: 'Total MCQs',
+                                value: stats?.totalMCQs.toLocaleString() || '0',
+                                change: '+5%',
+                                icon: Activity,
                                 color: 'bg-purple-500'
                             },
                             {
-                                label: 'Avg. Session Time',
-                                value: stats?.avgSessionDuration || '0m',
-                                change: '-2%',
-                                trend: 'down',
+                                label: 'Practice Sessions',
+                                value: stats?.totalPracticeSessions.toLocaleString() || '0',
+                                change: '+18%',
                                 icon: Clock,
                                 color: 'bg-orange-500'
                             }
@@ -147,8 +147,8 @@ export default function AnalyticsPage() {
                                     <div className={`p-3 rounded-xl ${card.color} bg-opacity-10 text-${card.color.replace('bg-', '')}`}>
                                         <card.icon className={`w-6 h-6 text-${card.color.replace('bg-', 'text-')}`} style={{ color: card.color === 'bg-blue-500' ? '#3b82f6' : card.color === 'bg-green-500' ? '#22c55e' : card.color === 'bg-purple-500' ? '#a855f7' : '#f97316' }} />
                                     </div>
-                                    <span className={`flex items-center text-xs font-bold px-2 py-1 rounded-full ${card.trend === 'up' ? 'bg-green-50 text-green-700' : 'bg-red-50 text-red-700'}`}>
-                                        {card.trend === 'up' ? <ArrowUpRight className="w-3 h-3 mr-1" /> : <ArrowDownRight className="w-3 h-3 mr-1" />}
+                                    <span className={`flex items-center text-xs font-bold px-2 py-1 rounded-full bg-green-50 text-green-700`}>
+                                        <ArrowUpRight className="w-3 h-3 mr-1" />
                                         {card.change}
                                     </span>
                                 </div>
@@ -181,7 +181,7 @@ export default function AnalyticsPage() {
                                         <Tooltip
                                             contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
                                         />
-                                        <Area type="monotone" dataKey="students" stroke="#6366f1" strokeWidth={3} fillOpacity={1} fill="url(#colorGrowth)" />
+                                        <Area type="monotone" dataKey="count" stroke="#6366f1" strokeWidth={3} fillOpacity={1} fill="url(#colorGrowth)" />
                                     </AreaChart>
                                 </ResponsiveContainer>
                             </div>
@@ -195,21 +195,31 @@ export default function AnalyticsPage() {
                             </h3>
                             <div className="h-[300px] flex items-center justify-center">
                                 <ResponsiveContainer width="100%" height="100%">
-                                    <RechartsPieChart>
-                                        <Pie
-                                            data={distributionData}
-                                            innerRadius={80}
-                                            outerRadius={100}
-                                            paddingAngle={5}
-                                            dataKey="value"
-                                        >
-                                            {distributionData.map((entry, index) => (
-                                                <Cell key={`cell-${index}`} fill={entry.color} />
-                                            ))}
-                                        </Pie>
-                                        <Tooltip />
-                                        <Legend verticalAlign="middle" align="right" layout="vertical" iconType="circle" />
-                                    </RechartsPieChart>
+                                    {distributionData.length > 0 ? (
+                                        <RechartsPieChart>
+                                            <Pie
+                                                data={distributionData}
+                                                innerRadius={80}
+                                                outerRadius={100}
+                                                paddingAngle={5}
+                                                dataKey="value"
+                                                nameKey="name"
+                                            >
+                                                {distributionData.map((entry, index) => (
+                                                    <Cell key={`cell-${index}`} fill={entry.color} />
+                                                ))}
+                                            </Pie>
+                                            <Tooltip />
+                                            <Legend verticalAlign="middle" align="right" layout="vertical" iconType="circle" />
+                                        </RechartsPieChart>
+                                    ) : (
+                                        <div className="flex flex-col items-center justify-center text-center p-8">
+                                            <div className="w-16 h-16 bg-gray-50 rounded-full flex items-center justify-center mb-4">
+                                                <PieChart className="w-8 h-8 text-gray-200" />
+                                            </div>
+                                            <p className="text-sm text-gray-400 font-medium">No distribution data available</p>
+                                        </div>
+                                    )}
                                 </ResponsiveContainer>
                             </div>
                         </div>
@@ -227,13 +237,13 @@ export default function AnalyticsPage() {
                             <ResponsiveContainer width="100%" height="100%">
                                 <BarChart data={performance} barSize={40}>
                                     <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
-                                    <XAxis dataKey="topic" axisLine={false} tickLine={false} tick={{ fill: '#94a3b8', fontSize: 12 }} />
+                                    <XAxis dataKey="topicName" axisLine={false} tickLine={false} tick={{ fill: '#94a3b8', fontSize: 12 }} />
                                     <YAxis axisLine={false} tickLine={false} tick={{ fill: '#94a3b8', fontSize: 12 }} unit="%" />
                                     <Tooltip
                                         cursor={{ fill: 'transparent' }}
                                         contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
                                     />
-                                    <Bar dataKey="score" fill="#10b981" radius={[4, 4, 0, 0]} />
+                                    <Bar dataKey="averageScore" fill="#10b981" radius={[4, 4, 0, 0]} />
                                 </BarChart>
                             </ResponsiveContainer>
                         </div>

@@ -4,6 +4,7 @@ import React, { useState, useEffect } from 'react';
 import { supabase } from '@/lib/supabase/client';
 import Sidebar from '@/components/layout/Sidebar';
 import Header from '@/components/layout/Header';
+import { useUI } from '@/lib/context/UIContext';
 import { Plus, Search, Building2, Trash2, Edit2, X, CheckCircle, Globe, Mail, Phone, MapPin, AlertCircle, Ban, UserCheck, ShieldAlert } from 'lucide-react';
 
 type Institution = {
@@ -69,10 +70,25 @@ export default function InstitutionsPage() {
 
             if (error) throw error;
 
-            // If approved, update user status too (optional, logic usually handles it)
             fetchInstitutions();
         } catch (error: any) {
             alert(`Error: ${error.message}`);
+        }
+    };
+
+    const handleDelete = async (id: number) => {
+        if (!confirm('Are you sure you want to permanently delete this institution? This action cannot be undone and may affect associated users.')) return;
+
+        try {
+            const { error } = await supabase
+                .from('institutions')
+                .delete()
+                .eq('id', id);
+
+            if (error) throw error;
+            fetchInstitutions();
+        } catch (error: any) {
+            alert(`Error deleting institution: ${error.message}`);
         }
     };
 
@@ -87,7 +103,7 @@ export default function InstitutionsPage() {
                 contact_phone: formData.phone,
                 address: formData.address,
                 is_active: true,
-                status: 'approved' // Direct admin addition is approved by default
+                status: 'approved'
             }]);
 
             if (error) throw error;
@@ -108,14 +124,15 @@ export default function InstitutionsPage() {
     });
 
     const pendingCount = institutions.filter(i => i.status === 'pending').length;
+    const { isSidebarCollapsed } = useUI();
 
     return (
         <div className="min-h-screen bg-gray-50 flex font-sans">
             <Sidebar userRole="super_admin" />
-            <div className="flex-1 flex flex-col">
+            <div className="flex-1 flex flex-col transition-all duration-300">
                 <Header userName="Admin" userEmail="admin@system.com" />
 
-                <main className="ml-64 mt-16 p-8">
+                <main className={`transition-all duration-300 ${isSidebarCollapsed ? 'ml-28' : 'ml-80'} mt-16 p-8`}>
                     <div className="max-w-6xl mx-auto">
                         <div className="flex justify-between items-center mb-8">
                             <div>
@@ -178,8 +195,8 @@ export default function InstitutionsPage() {
                                     <div key={inst.id} className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm hover:shadow-xl hover:-translate-y-1 transition-all group overflow-hidden relative">
                                         {/* Status Ribbon */}
                                         <div className={`absolute top-0 right-0 px-4 py-1 text-[10px] font-bold rounded-bl-xl uppercase tracking-widest ${inst.status === 'approved' ? 'bg-green-100 text-green-600' :
-                                                inst.status === 'pending' ? 'bg-amber-100 text-amber-600' :
-                                                    inst.status === 'blocked' ? 'bg-red-100 text-red-600' : 'bg-slate-100 text-slate-600'
+                                            inst.status === 'pending' ? 'bg-amber-100 text-amber-600' :
+                                                inst.status === 'blocked' ? 'bg-red-100 text-red-600' : 'bg-slate-100 text-slate-600'
                                             }`}>
                                             {inst.status}
                                         </div>
@@ -188,6 +205,13 @@ export default function InstitutionsPage() {
                                             <div className="w-14 h-14 rounded-2xl bg-slate-50 flex items-center justify-center text-slate-400 group-hover:bg-indigo-50 group-hover:text-indigo-600 transition-colors">
                                                 <Building2 className="w-7 h-7" />
                                             </div>
+                                            <button
+                                                onClick={() => handleDelete(inst.id)}
+                                                className="p-2 text-slate-300 hover:text-red-500 hover:bg-red-50 rounded-xl transition-all"
+                                                title="Delete Institution"
+                                            >
+                                                <Trash2 className="w-5 h-5" />
+                                            </button>
                                         </div>
 
                                         <h3 className="text-xl font-bold text-slate-800 mb-1 truncate pr-16">{inst.name}</h3>
@@ -245,8 +269,8 @@ export default function InstitutionsPage() {
                                                 <button
                                                     onClick={() => handleUpdateStatus(inst.id, inst.status === 'approved' ? 'blocked' : 'approved')}
                                                     className={`flex-1 py-2.5 text-xs font-bold rounded-xl flex items-center justify-center gap-1.5 transition-all ${inst.status === 'approved'
-                                                            ? 'bg-red-50 text-red-600 hover:bg-red-100'
-                                                            : 'bg-green-50 text-green-600 hover:bg-green-100'
+                                                        ? 'bg-red-50 text-red-600 hover:bg-red-100'
+                                                        : 'bg-green-50 text-green-600 hover:bg-green-100'
                                                         }`}
                                                 >
                                                     {inst.status === 'approved' ? (

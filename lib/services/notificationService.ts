@@ -65,6 +65,82 @@ export class NotificationService {
     }
 
     /**
+     * Send notification to all admins (Super Admin and Institution Admin)
+     */
+    static async sendToAllAdmins(data: CreateNotificationData): Promise<{ success: boolean; error?: string; notificationId?: number }> {
+        try {
+            const { data: admins, error: adminsError } = await supabase
+                .from('users')
+                .select('id')
+                .in('role', ['super_admin', 'institution_admin'])
+                .in('status', ['active', 'pending']);
+
+            if (adminsError) throw adminsError;
+            if (!admins || admins.length === 0) {
+                return { success: false, error: 'No admin recipients found' };
+            }
+
+            const userIds = admins.map(u => u.id);
+            return this.sendToSpecificUsers(userIds, data);
+        } catch (error: any) {
+            console.error('Error sending notification to all admins:', error);
+            return { success: false, error: error.message };
+        }
+    }
+
+    /**
+     * Send notification to all students
+     */
+    static async sendToAllStudents(data: CreateNotificationData): Promise<{ success: boolean; error?: string; notificationId?: number }> {
+        try {
+            const { data: students, error: studentsError } = await supabase
+                .from('users')
+                .select('id')
+                .eq('role', 'student')
+                .in('status', ['active', 'pending']);
+
+            if (studentsError) throw studentsError;
+            if (!students || students.length === 0) {
+                return { success: false, error: 'No student recipients found' };
+            }
+
+            const userIds = students.map(u => u.id);
+            return this.sendToSpecificUsers(userIds, data);
+        } catch (error: any) {
+            console.error('Error sending notification to all students:', error);
+            return { success: false, error: error.message };
+        }
+    }
+
+    /**
+     * Send notification to all users in a specific institution
+     */
+    static async sendToInstitution(
+        institutionId: number,
+        data: CreateNotificationData
+    ): Promise<{ success: boolean; error?: string; notificationId?: number }> {
+        try {
+            // Get all users associated with this institution
+            const { data: users, error: usersError } = await supabase
+                .from('users')
+                .select('id')
+                .eq('institution_id', institutionId)
+                .in('status', ['active', 'pending']);
+
+            if (usersError) throw usersError;
+            if (!users || users.length === 0) {
+                return { success: false, error: 'No users found for this institution' };
+            }
+
+            const userIds = users.map(u => u.id);
+            return this.sendToSpecificUsers(userIds, data);
+        } catch (error: any) {
+            console.error('Error sending notification to institution:', error);
+            return { success: false, error: error.message };
+        }
+    }
+
+    /**
      * Send notification to specific institution's students (Institution Admin)
      */
     static async sendToInstitutionStudents(

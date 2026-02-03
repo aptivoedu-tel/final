@@ -5,10 +5,12 @@ import { Settings, Save, Bell, Shield, Globe } from 'lucide-react';
 import Sidebar from '@/components/layout/Sidebar';
 import Header from '@/components/layout/Header';
 import { AuthService } from '@/lib/services/authService';
+import { useUI } from '@/lib/context/UIContext';
 
 export default function SettingsPage() {
     const [activeTab, setActiveTab] = useState('general');
     const [loading, setLoading] = useState(false);
+    const { isSidebarCollapsed } = useUI();
 
     const handleSave = () => {
         setLoading(true);
@@ -19,11 +21,11 @@ export default function SettingsPage() {
     };
 
     return (
-        <div className="min-h-screen bg-background">
+        <div className="min-h-screen bg-gray-50">
             <Sidebar userRole="super_admin" />
             <Header userName="Admin" userEmail="admin@aptivo.com" />
 
-            <main className="ml-64 mt-16 p-8">
+            <main className={`${isSidebarCollapsed ? 'ml-28' : 'ml-80'} mt-16 p-8 transition-all duration-300 relative z-10 min-h-[calc(100vh-64px)]`}>
                 <div className="flex items-center justify-between mb-8 animate-fade-in">
                     <div>
                         <h1 className="text-4xl font-bold text-gray-900 mb-2">Settings</h1>

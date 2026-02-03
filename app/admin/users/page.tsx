@@ -6,6 +6,7 @@ import Sidebar from '@/components/layout/Sidebar';
 import Header from '@/components/layout/Header';
 import { AuthService } from '@/lib/services/authService';
 import { supabase } from '@/lib/supabase/client';
+import { useUI } from '@/lib/context/UIContext';
 
 export default function UserManagementPage() {
     const [currentUser, setCurrentUser] = useState<any>(null);
@@ -13,6 +14,7 @@ export default function UserManagementPage() {
     const [loading, setLoading] = useState(true);
     const [searchQuery, setSearchQuery] = useState('');
     const [filterRole, setFilterRole] = useState<'all' | 'student' | 'admin'>('all');
+    const { isSidebarCollapsed } = useUI();
 
     useEffect(() => {
         const user = AuthService.getCurrentUser();
@@ -74,14 +76,14 @@ export default function UserManagementPage() {
     }
 
     return (
-        <div className="min-h-screen bg-background">
+        <div className="min-h-screen bg-background transition-all duration-300">
             <Sidebar userRole={currentUser?.role || 'institution_admin'} />
             <Header
                 userName={currentUser?.full_name || 'Admin'}
                 userEmail={currentUser?.email || ''}
             />
 
-            <main className="ml-64 mt-16 p-8">
+            <main className={`${isSidebarCollapsed ? 'ml-20' : 'ml-72'} mt-16 p-8 transition-all duration-300`}>
                 {/* Page Header */}
                 <div className="flex items-center justify-between mb-8 animate-fade-in">
                     <div>
@@ -174,8 +176,8 @@ export default function UserManagementPage() {
                                         </td>
                                         <td className="px-6 py-4 whitespace-nowrap">
                                             <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${['super_admin', 'institution_admin'].includes(user.role)
-                                                    ? 'bg-purple-100 text-purple-800'
-                                                    : 'bg-blue-100 text-blue-800'
+                                                ? 'bg-purple-100 text-purple-800'
+                                                : 'bg-blue-100 text-blue-800'
                                                 }`}>
                                                 {['super_admin', 'institution_admin'].includes(user.role) ? (
                                                     <Shield className="w-3 h-3 mr-1" />
@@ -188,8 +190,8 @@ export default function UserManagementPage() {
                                         </td>
                                         <td className="px-6 py-4 whitespace-nowrap">
                                             <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${user.status === 'active'
-                                                    ? 'bg-green-100 text-green-800'
-                                                    : 'bg-red-100 text-red-800'
+                                                ? 'bg-green-100 text-green-800'
+                                                : 'bg-red-100 text-red-800'
                                                 }`}>
                                                 {user.status === 'active' ? 'Active' : 'Suspended'}
                                             </span>

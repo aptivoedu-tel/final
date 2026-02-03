@@ -2,7 +2,7 @@
 
 import React from 'react';
 import Link from 'next/link';
-import { BookOpen, CheckCircle, ArrowRight, Brain, Calculator, MessageSquare, Share2, Star, Quote, User } from 'lucide-react';
+import { GraduationCap, CheckCircle, ArrowRight, Brain, Calculator, MessageSquare, Share2, Star, Quote, User, BookOpen } from 'lucide-react';
 import { supabase } from '@/lib/supabase/client';
 
 export default function LandingPage() {
@@ -31,7 +31,7 @@ export default function LandingPage() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
           <div className="flex items-center gap-2">
             <div className="w-8 h-8 bg-teal-700 rounded-lg flex items-center justify-center text-white font-bold">
-              <BookOpen className="w-5 h-5" />
+              <GraduationCap className="w-5 h-5" />
             </div>
             <span className="text-xl font-bold text-slate-900">Aptivo</span>
           </div>
@@ -39,7 +39,6 @@ export default function LandingPage() {
           <div className="hidden md:flex items-center gap-8 text-sm font-medium text-slate-600">
             <Link href="/courses" className="hover:text-teal-600 transition-colors">Courses</Link>
             <Link href="#" className="hover:text-teal-600 transition-colors">Materials</Link>
-            <Link href="/practice" className="hover:text-teal-600 transition-colors">Practice</Link>
           </div>
 
           <div className="flex items-center gap-4">

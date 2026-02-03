@@ -5,6 +5,7 @@ import { Download, FileSpreadsheet, Upload, Folder, BookOpen, Layers, CheckCircl
 import Sidebar from '@/components/layout/Sidebar';
 import Header from '@/components/layout/Header';
 import { AuthService } from '@/lib/services/authService';
+import { useUI } from '@/lib/context/UIContext';
 import { supabase } from '@/lib/supabase/client';
 import * as XLSX from 'xlsx';
 
@@ -26,6 +27,7 @@ export default function ExcelUploaderPage() {
     const [previewData, setPreviewData] = useState<any[]>([]);
     const [loading, setLoading] = useState(false);
     const [saving, setSaving] = useState(false);
+    const { isSidebarCollapsed } = useUI();
 
     React.useEffect(() => {
         const currentUser = AuthService.getCurrentUser();
@@ -252,7 +254,7 @@ export default function ExcelUploaderPage() {
             <Sidebar userRole="super_admin" />
             <Header userName={user?.full_name || 'Admin'} userEmail={user?.email || 'admin@aptivo.edu'} />
 
-            <main className="ml-64 mt-16 p-8">
+            <main className={`${isSidebarCollapsed ? 'ml-28' : 'ml-80'} mt-16 p-8 min-h-[calc(100vh-64px)] transition-all duration-300 relative z-10`}>
                 {/* Header */}
                 <div className="flex justify-between items-start mb-8">
                     <div>

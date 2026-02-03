@@ -4,6 +4,7 @@ import React from 'react';
 import { supabase } from '@/lib/supabase/client';
 import Sidebar from '@/components/layout/Sidebar';
 import Header from '@/components/layout/Header';
+import { useUI } from '@/lib/context/UIContext';
 import { Plus, Search, MapPin, Globe, Building2, Trash2, Edit2, X, CheckCircle, Upload, Image as ImageIcon, FileText, Save, Layout } from 'lucide-react';
 import { AuthService } from '@/lib/services/authService';
 import Link from 'next/link';
@@ -155,14 +156,15 @@ export default function UniversitiesPage() {
         u.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
         u.city.toLowerCase().includes(searchTerm.toLowerCase())
     );
+    const { isSidebarCollapsed } = useUI();
 
     return (
         <div className="min-h-screen bg-gray-50 flex font-sans">
             <Sidebar userRole="super_admin" />
-            <div className="flex-1 flex flex-col">
+            <div className="flex-1 flex flex-col transition-all duration-300">
                 <Header userName="Admin" userEmail="admin@system.com" />
 
-                <main className="ml-64 mt-16 p-8">
+                <main className={`transition-all duration-300 ${isSidebarCollapsed ? 'ml-20' : 'ml-72'} mt-16 p-8`}>
                     <div className="max-w-6xl mx-auto">
                         <div className="flex justify-between items-center mb-8">
                             <div>

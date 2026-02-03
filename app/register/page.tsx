@@ -1,7 +1,7 @@
 'use client';
 
 import React from 'react';
-import { Brain, Mail, Lock, User, Eye, EyeOff, AlertCircle, CheckCircle, Users, Building2, Clock, Globe, ArrowLeft } from 'lucide-react';
+import { GraduationCap, Brain, Mail, Lock, User, Eye, EyeOff, AlertCircle, CheckCircle, Users, Building2, Clock, Globe, ArrowLeft } from 'lucide-react';
 import { AuthService } from '@/lib/services/authService';
 import { supabase } from '@/lib/supabase/client';
 
@@ -193,7 +193,7 @@ export default function RegisterPage() {
 
                     <div className="text-center mb-8">
                         <div className="w-16 h-16 bg-slate-900 rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-xl rotate-3">
-                            <Brain className="w-8 h-8 text-white -rotate-3" />
+                            <GraduationCap className="w-8 h-8 text-white -rotate-3" />
                         </div>
                         <h1 className="text-3xl font-black text-slate-900 mb-2 tracking-tight">Join Aptivo</h1>
                         <p className="text-slate-500 font-medium">Create your secure learning account</p>

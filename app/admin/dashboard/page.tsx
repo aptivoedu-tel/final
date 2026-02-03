@@ -5,6 +5,7 @@ import {
     Users, BookOpen, Layers, UploadCloud, Edit3,
     Network, TrendingUp, MoreHorizontal
 } from 'lucide-react';
+import { useUI } from '@/lib/context/UIContext';
 import Sidebar from '@/components/layout/Sidebar';
 import Header from '@/components/layout/Header';
 import { AuthService } from '@/lib/services/authService';
@@ -31,6 +32,7 @@ export default function AdminDashboard() {
     });
     const [recentActivity, setRecentActivity] = useState<RecentActivity[]>([]);
     const [dataLoading, setDataLoading] = useState(true);
+    const { isSidebarCollapsed } = useUI();
 
     useEffect(() => {
         const loadDashboard = async () => {
@@ -79,11 +81,11 @@ export default function AdminDashboard() {
     if (loading) return null;
 
     return (
-        <div className="min-h-screen bg-gray-50 font-sans">
+        <div className="min-h-screen bg-slate-50 font-sans">
             <Sidebar userRole="super_admin" />
             <Header userName={user?.full_name || 'Admin User'} userEmail={user?.email} />
 
-            <main className="lg:ml-64 mt-16 p-4 lg:p-8 transition-all duration-300">
+            <main className={`${isSidebarCollapsed ? 'ml-24' : 'ml-72'} mt-20 p-4 lg:p-8 transition-all duration-300`}>
                 {/* Header */}
                 <div className="mb-8">
                     <h1 className="text-2xl font-bold text-slate-800">Admin Dashboard</h1>

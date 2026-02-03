@@ -15,6 +15,7 @@ import ReactMarkdown from 'react-markdown';
 import Link from 'next/link';
 import { toast } from 'sonner';
 import { X, Save } from 'lucide-react';
+import { useUI } from '@/lib/context/UIContext';
 
 // Data Type
 type HierarchyItem = {
@@ -197,21 +198,23 @@ export default function SuperAdminContentLibraryPage() {
         ));
     };
 
+    const { isSidebarCollapsed } = useUI();
+
     return (
-        <div className="min-h-screen bg-[#0f172a] font-sans">
+        <div className="min-h-screen bg-background font-sans text-foreground">
             <Sidebar userRole="super_admin" />
             <Header userName={user?.full_name || 'Super Admin'} userEmail={user?.email} />
 
-            <main className="ml-64 mt-16 p-8 h-[calc(100vh-64px)] flex flex-col">
+            <main className={`${isSidebarCollapsed ? 'ml-28' : 'ml-80'} mt-16 p-8 h-[calc(100vh-64px)] flex flex-col transition-all duration-300 relative z-10`}>
                 <div className="flex justify-between items-end mb-8">
                     <div>
-                        <h1 className="text-3xl font-black text-white tracking-tight">Global Content Library</h1>
-                        <p className="text-slate-400 font-medium">Platform-wide overview of educational material and structure.</p>
+                        <h1 className="text-3xl font-black text-slate-900 dark:text-primary tracking-tight">Global Content Library</h1>
+                        <p className="text-slate-500 dark:text-primary-dark/70 font-medium">Platform-wide overview of educational material and structure.</p>
                     </div>
                     <div className="flex gap-4">
                         <Link
                             href="/admin/hierarchy-manager"
-                            className="flex items-center gap-2 px-6 py-2.5 bg-slate-800 text-slate-200 font-bold rounded-xl hover:bg-slate-700 transition-all border border-slate-700"
+                            className="flex items-center gap-2 px-6 py-2.5 bg-white dark:bg-surface text-slate-700 dark:text-primary font-bold rounded-xl hover:bg-slate-50 dark:hover:bg-surface-hover transition-all border border-slate-200 dark:border-border"
                         >
                             <Plus className="w-4 h-4" />
                             Manage Hierarchy
@@ -221,8 +224,8 @@ export default function SuperAdminContentLibraryPage() {
 
                 <div className="flex-1 flex gap-8 min-h-0">
                     {/* Left: Global Hierarchy Sidebar */}
-                    <div className="w-80 flex flex-col bg-[#1e293b] rounded-3xl border border-slate-800 shadow-2xl overflow-hidden">
-                        <div className="p-4 border-b border-slate-800 bg-slate-900/50">
+                    <div className="w-80 flex flex-col bg-white dark:bg-surface rounded-3xl border border-slate-200 dark:border-border shadow-xl overflow-hidden">
+                        <div className="p-4 border-b border-slate-100 dark:border-border bg-slate-50/50 dark:bg-surface-hover/30">
                             <div className="relative">
                                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500" />
                                 <input
@@ -230,7 +233,7 @@ export default function SuperAdminContentLibraryPage() {
                                     placeholder="Filter global tree..."
                                     value={searchQuery}
                                     onChange={(e) => setSearchQuery(e.target.value)}
-                                    className="w-full pl-9 pr-4 py-2 bg-slate-900 border border-slate-800 rounded-xl text-xs text-white focus:ring-2 focus:ring-indigo-500/20 outline-none transition-all"
+                                    className="w-full pl-9 pr-4 py-2 bg-slate-50 dark:bg-surface border border-slate-100 dark:border-border rounded-xl text-xs text-slate-900 dark:text-primary focus:ring-2 focus:ring-primary/20 outline-none transition-all"
                                 />
                             </div>
                         </div>

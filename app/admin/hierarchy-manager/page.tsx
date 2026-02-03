@@ -4,6 +4,7 @@ import React, { useState, useEffect } from 'react';
 import { Plus, ChevronRight, ChevronDown, Edit2, Trash2, GripVertical, Layers, Hash, FileText, X, AlertTriangle } from 'lucide-react';
 import Sidebar from '@/components/layout/Sidebar';
 import Header from '@/components/layout/Header';
+import { useUI } from '@/lib/context/UIContext';
 import { AuthService } from '@/lib/services/authService';
 import { supabase } from '@/lib/supabase/client';
 import {
@@ -59,7 +60,6 @@ const DraggableItem = ({ item, level, children, onExpand, onDelete }: {
         <div ref={setDroppableRef} className="select-none">
             <div
                 ref={setNodeRef}
-                style={style}
                 {...attributes}
                 className={`
                     group flex items-center gap-3 py-3 px-4 border-b border-gray-100 bg-white transition-colors
@@ -132,6 +132,7 @@ export default function HierarchyManagerPage() {
     const [loading, setLoading] = useState(true);
     const [activeDragItem, setActiveDragItem] = useState<HierarchyItem | null>(null);
     const [mounted, setMounted] = useState(false);
+    const { isSidebarCollapsed } = useUI();
 
     // Modal State
     const [isAddModalOpen, setIsAddModalOpen] = useState(false);
@@ -385,7 +386,7 @@ export default function HierarchyManagerPage() {
                 <Sidebar userRole="super_admin" />
                 <Header userName={user?.full_name || 'Admin'} userEmail={user?.email || 'admin@aptivo.edu'} />
 
-                <main className="lg:ml-64 mt-16 p-4 lg:p-8 relative transition-all duration-300">
+                <main className={`${isSidebarCollapsed ? 'ml-28' : 'ml-80'} mt-16 p-4 lg:p-8 relative transition-all duration-300`}>
                     <div className="mb-8">
                         <h1 className="text-2xl font-bold text-slate-900 mb-2">Hierarchy Manager</h1>
                         <p className="text-slate-500">Drag items to reorder or change hierarchy. Convert Topics ↔ Subtopics by dragging them.</p>

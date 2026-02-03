@@ -18,7 +18,7 @@ interface HeaderProps {
 }
 
 const Header: React.FC<HeaderProps> = ({ userName, userEmail, userAvatar, avatarUrl, isPremium = false }) => {
-    const { toggleSidebar } = useUI();
+    const { toggleSidebar, isSidebarCollapsed } = useUI();
     const [showUserMenu, setShowUserMenu] = useState(false);
     const [showNotifications, setShowNotifications] = useState(false);
     const [searchQuery, setSearchQuery] = useState('');
@@ -32,10 +32,13 @@ const Header: React.FC<HeaderProps> = ({ userName, userEmail, userAvatar, avatar
 
     const displayAvatar = userAvatar || avatarUrl;
 
+    const [userRole, setUserRole] = useState<string | null>(null);
+
     useEffect(() => {
         const fetchNotifications = async () => {
             const user = AuthService.getCurrentUser();
             if (user) {
+                setUserRole(user.role);
                 const { count } = await NotificationService.getUnreadCount(user.id);
                 setUnreadCount(count);
 
@@ -85,18 +88,52 @@ const Header: React.FC<HeaderProps> = ({ userName, userEmail, userAvatar, avatar
             try {
                 const results: any[] = [];
                 const q = searchQuery.toLowerCase();
+                const isSuperAdmin = userRole === 'super_admin';
+                const isInstitutionAdmin = userRole === 'institution_admin';
 
                 // Search Unis
                 const { data: unis } = await supabase.from('universities').select('id, name').ilike('name', `%${q}%`).limit(3);
-                unis?.forEach(u => results.push({ id: u.id, title: u.name, type: 'university', link: '/university' }));
+                unis?.forEach(u => {
+                    let link = '/university';
+                    if (isSuperAdmin) link = '/admin/universities';
+                    else if (isInstitutionAdmin) link = '/institution-admin/universities';
+
+                    results.push({
+                        id: u.id,
+                        title: u.name,
+                        type: 'university',
+                        link
+                    });
+                });
 
                 // Search Subjects
                 const { data: subs } = await supabase.from('subjects').select('id, name').ilike('name', `%${q}%`).limit(3);
-                subs?.forEach(s => results.push({ id: s.id, title: s.name, type: 'subject', link: '/university' }));
+                subs?.forEach(s => {
+                    let link = '/university';
+                    if (isSuperAdmin) link = '/admin/content-library';
+                    // We can add institution admin logic here if they have a content library page
+
+                    results.push({
+                        id: s.id,
+                        title: s.name,
+                        type: 'subject',
+                        link
+                    });
+                });
 
                 // Search Topics
                 const { data: topics } = await supabase.from('topics').select('id, name').ilike('name', `%${q}%`).limit(3);
-                topics?.forEach(t => results.push({ id: t.id, title: t.name, type: 'topic', link: '/university' }));
+                topics?.forEach(t => {
+                    let link = '/university';
+                    if (isSuperAdmin) link = '/admin/content-library';
+
+                    results.push({
+                        id: t.id,
+                        title: t.name,
+                        type: 'topic',
+                        link
+                    });
+                });
 
                 setSearchResults(results);
             } catch (err) {
@@ -108,7 +145,7 @@ const Header: React.FC<HeaderProps> = ({ userName, userEmail, userAvatar, avatar
 
         const timer = setTimeout(performLiveSearch, 300);
         return () => clearTimeout(timer);
-    }, [searchQuery]);
+    }, [searchQuery, userRole]);
 
     const handleSearch = (e: React.FormEvent) => {
         e.preventDefault();
@@ -138,34 +175,34 @@ const Header: React.FC<HeaderProps> = ({ userName, userEmail, userAvatar, avatar
     };
 
     return (
-        <header className="fixed top-0 left-0 lg:left-64 right-0 h-16 bg-white/80 backdrop-blur-lg border-b border-gray-200 z-30 transition-all duration-300">
-            <div className="h-full px-4 lg:px-6 flex items-center justify-between gap-4">
+        <header className={`fixed top-4 right-4 h-14 bg-white rounded-2xl border border-slate-200/80 z-30 transition-all duration-300 shadow-lg ${isSidebarCollapsed ? 'left-24' : 'left-[17.5rem]'}`}>
+            <div className="h-full px-4 lg:px-5 flex items-center justify-between gap-4">
                 <button
                     onClick={toggleSidebar}
-                    className="p-2 -ml-2 text-slate-500 hover:bg-slate-100 rounded-lg lg:hidden"
+                    className="p-2 -ml-2 text-slate-600 hover:bg-slate-100 rounded-lg lg:hidden transition-colors"
                 >
-                    <Menu className="w-6 h-6" />
+                    <Menu className="w-5 h-5" />
                 </button>
 
                 {/* Search Bar */}
-                <form onSubmit={handleSearch} className="flex-1 max-w-2xl">
+                <form onSubmit={handleSearch} className="flex-1 max-w-xl">
                     <div className="relative">
-                        <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
                         <input
                             type="text"
                             placeholder="Search curricula, topics, or questions..."
                             value={searchQuery}
                             onChange={(e) => setSearchQuery(e.target.value)}
                             onFocus={() => searchQuery.trim() && setShowSearchDropdown(true)}
-                            className="w-full pl-12 pr-12 py-2.5 rounded-full border border-gray-200 bg-gray-50 text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all"
+                            className="w-full pl-10 pr-10 py-2 rounded-xl border border-slate-200 bg-slate-50 text-sm text-slate-700 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500 transition-all"
                         />
                         {searchQuery && (
                             <button
                                 type="button"
                                 onClick={() => { setSearchQuery(''); setShowSearchDropdown(false); }}
-                                className="absolute right-4 top-1/2 -translate-y-1/2 hover:bg-gray-200 p-1 rounded-full transition-colors"
+                                className="absolute right-4 top-1/2 -translate-y-1/2 hover:bg-slate-200 p-1 rounded-full transition-colors"
                             >
-                                <X className="w-4 h-4 text-gray-400" />
+                                <X className="w-4 h-4 text-slate-500" />
                             </button>
                         )}
 
@@ -225,11 +262,11 @@ const Header: React.FC<HeaderProps> = ({ userName, userEmail, userAvatar, avatar
                     <div className="relative">
                         <button
                             onClick={() => setShowNotifications(!showNotifications)}
-                            className="relative p-2.5 rounded-xl hover:bg-gray-100 transition-all active:scale-95"
+                            className="relative p-2.5 rounded-xl hover:bg-slate-100 transition-all active:scale-95"
                         >
-                            <Bell className="w-5 h-5 text-slate-600" />
+                            <Bell className="w-5 h-5 text-slate-800 stroke-[2.5]" />
                             {unreadCount > 0 && (
-                                <span className="absolute -top-1 -right-1 min-w-[18px] h-[18px] bg-red-500 text-white text-[10px] font-black rounded-full flex items-center justify-center px-1 border-2 border-white shadow-sm scale-110 animate-pulse">
+                                <span className="absolute -top-1 -right-1 min-w-[18px] h-[18px] bg-red-600 text-white text-[10px] font-black rounded-full flex items-center justify-center px-1 border-2 border-white shadow-sm scale-110">
                                     {unreadCount > 9 ? '9+' : unreadCount}
                                 </span>
                             )}
@@ -331,8 +368,9 @@ const Header: React.FC<HeaderProps> = ({ userName, userEmail, userAvatar, avatar
                                     </span>
                                 </div>
                             )}
-                            <div className="text-left hidden md:block">
-                                <p className="text-sm font-medium text-gray-900">{userName}</p>
+                            <div className="text-right hidden md:block">
+                                <p className="text-sm font-black text-slate-900 leading-tight">{userName || 'Student User'}</p>
+                                <p className="text-[10px] font-bold text-slate-600 truncate max-w-[120px]">{userEmail || 'student@stanford.edu'}</p>
                                 {isPremium && (
                                     <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-gradient-to-r from-yellow-400 to-orange-500 text-white">
                                         Premium

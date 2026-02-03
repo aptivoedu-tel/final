@@ -8,11 +8,13 @@ import { AuthService } from '@/lib/services/authService';
 import {
     Star, RefreshCw, Check
 } from 'lucide-react';
+import { useUI } from '@/lib/context/UIContext';
 
 export default function AdminFeedbacksPage() {
     const [feedbacks, setFeedbacks] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
     const [user, setUser] = useState<any>(null);
+    const { isSidebarCollapsed } = useUI();
 
     useEffect(() => {
         const init = async () => {
@@ -63,7 +65,7 @@ export default function AdminFeedbacksPage() {
     return (
         <div className="min-h-screen bg-white font-sans">
             <Sidebar userRole="super_admin" />
-            <div className="flex-1 flex flex-col lg:ml-64 transition-all duration-300">
+            <div className={`flex-1 flex flex-col transition-all duration-300 ${isSidebarCollapsed ? 'ml-28' : 'ml-80'}`}>
                 <Header userName={user?.full_name || 'Admin'} userEmail={user?.email || 'aptivo.education@gmail.com'} />
 
                 <main className="p-4 lg:p-8 pt-20 lg:pt-24">

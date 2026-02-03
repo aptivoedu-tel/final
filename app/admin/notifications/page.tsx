@@ -11,6 +11,7 @@ import Header from '@/components/layout/Header';
 import { AuthService } from '@/lib/services/authService';
 import { NotificationService } from '@/lib/services/notificationService';
 import { AdminDashboardService } from '@/lib/services/adminDashboardService';
+import { useUI } from '@/lib/context/UIContext';
 
 export default function AdminNotificationsPage() {
     const [user, setUser] = useState<any>(null);
@@ -18,6 +19,7 @@ export default function AdminNotificationsPage() {
     const [history, setHistory] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
     const [sending, setSending] = useState(false);
+    const { isSidebarCollapsed } = useUI();
 
     // Form State
     const [title, setTitle] = useState('');
@@ -152,8 +154,26 @@ export default function AdminNotificationsPage() {
                     senderRole: user.role,
                     imageUrl
                 });
+            } else if (targetType === 'role') {
+                if (targetRole === 'student') {
+                    res = await NotificationService.sendToAllStudents({
+                        title,
+                        message,
+                        category,
+                        senderRole: user.role,
+                        imageUrl
+                    });
+                } else {
+                    res = await NotificationService.sendToAllAdmins({
+                        title,
+                        message,
+                        category,
+                        senderRole: user.role,
+                        imageUrl
+                    });
+                }
             } else if (targetType === 'institution' && targetInstitution) {
-                res = await NotificationService.sendToInstitutionStudents(parseInt(targetInstitution), {
+                res = await NotificationService.sendToInstitution(parseInt(targetInstitution), {
                     title,
                     message,
                     category,
@@ -161,13 +181,7 @@ export default function AdminNotificationsPage() {
                     imageUrl
                 });
             } else {
-                res = await NotificationService.sendNotification({
-                    title,
-                    message,
-                    category,
-                    senderRole: user.role,
-                    imageUrl
-                }, [user.id]);
+                res = { success: false, error: 'Invalid target selected' };
             }
 
             if (res.success) {
@@ -201,7 +215,7 @@ export default function AdminNotificationsPage() {
             <Sidebar userRole="super_admin" />
             <Header userName={user?.full_name} userEmail={user?.email} userAvatar={user?.avatar_url} />
 
-            <main className="ml-64 mt-16 p-8">
+            <main className={`${isSidebarCollapsed ? 'ml-28' : 'ml-80'} mt-16 p-8 transition-all duration-300`}>
                 <div className="max-w-5xl mx-auto">
                     {/* Header */}
                     <div className="mb-8">

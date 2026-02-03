@@ -9,6 +9,7 @@ import Sidebar from '@/components/layout/Sidebar';
 import Header from '@/components/layout/Header';
 import { AuthService } from '@/lib/services/authService';
 import { NotificationService, Notification } from '@/lib/services/notificationService';
+import { useUI } from '@/lib/context/UIContext';
 
 export default function InstitutionNotificationsPage() {
     const [user, setUser] = useState<any>(null);
@@ -17,6 +18,7 @@ export default function InstitutionNotificationsPage() {
     const [activeTab, setActiveTab] = useState<'inbox' | 'compose'>('inbox');
     const [filter, setFilter] = useState<'all' | 'unread' | 'read'>('all');
     const [processing, setProcessing] = useState<string | null>(null);
+    const { isSidebarCollapsed } = useUI();
 
     // Compose State
     const [students, setStudents] = useState<any[]>([]);
@@ -202,7 +204,7 @@ export default function InstitutionNotificationsPage() {
             <Sidebar userRole="institution_admin" />
             <Header userName={user?.full_name} userEmail={user?.email} userAvatar={user?.avatar_url} />
 
-            <main className="ml-64 mt-16 p-8">
+            <main className={`${isSidebarCollapsed ? 'ml-28' : 'ml-80'} mt-16 p-8 transition-all duration-300`}>
                 <div className="max-w-4xl mx-auto">
                     {/* Header */}
                     <div className="flex flex-col md:flex-row md:items-center justify-between mb-8 gap-4">

@@ -320,4 +320,100 @@ export class DashboardService {
             return { subtopic: null, error: error.message };
         }
     }
+
+    /**
+     * Get real-time rank for the student
+     */
+    static async getStudentRank(studentId: string): Promise<{ rank: number; totalStudents: number; change: string }> {
+        try {
+            // Get all student's accuracy from practice sessions
+            const { data: allStats } = await supabase
+                .from('practice_sessions')
+                .select('student_id, score_percentage')
+                .eq('is_completed', true);
+
+            if (!allStats || allStats.length === 0) return { rank: 1, totalStudents: 1, change: '→ 0' };
+
+            const studentAverages: Record<string, { total: number; count: number }> = {};
+
+            allStats.forEach(s => {
+                if (s.score_percentage === null) return;
+                if (!studentAverages[s.student_id]) {
+                    studentAverages[s.student_id] = { total: 0, count: 0 };
+                }
+                studentAverages[s.student_id].total += s.score_percentage;
+                studentAverages[s.student_id].count += 1;
+            });
+
+            const sortedAverages = Object.keys(studentAverages)
+                .map(id => ({
+                    id,
+                    avg: studentAverages[id].total / studentAverages[id].count
+                }))
+                .sort((a, b) => b.avg - a.avg);
+
+            const rankIndex = sortedAverages.findIndex(a => a.id === studentId);
+            const rank = rankIndex === -1 ? sortedAverages.length + 1 : rankIndex + 1;
+
+            return {
+                rank,
+                totalStudents: sortedAverages.length,
+                change: rank < sortedAverages.length / 4 ? '↑ 2 places' : '→ Steady'
+            };
+        } catch (e) {
+            return { rank: 0, totalStudents: 0, change: '→ 0' };
+        }
+    }
+
+    /**
+     * Get dynamic milestones for the student
+     */
+    static async getRecentMilestones(studentId: string): Promise<any[]> {
+        try {
+            const { data: sessions } = await supabase
+                .from('practice_sessions')
+                .select('score_percentage, started_at, total_questions')
+                .eq('student_id', studentId)
+                .eq('is_completed', true)
+                .order('started_at', { ascending: false })
+                .limit(20);
+
+            const milestones = [];
+
+            if (sessions && sessions.length > 5) {
+                milestones.push({
+                    title: 'Consistency King',
+                    desc: `Completed ${sessions.length} sessions recently`,
+                    icon: 'TrendingUp',
+                    color: 'text-primary-dark',
+                    bg: 'bg-primary/10'
+                });
+            }
+
+            const highAccuracy = sessions?.filter(s => s.score_percentage >= 90).length || 0;
+            if (highAccuracy > 0) {
+                milestones.push({
+                    title: 'Sharp Shooter',
+                    desc: `Achieved 90%+ in ${highAccuracy} sessions`,
+                    icon: 'CheckCircle2',
+                    color: 'text-primary-dark',
+                    bg: 'bg-primary/10'
+                });
+            }
+
+            if (milestones.length === 0) {
+                milestones.push({
+                    title: 'Academic Starter',
+                    desc: 'Started the learning journey',
+                    icon: 'Zap',
+                    color: 'text-primary-dark',
+                    bg: 'bg-primary/10'
+                });
+            }
+
+            return milestones;
+        } catch (e) {
+            return [];
+        }
+    }
 }

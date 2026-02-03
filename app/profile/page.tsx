@@ -6,6 +6,7 @@ import {
     Calendar, GraduationCap, Shield, Activity,
     CheckCircle, XCircle, Loader2, Star
 } from 'lucide-react';
+import { useUI } from '@/lib/context/UIContext';
 import { supabase } from '@/lib/supabase/client';
 import Sidebar from '@/components/layout/Sidebar';
 import Header from '@/components/layout/Header';
@@ -21,6 +22,7 @@ export default function ProfilePage() {
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
     const [uploading, setUploading] = useState(false);
+    const { isSidebarCollapsed } = useUI();
 
     // Form States
     const [fullName, setFullName] = useState('');

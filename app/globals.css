@@ -70,6 +70,28 @@
     --transition-base: 250ms cubic-bezier(0.4, 0, 0.2, 1);
     --transition-slow: 350ms cubic-bezier(0.4, 0, 0.2, 1);
   }
+
+  .dark {
+    --background: #1A2517;
+    --foreground: #ACC8A2;
+    --surface: #243021;
+    --surface-hover: #2D3A29;
+    --border: #3A4736;
+    --border-light: #2D3A29;
+
+    --text-primary: #ACC8A2;
+    --text-secondary: #8FB085;
+    --text-tertiary: #7A9671;
+    --text-muted: #4A5746;
+
+    --glass-bg: rgba(26, 37, 23, 0.8);
+    --glass-border: rgba(172, 200, 162, 0.15);
+
+    --primary: #ACC8A2;
+    --primary-light: #C5DBC0;
+    --primary-dark: #8FB085;
+    --primary-glow: rgba(172, 200, 162, 0.1);
+  }
 }
 
 /* =====================================================
