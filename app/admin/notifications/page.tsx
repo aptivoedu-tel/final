@@ -62,8 +62,12 @@ export default function AdminNotificationsPage() {
                 }
             }
 
-            // 2. Fetch History (Mock or real if table exists)
-            // For now, we'll just show the local history which updates on send
+            // 2. Fetch History
+            const historyRes = await NotificationService.getSentHistory({
+                senderRole: activeUser.role === 'super_admin' ? undefined : activeUser.role,
+                institutionId: activeUser.role === 'institution_admin' ? activeUser.institution_id : undefined
+            });
+            if (historyRes.history) setHistory(historyRes.history);
         } catch (error) {
             console.error("Error loading data:", error);
         } finally {
@@ -172,7 +176,13 @@ export default function AdminNotificationsPage() {
                 setMessage('');
                 setImageFile(null);
                 setImagePreview(null);
-                setHistory([{ title, message, category, date: new Date(), target: targetType, image_url: imageUrl } as any, ...history]);
+
+                // Refresh History from DB
+                const historyRes = await NotificationService.getSentHistory({
+                    senderRole: user.role === 'super_admin' ? undefined : user.role,
+                    institutionId: user.role === 'institution_admin' ? user.institution_id : undefined
+                });
+                if (historyRes.history) setHistory(historyRes.history);
             } else {
                 setStatusMsg({ type: 'error', text: res.error || 'Failed to send notification.' });
             }
@@ -405,7 +415,9 @@ export default function AdminNotificationsPage() {
                                                         }`}>
                                                         {item.category}
                                                     </span>
-                                                    <span className="text-xs text-slate-400">{item.date.toLocaleDateString()}</span>
+                                                    <span className="text-xs text-slate-400">
+                                                        {new Date(item.created_at).toLocaleDateString()}
+                                                    </span>
                                                 </div>
                                                 <h4 className="font-bold text-slate-800 text-sm mb-1">{item.title}</h4>
                                                 <div className="text-xs text-slate-500 line-clamp-2">

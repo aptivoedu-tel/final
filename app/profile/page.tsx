@@ -4,8 +4,9 @@ import React, { useEffect, useState, useRef } from 'react';
 import {
     User, Mail, Camera, Save, Lock, MapPin,
     Calendar, GraduationCap, Shield, Activity,
-    CheckCircle, XCircle, Loader2
+    CheckCircle, XCircle, Loader2, Star
 } from 'lucide-react';
+import { supabase } from '@/lib/supabase/client';
 import Sidebar from '@/components/layout/Sidebar';
 import Header from '@/components/layout/Header';
 import { AuthService } from '@/lib/services/authService';
@@ -25,6 +26,9 @@ export default function ProfilePage() {
     const [fullName, setFullName] = useState('');
     const [currentPassword, setCurrentPassword] = useState('');
     const [newPassword, setNewPassword] = useState('');
+    const [feedbackRating, setFeedbackRating] = useState(5);
+    const [feedbackText, setFeedbackText] = useState('');
+    const [submittingFeedback, setSubmittingFeedback] = useState(false);
     const [message, setMessage] = useState<{ type: 'success' | 'error', text: string } | null>(null);
 
     const fileInputRef = useRef<HTMLInputElement>(null);
@@ -136,6 +140,30 @@ export default function ProfilePage() {
         setSaving(false);
     };
 
+    const handleSubmitFeedback = async (e: React.FormEvent) => {
+        e.preventDefault();
+        if (!user || !feedbackText.trim()) return;
+
+        setSubmittingFeedback(true);
+        try {
+            const { error } = await supabase.from('feedbacks').insert({
+                user_id: user.id,
+                rating: feedbackRating,
+                feedback_text: feedbackText
+            });
+
+            if (error) throw error;
+
+            setMessage({ type: 'success', text: 'Thank you for your feedback!' });
+            setFeedbackText('');
+            setFeedbackRating(5);
+        } catch (err: any) {
+            setMessage({ type: 'error', text: err.message || 'Failed to submit feedback' });
+        } finally {
+            setSubmittingFeedback(false);
+        }
+    };
+
     if (loading) {
         return (
             <div className="min-h-screen bg-gray-50 flex items-center justify-center">
@@ -149,7 +177,7 @@ export default function ProfilePage() {
             <Sidebar userRole={user?.role || 'student'} />
             <Header userName={user?.full_name} userEmail={user?.email} userAvatar={user?.avatar_url} />
 
-            <main className="ml-64 mt-16 p-8">
+            <main className="lg:ml-64 mt-16 p-4 lg:p-8 transition-all duration-300">
                 <div className="max-w-6xl mx-auto">
                     {/* Header */}
                     <div className="mb-8">
@@ -287,6 +315,58 @@ export default function ProfilePage() {
                                             className="px-6 py-2.5 bg-white border border-gray-200 text-slate-700 rounded-lg font-medium hover:bg-gray-50 transition-colors flex items-center gap-2"
                                         >
                                             Change Password
+                                        </button>
+                                    </div>
+                                </form>
+                            </div>
+
+                            {/* Feedback Section */}
+                            <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-8">
+                                <h3 className="text-lg font-bold text-slate-800 mb-2 flex items-center gap-2">
+                                    <Star className="w-5 h-5 text-teal-600 fill-teal-600" />
+                                    Feedback
+                                </h3>
+                                <p className="text-slate-500 text-sm mb-6 font-medium">Have suggestions? Let us know how we can improve.</p>
+
+                                <form onSubmit={handleSubmitFeedback} className="space-y-6">
+                                    <div>
+                                        <label className="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-3">Rating</label>
+                                        <div className="flex gap-2">
+                                            {[1, 2, 3, 4, 5].map((star) => (
+                                                <button
+                                                    key={star}
+                                                    type="button"
+                                                    onClick={() => setFeedbackRating(star)}
+                                                    className={`w-10 h-10 rounded-lg flex items-center justify-center transition-all ${feedbackRating >= star
+                                                        ? 'bg-teal-50 text-teal-600 border border-teal-200 shadow-sm'
+                                                        : 'bg-gray-50 text-slate-300 border border-gray-100 hover:border-gray-200'
+                                                        }`}
+                                                >
+                                                    <Star className={`w-5 h-5 ${feedbackRating >= star ? 'fill-current' : ''}`} />
+                                                </button>
+                                            ))}
+                                        </div>
+                                    </div>
+
+                                    <div>
+                                        <label className="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Comments</label>
+                                        <textarea
+                                            value={feedbackText}
+                                            onChange={(e) => setFeedbackText(e.target.value)}
+                                            required
+                                            rows={3}
+                                            className="w-full bg-gray-50 border border-gray-100 rounded-xl p-4 text-slate-700 outline-none focus:ring-2 focus:ring-teal-50 focus:border-teal-500 transition-all placeholder:text-slate-300"
+                                            placeholder="Write your feedback here..."
+                                        />
+                                    </div>
+
+                                    <div className="flex justify-end">
+                                        <button
+                                            type="submit"
+                                            disabled={submittingFeedback || !feedbackText.trim()}
+                                            className="px-6 py-2.5 bg-teal-700 text-white rounded-lg font-bold text-sm tracking-tight hover:bg-teal-800 transition-all disabled:opacity-50"
+                                        >
+                                            {submittingFeedback ? 'Submitting...' : 'Submit'}
                                         </button>
                                     </div>
                                 </form>

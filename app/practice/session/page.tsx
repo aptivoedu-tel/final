@@ -343,10 +343,17 @@ export default function PracticeSessionPage() {
                                                 className="bg-indigo-500/10 border border-indigo-500/20 p-6 rounded-2xl flex gap-4 items-start"
                                             >
                                                 <AlertCircle className="w-5 h-5 text-indigo-400 flex-shrink-0 mt-0.5" />
-                                                <p className="text-indigo-200/70 text-sm leading-relaxed">
-                                                    <span className="font-black text-indigo-300 mr-2 uppercase tracking-tighter text-[10px]">Explanation:</span>
-                                                    {q.explanation}
-                                                </p>
+                                                <div className="flex-1">
+                                                    <p className="text-indigo-200/70 text-sm leading-relaxed">
+                                                        <span className="font-black text-indigo-300 mr-2 uppercase tracking-tighter text-[10px]">Explanation:</span>
+                                                        {q.explanation}
+                                                    </p>
+                                                    {q.explanation_url && (
+                                                        <div className="mt-4 rounded-xl overflow-hidden border border-white/10 max-w-sm">
+                                                            <img src={q.explanation_url} alt="Explanation Context" className="w-full object-cover" />
+                                                        </div>
+                                                    )}
+                                                </div>
                                             </motion.div>
                                         )}
                                     </AnimatePresence>

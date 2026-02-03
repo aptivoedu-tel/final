@@ -99,20 +99,20 @@ export default function PerformanceAnalyticsPage() {
             autoTable(pdf, {
                 startY: 60,
                 head: [['#', 'University Name', 'Students', 'Avg Score', 'Sessions']],
-                body: stats.universityStats.map((u: any, i: number) => [
+                body: (stats.universityStats || []).map((u: any, i: number) => [
                     i + 1,
-                    u.name,
-                    u.studentCount,
-                    `${u.averageScore}%`,
-                    u.totalSessions
+                    u.name || 'N/A',
+                    u.studentCount || 0,
+                    `${u.averageScore || 0}%`,
+                    u.totalSessions || 0
                 ]),
                 theme: 'striped',
-                headStyles: { fillColor: [79, 70, 229] }, // indigo-600
+                headStyles: { fillColor: [79, 70, 229] },
                 styles: { fontSize: 9 }
             });
 
             // Student Table
-            const finalY = (pdf as any).lastAutoTable.cursor.y;
+            const finalY = (pdf as any).lastAutoTable?.finalY || 100;
             pdf.setFontSize(16);
             pdf.setFont('helvetica', 'bold');
             pdf.text("Student Performance Breakdown", 14, finalY + 20);
@@ -120,14 +120,14 @@ export default function PerformanceAnalyticsPage() {
             autoTable(pdf, {
                 startY: finalY + 25,
                 head: [['Student Name', 'Avg Score', 'Sessions', 'Status']],
-                body: stats.studentStats.map((s: any) => [
-                    s.name,
-                    `${s.averageScore}%`,
-                    s.totalSessions,
-                    s.status
+                body: (stats.studentStats || []).map((s: any) => [
+                    s.name || 'Unknown',
+                    `${s.averageScore || 0}%`,
+                    s.totalSessions || 0,
+                    s.status || 'Active'
                 ]),
                 theme: 'grid',
-                headStyles: { fillColor: [15, 23, 42] }, // slate-900
+                headStyles: { fillColor: [15, 23, 42] },
                 styles: { fontSize: 9 }
             });
 

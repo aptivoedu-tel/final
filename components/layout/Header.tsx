@@ -1,7 +1,8 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { Search, Bell, User, ChevronDown, CheckCircle, AlertTriangle, Info, Book, GraduationCap, FileText, University as UniIcon, Loader2, ChevronRight, X } from 'lucide-react';
+import { Search, Bell, User, ChevronDown, CheckCircle, AlertTriangle, Info, Book, GraduationCap, FileText, University as UniIcon, Loader2, ChevronRight, X, Menu } from 'lucide-react';
+import { useUI } from '@/lib/context/UIContext';
 import { AuthService } from '@/lib/services/authService';
 import { getInitials, getAvatarColor } from '@/lib/utils';
 import { NotificationService } from '@/lib/services/notificationService';
@@ -17,6 +18,7 @@ interface HeaderProps {
 }
 
 const Header: React.FC<HeaderProps> = ({ userName, userEmail, userAvatar, avatarUrl, isPremium = false }) => {
+    const { toggleSidebar } = useUI();
     const [showUserMenu, setShowUserMenu] = useState(false);
     const [showNotifications, setShowNotifications] = useState(false);
     const [searchQuery, setSearchQuery] = useState('');
@@ -136,8 +138,15 @@ const Header: React.FC<HeaderProps> = ({ userName, userEmail, userAvatar, avatar
     };
 
     return (
-        <header className="fixed top-0 left-64 right-0 h-16 bg-white/80 backdrop-blur-lg border-b border-gray-200 z-30">
-            <div className="h-full px-6 flex items-center justify-between">
+        <header className="fixed top-0 left-0 lg:left-64 right-0 h-16 bg-white/80 backdrop-blur-lg border-b border-gray-200 z-30 transition-all duration-300">
+            <div className="h-full px-4 lg:px-6 flex items-center justify-between gap-4">
+                <button
+                    onClick={toggleSidebar}
+                    className="p-2 -ml-2 text-slate-500 hover:bg-slate-100 rounded-lg lg:hidden"
+                >
+                    <Menu className="w-6 h-6" />
+                </button>
+
                 {/* Search Bar */}
                 <form onSubmit={handleSearch} className="flex-1 max-w-2xl">
                     <div className="relative">
@@ -165,7 +174,7 @@ const Header: React.FC<HeaderProps> = ({ userName, userEmail, userAvatar, avatar
                             <div className="absolute top-full left-0 right-0 mt-2 bg-white rounded-2xl shadow-2xl border border-gray-100 overflow-hidden z-50 animate-in fade-in slide-in-from-top-2 duration-200">
                                 <div className="p-4 bg-gray-50 border-b border-gray-100 flex items-center justify-between">
                                     <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">Quick Results</span>
-                                    {isSearching && <Loader2 className="w-3 h-3 text-indigo-600 animate-spin" />}
+                                    {isSearching && <Loader2 className="w-3 h-3 text-primary animate-spin" />}
                                 </div>
                                 <div className="max-h-[400px] overflow-y-auto">
                                     {searchResults.length > 0 ? (
@@ -174,20 +183,20 @@ const Header: React.FC<HeaderProps> = ({ userName, userEmail, userAvatar, avatar
                                                 key={i}
                                                 href={res.link}
                                                 onClick={() => setShowSearchDropdown(false)}
-                                                className="flex items-center justify-between p-4 hover:bg-indigo-50/50 transition-colors group"
+                                                className="flex items-center justify-between p-4 hover:bg-primary/5 transition-colors group"
                                             >
                                                 <div className="flex items-center gap-3">
                                                     <div className="p-2 bg-gray-100 rounded-lg group-hover:bg-white transition-colors">
-                                                        {res.type === 'university' && <UniIcon className="w-4 h-4 text-indigo-500" />}
-                                                        {res.type === 'subject' && <Book className="w-4 h-4 text-purple-500" />}
-                                                        {res.type === 'topic' && <GraduationCap className="w-4 h-4 text-blue-500" />}
+                                                        {res.type === 'university' && <UniIcon className="w-4 h-4 text-primary-dark" />}
+                                                        {res.type === 'subject' && <Book className="w-4 h-4 text-primary-dark" />}
+                                                        {res.type === 'topic' && <GraduationCap className="w-4 h-4 text-primary-dark" />}
                                                     </div>
                                                     <div>
                                                         <p className="text-sm font-bold text-slate-700">{res.title}</p>
                                                         <p className="text-[10px] uppercase font-black tracking-tighter text-slate-400">{res.type}</p>
                                                     </div>
                                                 </div>
-                                                <ChevronRight className="w-4 h-4 text-slate-300 group-hover:text-indigo-600 transition-colors" />
+                                                <ChevronRight className="w-4 h-4 text-slate-300 group-hover:text-primary transition-colors" />
                                             </Link>
                                         ))
                                     ) : !isSearching ? (
@@ -199,7 +208,7 @@ const Header: React.FC<HeaderProps> = ({ userName, userEmail, userAvatar, avatar
                                 {searchQuery.trim() && (
                                     <button
                                         onClick={handleSearch}
-                                        className="w-full p-4 bg-indigo-600 text-white text-xs font-black uppercase tracking-widest hover:bg-indigo-700 transition-colors flex items-center justify-center gap-2"
+                                        className="w-full p-4 bg-primary text-white text-xs font-black uppercase tracking-widest hover:bg-primary-dark transition-colors flex items-center justify-center gap-2"
                                     >
                                         See all results for "{searchQuery}"
                                         <ChevronRight className="w-4 h-4" />
@@ -256,14 +265,14 @@ const Header: React.FC<HeaderProps> = ({ userName, userEmail, userAvatar, avatar
                                                         window.location.href = '/admin/notifications';
                                                     }
                                                 }}
-                                                className={`p-4 border-b border-gray-50 hover:bg-gray-50 transition-colors cursor-pointer ${!notif.read_at ? 'bg-indigo-50/30' : ''}`}
+                                                className={`p-4 border-b border-gray-50 hover:bg-gray-50 transition-colors cursor-pointer ${!notif.read_at ? 'bg-primary/5' : ''}`}
                                             >
                                                 <div className="flex gap-3">
                                                     <div className="mt-0.5 shrink-0">{getIcon(notif.category)}</div>
                                                     <div className="flex-1 min-w-0">
                                                         <h4 className="text-sm font-semibold text-gray-900 truncate">{notif.title}</h4>
                                                         <div className="flex items-center gap-2 mt-0.5">
-                                                            <span className="text-[9px] uppercase font-bold tracking-wider text-indigo-600 bg-indigo-50 px-1.5 py-0.5 rounded">
+                                                            <span className="text-[9px] uppercase font-bold tracking-wider text-primary-dark bg-primary/10 px-1.5 py-0.5 rounded">
                                                                 {notif.institution_name || notif.sender_role?.replace('_', ' ')}
                                                             </span>
                                                         </div>
@@ -294,7 +303,7 @@ const Header: React.FC<HeaderProps> = ({ userName, userEmail, userAvatar, avatar
                                             else if (user?.role === 'institution_admin') window.location.href = '/institution-admin/notifications';
                                             else window.location.href = '/admin/notifications';
                                         }}
-                                        className="text-sm font-medium text-indigo-600 hover:text-indigo-800"
+                                        className="text-sm font-medium text-primary-dark hover:text-primary"
                                     >
                                         View All Notifications
                                     </button>

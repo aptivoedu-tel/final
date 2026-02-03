@@ -2,9 +2,28 @@
 
 import React from 'react';
 import Link from 'next/link';
-import { BookOpen, CheckCircle, ArrowRight, Brain, Calculator, MessageSquare, Share2 } from 'lucide-react';
+import { BookOpen, CheckCircle, ArrowRight, Brain, Calculator, MessageSquare, Share2, Star, Quote, User } from 'lucide-react';
+import { supabase } from '@/lib/supabase/client';
 
 export default function LandingPage() {
+  const [feedbacks, setFeedbacks] = React.useState<any[]>([]);
+
+  React.useEffect(() => {
+    const fetchFeedbacks = async () => {
+      const { data } = await supabase
+        .from('feedbacks')
+        .select(`
+          *,
+          users:user_id (full_name, avatar_url, role)
+        `)
+        .eq('is_published', true)
+        .order('created_at', { ascending: false })
+        .limit(6);
+      if (data) setFeedbacks(data);
+    };
+    fetchFeedbacks();
+  }, []);
+
   return (
     <div className="min-h-screen bg-white font-sans text-slate-900">
       {/* Navigation */}
@@ -107,6 +126,61 @@ export default function LandingPage() {
           </div>
         </div>
       </section>
+
+      {/* Testimonials Section */}
+      {feedbacks.length > 0 && (
+        <section className="py-24 bg-slate-50 relative overflow-hidden">
+          <div className="absolute top-0 right-0 w-96 h-96 bg-teal-500/5 rounded-full blur-3xl -mr-48 -mt-48" />
+          <div className="absolute bottom-0 left-0 w-96 h-96 bg-teal-500/5 rounded-full blur-3xl -ml-48 -mb-48" />
+
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
+            <div className="text-center mb-16">
+              <h2 className="text-3xl font-bold text-slate-900 mb-4 tracking-tight">Student Success Stories</h2>
+              <p className="text-slate-600 max-w-2xl mx-auto italic">
+                Hear from students who are achieving their goals with Aptivo.
+              </p>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+              {feedbacks.map((f, i) => (
+                <div key={i} className="bg-white p-8 rounded-[2rem] border border-gray-100 shadow-sm hover:shadow-2xl hover:border-teal-100 transition-all group flex flex-col h-full">
+                  <div className="flex gap-1 mb-6">
+                    {[1, 2, 3, 4, 5].map((s) => (
+                      <Star key={s} className={`w-4 h-4 ${s <= f.rating ? 'text-amber-400 fill-amber-400' : 'text-gray-200'} transition-transform group-hover:scale-110`} style={{ transitionDelay: `${s * 50}ms` }} />
+                    ))}
+                  </div>
+
+                  <Quote className="w-10 h-10 text-teal-50 mb-4 group-hover:text-teal-100 transition-colors" />
+
+                  <p className="text-slate-700 leading-relaxed font-medium italic mb-8 flex-1">
+                    "{f.feedback_text}"
+                  </p>
+
+                  <div className="flex items-center gap-4 pt-6 border-t border-gray-50">
+                    <div className="w-12 h-12 rounded-2xl overflow-hidden bg-gray-50 ring-4 ring-gray-50">
+                      {f.users?.avatar_url ? (
+                        <img src={f.users.avatar_url} alt="" className="w-full h-full object-cover" />
+                      ) : (
+                        <div className="w-full h-full flex items-center justify-center bg-teal-50 text-teal-400">
+                          <User className="w-6 h-6" />
+                        </div>
+                      )}
+                    </div>
+                    <div>
+                      <h4 className="font-bold text-slate-900 text-sm whitespace-nowrap">{f.users?.full_name || 'Anonymous'}</h4>
+                      <div className="flex items-center gap-2 mt-0.5">
+                        <span className="text-[10px] font-black text-teal-600 uppercase tracking-widest bg-teal-50 px-2 py-0.5 rounded">
+                          {f.users?.role?.replace('_', ' ')}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </section>
+      )}
 
       {/* CTA Section */}
       <section className="py-20 px-4">

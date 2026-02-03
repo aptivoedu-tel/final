@@ -6,11 +6,11 @@
 
 @layer theme {
   :root {
-    /* Primary Colors - Mint Green Theme */
-    --primary: #88D1B1;
-    --primary-light: #A3E4C7;
-    --primary-dark: #6DB89F;
-    --primary-glow: rgba(136, 209, 177, 0.15);
+    /* Primary Colors - Soft Sage Theme */
+    --primary: #ACC8A2;
+    --primary-light: #C5DBC0;
+    --primary-dark: #8FB085;
+    --primary-glow: rgba(172, 200, 162, 0.15);
 
     /* Secondary Colors - Indigo Accents */
     --secondary: #6366F1;
@@ -92,9 +92,9 @@
   body {
     background: var(--background);
     background-image:
-      radial-gradient(at 0% 0%, rgba(136, 209, 177, 0.1) 0, transparent 50%),
+      radial-gradient(at 0% 0%, rgba(172, 200, 162, 0.1) 0, transparent 50%),
       radial-gradient(at 100% 0%, rgba(99, 102, 241, 0.08) 0, transparent 50%),
-      radial-gradient(at 100% 100%, rgba(136, 209, 177, 0.05) 0, transparent 50%);
+      radial-gradient(at 100% 100%, rgba(172, 200, 162, 0.05) 0, transparent 50%);
     color: var(--foreground);
     font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
     font-size: 16px;
@@ -155,7 +155,7 @@
   .glass-card:hover {
     transform: translateY(-2px);
     box-shadow: var(--shadow-xl);
-    border-color: rgba(136, 209, 177, 0.2);
+    border-color: rgba(172, 200, 162, 0.2);
   }
 
   .glass-surface {
@@ -203,7 +203,7 @@
   .btn-primary:hover {
     background: var(--primary-dark);
     transform: translateY(-1px);
-    box-shadow: 0 12px 32px rgba(136, 209, 177, 0.25);
+    box-shadow: 0 12px 32px rgba(172, 200, 162, 0.25);
   }
 
   .btn-secondary {
@@ -250,7 +250,7 @@
 
   .input:focus {
     border-color: var(--primary);
-    box-shadow: 0 0 0 3px rgba(136, 209, 177, 0.1);
+    box-shadow: 0 0 0 3px rgba(172, 200, 162, 0.1);
   }
 
   .input:hover:not(:focus) {
@@ -354,9 +354,9 @@
 
   .bg-mesh-gradient {
     background:
-      radial-gradient(at 0% 0%, rgba(136, 209, 177, 0.15) 0, transparent 50%),
+      radial-gradient(at 0% 0%, rgba(172, 200, 162, 0.15) 0, transparent 50%),
       radial-gradient(at 100% 0%, rgba(99, 102, 241, 0.1) 0, transparent 50%),
-      radial-gradient(at 100% 100%, rgba(136, 209, 177, 0.08) 0, transparent 50%);
+      radial-gradient(at 100% 100%, rgba(172, 200, 162, 0.08) 0, transparent 50%);
   }
 
   .gradient-text {

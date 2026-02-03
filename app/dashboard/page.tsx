@@ -27,7 +27,8 @@ export default function StudentDashboard() {
         enrolledTopics: 0,
         questionsSolved: 0,
         currentStreak: 0,
-        overallAccuracy: 0
+        overallAccuracy: 0,
+        totalStudyTime: 0
     });
     const [performanceData, setPerformanceData] = useState<PerformanceData[]>([]);
     const [progressData, setProgressData] = useState<ProgressData[]>([]);
@@ -90,7 +91,7 @@ export default function StudentDashboard() {
             <Sidebar userRole="student" />
             <Header userName={user?.full_name || 'Student'} userEmail={user?.email} />
 
-            <main className="ml-64 mt-16 p-8">
+            <main className="lg:ml-64 mt-16 p-4 lg:p-8 transition-all duration-300">
                 {/* Welcome Section */}
                 <div className="mb-8">
                     <h1 className="text-2xl font-bold text-slate-800">Welcome back, {user?.full_name?.split(' ')[0]}!</h1>
@@ -157,8 +158,8 @@ export default function StudentDashboard() {
                                             <Radar
                                                 name="Performance"
                                                 dataKey="score"
-                                                stroke="#6366f1"
-                                                fill="#6366f1"
+                                                stroke="#ACC8A2"
+                                                fill="#ACC8A2"
                                                 fillOpacity={0.4}
                                             />
                                             <Tooltip />
@@ -194,9 +195,9 @@ export default function StudentDashboard() {
                                             <span className="font-medium text-slate-700">{item.name}</span>
                                             <span className="text-slate-500">{item.score}%</span>
                                         </div>
-                                        <div className="h-3 bg-gray-100 rounded-full overflow-hidden">
+                                        <div className="h-3 bg-primary/10 rounded-full overflow-hidden">
                                             <div
-                                                className="h-full bg-teal-500 rounded-full transition-all duration-1000 ease-out"
+                                                className="h-full bg-primary rounded-full transition-all duration-1000 ease-out"
                                                 style={{ width: `${item.score}%` }}
                                             ></div>
                                         </div>
@@ -229,7 +230,7 @@ export default function StudentDashboard() {
                                     </div>
                                     <div className="h-1.5 bg-gray-100 rounded-full mb-4">
                                         <div
-                                            className={`h-full rounded-full ${i === 0 ? 'bg-indigo-600' : i === 1 ? 'bg-orange-500' : 'bg-teal-500'}`}
+                                            className={`h-full rounded-full ${i === 0 ? 'bg-primary' : i === 1 ? 'bg-orange-400' : 'bg-primary-dark'}`}
                                             style={{ width: `${item.progress}%` }}
                                         ></div>
                                     </div>
@@ -237,7 +238,7 @@ export default function StudentDashboard() {
                                         <button className="flex-1 py-2 text-xs font-medium text-slate-600 bg-gray-50 rounded-lg hover:bg-gray-100">
                                             Resume
                                         </button>
-                                        <button className={`flex-1 py-2 text-xs font-medium text-white rounded-lg shadow-sm ${i === 0 ? 'bg-indigo-600' : i === 1 ? 'bg-orange-500' : 'bg-teal-600'} hover:opacity-90`}>
+                                        <button className={`flex-1 py-2 text-xs font-medium text-white rounded-lg shadow-sm ${i === 0 ? 'bg-primary' : i === 1 ? 'bg-orange-400' : 'bg-primary-dark'} hover:opacity-90`}>
                                             Practice
                                         </button>
                                     </div>
@@ -249,7 +250,7 @@ export default function StudentDashboard() {
                             <Book className="w-12 h-12 mx-auto text-slate-300 mb-3" />
                             <h4 className="text-slate-600 font-medium">No active courses</h4>
                             <p className="text-slate-400 text-sm mt-1 mb-4">You haven't started any topics yet.</p>
-                            <button className="px-4 py-2 bg-indigo-600 text-white rounded-lg text-sm font-medium hover:bg-indigo-700">
+                            <button className="px-4 py-2 bg-primary text-white rounded-lg text-sm font-medium hover:bg-primary-dark">
                                 Browse Topics
                             </button>
                         </div>
@@ -258,16 +259,16 @@ export default function StudentDashboard() {
 
                 {/* Recommended */}
                 {recommended ? (
-                    <div className="bg-gradient-to-r from-indigo-600 to-purple-600 rounded-2xl p-8 text-white relative overflow-hidden transition-all hover:scale-[1.01] shadow-xl shadow-indigo-200">
+                    <div className="bg-gradient-to-r from-primary to-primary-dark rounded-2xl p-8 text-white relative overflow-hidden transition-all hover:scale-[1.01] shadow-xl shadow-primary/20">
                         <div className="relative z-10">
                             <div className="flex items-center gap-2 mb-2">
                                 <span className="bg-white/20 px-2 py-0.5 rounded text-xs font-bold uppercase tracking-wider">Focus Area</span>
                                 <h3 className="font-bold text-lg">Recommended for You</h3>
                             </div>
-                            <p className="text-indigo-100 text-sm mb-6 max-w-lg">
-                                Based on your recent performance, we noticed you might need some more practice in <span className="font-bold text-white">{recommended.subtopics?.topics?.name || 'this topic'}</span> particularly in <span className="font-bold text-white underline decoration-wavy decoration-indigo-300">{recommended.subtopics?.name}</span>.
+                            <p className="text-white/90 text-sm mb-6 max-w-lg">
+                                Based on your recent performance, we noticed you might need some more practice in <span className="font-bold text-white">{recommended.subtopics?.topics?.name || 'this topic'}</span> particularly in <span className="font-bold text-white underline decoration-wavy decoration-white/50">{recommended.subtopics?.name}</span>.
                             </p>
-                            <button className="bg-white text-indigo-600 px-6 py-2.5 rounded-lg font-bold text-sm hover:bg-indigo-50 transition-colors inline-flex items-center gap-2 shadow-sm">
+                            <button className="bg-white text-primary-dark px-6 py-2.5 rounded-lg font-bold text-sm hover:bg-indigo-50 transition-colors inline-flex items-center gap-2 shadow-sm">
                                 Start Practice Session
                                 <ChevronRight className="w-4 h-4" />
                             </button>

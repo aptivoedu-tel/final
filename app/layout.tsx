@@ -10,6 +10,8 @@ export const metadata: Metadata = {
   description: "Comprehensive Educational Platform",
 };
 
+import { UIProvider } from "@/lib/context/UIContext";
+
 export default function RootLayout({
   children,
 }: Readonly<{
@@ -18,7 +20,9 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body className={`${inter.variable} ${outfit.variable} font-sans antialiased bg-gray-50`}>
-        {children}
+        <UIProvider>
+          {children}
+        </UIProvider>
       </body>
     </html>
   );

@@ -112,6 +112,18 @@ export default function ExcelUploaderPage() {
         reader.readAsBinaryString(file);
     };
 
+    const convertDriveLink = (url: string) => {
+        if (!url) return '';
+        if (typeof url !== 'string') return '';
+        if (url.includes('drive.google.com')) {
+            const idMatch = url.match(/\/d\/(.+?)\//) || url.match(/id=(.+?)(&|$)/);
+            if (idMatch && idMatch[1]) {
+                return `https://lh3.googleusercontent.com/u/0/d/${idMatch[1]}=w1000`;
+            }
+        }
+        return url;
+    };
+
     const handleSaveToDatabase = async () => {
         if (!user) {
             alert('User session not found. Please log in again.');
@@ -142,15 +154,28 @@ export default function ExcelUploaderPage() {
 
             // 2. Map and Insert MCQs
             const mcqsToInsert = previewData.map(row => {
-                // Handle different header variations (Case sensitive or space variations)
-                const q = row['Question'] || row['question'] || row['QUESTION'];
-                const a = row['Option A'] || row['option_a'] || row['A'];
-                const b = row['Option B'] || row['option_b'] || row['B'];
-                const c = row['Option C'] || row['option_c'] || row['C'];
-                const d = row['Option D'] || row['option_d'] || row['D'];
-                const correct = (row['Correct Option'] || row['correct_option'] || row['Answer'])?.toString().toUpperCase();
-                const explanation = row['Explanation'] || row['explanation'];
-                const rawDifficulty = (row['Difficulty'] || row['difficulty'] || 'medium').toLowerCase();
+                // Normalize keys (smart case)
+                const getVal = (patterns: string[]) => {
+                    const key = Object.keys(row).find(k => patterns.some(p => k.toLowerCase().includes(p.toLowerCase())));
+                    return key ? row[key] : null;
+                };
+
+                const q = getVal(['question', 'text', 'statement']);
+                const a = getVal(['option a', 'a', 'option_a']);
+                const b = getVal(['option b', 'b', 'option_b']);
+                const c = getVal(['option c', 'c', 'option_c']);
+                const d = getVal(['option d', 'd', 'option_d']);
+                const correct = (getVal(['correct', 'answer']) || 'A')?.toString().toUpperCase();
+                const explanation = getVal(['explanation', 'reason', 'justify']) || '';
+                const rawDifficulty = (getVal(['difficulty', 'level']) || 'medium').toString().toLowerCase();
+
+                // Image fields
+                let qImage = getVal(['question image', 'q image', 'image_url', 'figure']) || '';
+                let eImage = getVal(['explanation image', 'e image', 'explanation_url', 'rationale image']) || '';
+
+                // Convert Drive links if present
+                if (qImage) qImage = convertDriveLink(qImage.toString());
+                if (eImage) eImage = convertDriveLink(eImage.toString());
 
                 // Validate difficulty enum
                 const difficulty = ['easy', 'medium', 'hard'].includes(rawDifficulty) ? rawDifficulty : 'medium';
@@ -165,12 +190,14 @@ export default function ExcelUploaderPage() {
                     correct_option: correct,
                     explanation: explanation,
                     difficulty: difficulty,
+                    question_image_url: qImage || null,
+                    explanation_url: eImage || null,
                     upload_id: uploadRec.id
                 };
             }).filter(item => item.question && item.option_a && item.correct_option);
 
             if (mcqsToInsert.length === 0) {
-                throw new Error('No valid questions found. Check your column headers.');
+                throw new Error('No valid questions found. Check your column headers (Question, Option A, Correct Option are required).');
             }
 
             const { error: mcqErr } = await supabase.from('mcqs').insert(mcqsToInsert);
@@ -205,7 +232,9 @@ export default function ExcelUploaderPage() {
                 'Option D': 'Madrid',
                 'Correct Option': 'C',
                 'Explanation': 'Paris is the capital and largest city of France.',
-                'Difficulty': 'Easy'
+                'Difficulty': 'Easy',
+                'Question Image': 'https://example.com/question.jpg',
+                'Explanation Image': 'https://example.com/explanation.jpg'
             }
         ]);
         const wb = XLSX.utils.book_new();
@@ -380,6 +409,8 @@ export default function ExcelUploaderPage() {
                                                             <div className="flex gap-2 mt-1">
                                                                 <span className="text-[10px] bg-slate-100 text-slate-500 px-1.5 py-0.5 rounded font-bold uppercase">{row['Difficulty'] || 'Medium'}</span>
                                                                 {row['Explanation'] && <span className="text-[10px] bg-blue-50 text-blue-500 px-1.5 py-0.5 rounded font-bold uppercase">Has Explanation</span>}
+                                                                {(row['Question Image'] || row['question image'] || row['image_url'] || row['Figure']) && <span className="text-[10px] bg-purple-50 text-purple-600 px-1.5 py-0.5 rounded font-bold uppercase">Q-Image</span>}
+                                                                {(row['Explanation Image'] || row['explanation image'] || row['explanation_url'] || row['Rationale']) && <span className="text-[10px] bg-indigo-50 text-indigo-600 px-1.5 py-0.5 rounded font-bold uppercase">E-Image</span>}
                                                             </div>
                                                         </td>
                                                         <td className="px-6 py-4">

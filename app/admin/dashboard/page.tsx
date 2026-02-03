@@ -83,7 +83,7 @@ export default function AdminDashboard() {
             <Sidebar userRole="super_admin" />
             <Header userName={user?.full_name || 'Admin User'} userEmail={user?.email} />
 
-            <main className="ml-64 mt-16 p-8">
+            <main className="lg:ml-64 mt-16 p-4 lg:p-8 transition-all duration-300">
                 {/* Header */}
                 <div className="mb-8">
                     <h1 className="text-2xl font-bold text-slate-800">Admin Dashboard</h1>

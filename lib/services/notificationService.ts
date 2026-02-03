@@ -241,4 +241,48 @@ export class NotificationService {
             return { success: false, count: 0, error: error.message };
         }
     }
+
+    /**
+     * Get history of sent notifications
+     */
+    static async getSentHistory(options: {
+        senderRole?: string;
+        institutionId?: number;
+        limit?: number;
+    } = {}): Promise<{ history: Notification[]; error?: string }> {
+        try {
+            let query = supabase
+                .from('notifications')
+                .select('*')
+                .order('created_at', { ascending: false });
+
+            if (options.senderRole) {
+                query = query.eq('sender_role', options.senderRole);
+            }
+
+            if (options.institutionId) {
+                query = query.eq('institution_id', options.institutionId);
+            }
+
+            if (options.limit) {
+                query = query.limit(options.limit);
+            } else {
+                query = query.limit(20);
+            }
+
+            const { data, error } = await query;
+
+            if (error) throw error;
+
+            return {
+                history: (data || []).map((n: any) => ({
+                    ...n,
+                    created_at: n.created_at
+                })) as Notification[]
+            };
+        } catch (error: any) {
+            console.error('Error fetching sent history:', error);
+            return { history: [], error: error.message };
+        }
+    }
 }

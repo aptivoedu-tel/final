@@ -22,6 +22,7 @@ export default function UniversityContentMapperPage() {
     const [institutions, setInstitutions] = useState<any[]>([]);
     const [selectedInstId, setSelectedInstId] = useState<number | 'none'>('none');
     const [globalSessionLimit, setGlobalSessionLimit] = useState(10);
+    const [globalDifficultyLevel, setGlobalDifficultyLevel] = useState<'all' | 'easy' | 'medium' | 'hard'>('all');
     const [hierarchy, setHierarchy] = useState<HierarchyNode[]>([]);
     const [saving, setSaving] = useState(false);
     const [statusMsg, setStatusMsg] = useState<{ type: 'success' | 'error', text: string } | null>(null);
@@ -87,7 +88,7 @@ export default function UniversityContentMapperPage() {
             try {
                 let query = supabase
                     .from('university_content_access')
-                    .select('subject_id, topic_id, subtopic_id, session_limit')
+                    .select('subject_id, topic_id, subtopic_id, session_limit, difficulty_level')
                     .eq('university_id', selectedUniId)
                     .eq('is_active', true);
 
@@ -103,6 +104,9 @@ export default function UniversityContentMapperPage() {
                     const selectedSubtopics = new Set(mappings.filter(m => m.subtopic_id).map(m => m.subtopic_id));
                     if (mappings.length > 0 && mappings[0].session_limit) {
                         setGlobalSessionLimit(mappings[0].session_limit);
+                    }
+                    if (mappings.length > 0 && mappings[0].difficulty_level) {
+                        setGlobalDifficultyLevel(mappings[0].difficulty_level as any);
                     }
 
                     setHierarchy(prev => prev.map(sub => {
@@ -250,7 +254,8 @@ export default function UniversityContentMapperPage() {
                                 topic_id: topic.id,
                                 subtopic_id: subtopic.id,
                                 is_active: true,
-                                session_limit: globalSessionLimit
+                                session_limit: globalSessionLimit,
+                                difficulty_level: globalDifficultyLevel
                             });
                         }
                     });
@@ -267,7 +272,8 @@ export default function UniversityContentMapperPage() {
                             topic_id: topic.id,
                             subtopic_id: null,
                             is_active: true,
-                            session_limit: globalSessionLimit
+                            session_limit: globalSessionLimit,
+                            difficulty_level: globalDifficultyLevel
                         });
                     }
                 });
@@ -347,6 +353,19 @@ export default function UniversityContentMapperPage() {
                                                 onChange={(e) => setGlobalSessionLimit(parseInt(e.target.value) || 10)}
                                                 className="w-12 bg-transparent outline-none text-center font-bold text-indigo-600"
                                             />
+                                        </div>
+                                        <div className="flex items-center gap-2 bg-white px-3 py-1.5 rounded-lg border border-gray-200">
+                                            <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Difficulty:</span>
+                                            <select
+                                                value={globalDifficultyLevel}
+                                                onChange={(e) => setGlobalDifficultyLevel(e.target.value as any)}
+                                                className="bg-transparent outline-none font-bold text-indigo-600 text-xs"
+                                            >
+                                                <option value="all">All Levels</option>
+                                                <option value="easy">Basic Only</option>
+                                                <option value="medium">Intermediate Only</option>
+                                                <option value="hard">Advanced Only</option>
+                                            </select>
                                         </div>
                                         <button
                                             onClick={handleSave}
