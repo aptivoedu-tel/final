@@ -205,7 +205,7 @@ export default function LandingPage() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col md:flex-row justify-between items-center gap-6">
           <Link href="/dashboard" className="flex items-center gap-2 hover:opacity-80 transition-opacity">
             <div className="w-6 h-6 bg-teal-700 rounded flex items-center justify-center text-white">
-              <BookOpen className="w-3 h-3" />
+              <GraduationCap className="w-3 h-3" />
             </div>
             <span className="font-bold text-slate-900">Aptivo</span>
           </Link>
