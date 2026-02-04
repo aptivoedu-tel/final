@@ -9,6 +9,9 @@ import { AuthService } from '@/lib/services/authService';
 import { Search, Book, GraduationCap, FileText, ChevronRight, Loader2, University as UniIcon } from 'lucide-react';
 import Link from 'next/link';
 
+// Force this page to use SSR (required for useSearchParams)
+export const runtime = 'edge';
+
 type SearchResult = {
     id: number;
     title: string;

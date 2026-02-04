@@ -353,8 +353,9 @@ export class ExcelUploadService {
                         .single();
 
                     if (subtopic && subtopic.topic) {
-                        const topicId = subtopic.topic.id;
-                        const subjectId = (subtopic.topic as any).subject_id;
+                        const topicData = subtopic.topic as any;
+                        const topicId = topicData.id;
+                        const subjectId = topicData.subject_id;
 
                         // 2. Get all active universities
                         const { data: universities } = await supabase
@@ -381,26 +382,27 @@ export class ExcelUploadService {
                 } catch (linkError) {
                     console.error("Auto-linking failed (non-critical):", linkError);
                 }
-
-                return {
-                    success: failedCount === 0,
-                    totalRows: mcqs.length,
-                    processedRows: processedCount,
-                    failedRows: failedCount,
-                    errors,
-                    uploadId: uploadRecord.id
-                };
-            } catch (error) {
-                console.error('Upload error:', error);
-                return {
-                    success: false,
-                    totalRows: mcqs.length,
-                    processedRows: 0,
-                    failedRows: mcqs.length,
-                    errors: [{ row: 0, field: 'system', message: 'System error during upload' }]
-                };
             }
+
+            return {
+                success: failedCount === 0,
+                totalRows: mcqs.length,
+                processedRows: processedCount,
+                failedRows: failedCount,
+                errors,
+                uploadId: uploadRecord.id
+            };
+        } catch (error) {
+            console.error('Upload error:', error);
+            return {
+                success: false,
+                totalRows: mcqs.length,
+                processedRows: 0,
+                failedRows: mcqs.length,
+                errors: [{ row: 0, field: 'system', message: 'System error during upload' }]
+            };
         }
+    }
 
     /**
      * Get preview data (first 5 rows)
