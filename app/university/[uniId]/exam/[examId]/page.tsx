@@ -73,6 +73,7 @@ export default function StudentExamPage() {
     const [results, setResults] = useState<{ score: number, total: number } | null>(null);
     const [completedSectionIds, setCompletedSectionIds] = useState<number[]>([]);
     const [sectionTimeLeft, setSectionTimeLeft] = useState<number | null>(null);
+    const [showNavMatrix, setShowNavMatrix] = useState(false);
 
     const toggleFullScreen = () => {
         if (!document.fullscreenElement) {
@@ -413,27 +414,28 @@ export default function StudentExamPage() {
     return (
         <div className="h-screen flex flex-col bg-[#f8fafc] overflow-hidden select-none font-sans">
             {/* Top Navigation / Status Bar - SLEEK DARK THEME */}
-            <div className="bg-[#0f172a] text-white px-10 h-20 flex items-center justify-between shadow-2xl z-40 relative">
-                <div className="absolute bottom-0 left-0 h-[2px] bg-gradient-to-r from-transparent via-teal-500/50 to-transparent w-full" />
+            <div className="bg-[#0f172a] text-white px-3 md:px-10 h-16 lg:h-20 flex items-center justify-between shadow-2xl z-40 relative gap-2">
+                <div className="absolute bottom-0 left-0 h-[0.5px] bg-gradient-to-r from-transparent via-teal-500/30 to-transparent w-full" />
 
-                <div className="flex items-center gap-10">
-                    <div className="flex items-center gap-5 pr-8 border-r border-slate-800">
-                        <div className="w-12 h-12 bg-teal-600 rounded-2xl flex items-center justify-center shadow-lg shadow-teal-900/40 border border-teal-500/30">
-                            <GraduationCap className="w-6 h-6 text-white" />
+                <div className="flex items-center gap-2 lg:gap-10 overflow-hidden">
+                    <div className="flex items-center gap-2 lg:gap-5 lg:pr-8 lg:border-r lg:border-slate-800 shrink-0">
+                        <div className="w-8 h-8 lg:w-12 lg:h-12 bg-teal-600 rounded-lg lg:rounded-2xl flex items-center justify-center shadow-lg shadow-teal-900/40 border border-teal-500/30 shrink-0">
+                            <GraduationCap className="w-4 h-4 lg:w-6 lg:h-6 text-white" />
                         </div>
-                        <div>
-                            <h1 className="text-sm font-black uppercase tracking-widest text-slate-100">{exam?.name || 'Academic Assessment'}</h1>
-                            <div className="flex items-center gap-2 mt-0.5">
-                                <span className="w-2 h-2 bg-teal-500 rounded-full animate-pulse" />
-                                <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Secure Environment Active</p>
+                        <div className="min-w-0 max-w-[80px] sm:max-w-none">
+                            <h1 className="text-[10px] lg:text-sm font-black uppercase tracking-widest text-slate-100 truncate">{exam?.name || 'Exam'}</h1>
+                            <div className="flex items-center gap-1.5 mt-0.5">
+                                <span className="w-1 h-1 bg-teal-500 rounded-full animate-pulse" />
+                                <p className="text-[8px] lg:text-[10px] font-black text-slate-500 uppercase tracking-widest leading-none">Live</p>
                             </div>
                         </div>
                     </div>
 
-                    {/* Section Switcher - Premium Pills */}
-                    <div className="flex items-center gap-2 bg-slate-900/50 p-1 rounded-2xl border border-slate-800">
+                    {/* Section Switcher - Scrollable horizontal on mobile */}
+                    <div className="flex items-center gap-1 lg:gap-1.5 bg-slate-900/50 p-1 rounded-xl border border-slate-800 overflow-x-auto no-scrollbar max-w-[100px] sm:max-w-none">
                         {sections.map(s => {
                             const isLocked = completedSectionIds.includes(s.id);
+                            const isActive = activeSectionId === s.id;
                             return (
                                 <button
                                     key={s.id}
@@ -443,16 +445,17 @@ export default function StudentExamPage() {
                                         setActiveQuestionIdx(0);
                                     }}
                                     className={`
-                                        px-6 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all relative overflow-hidden group
-                                        ${activeSectionId === s.id
+                                        px-3 lg:px-6 py-1.5 lg:py-2 rounded-lg lg:rounded-xl text-[8px] lg:text-[10px] font-black uppercase tracking-widest transition-all relative overflow-hidden group whitespace-nowrap
+                                        ${isActive
                                             ? 'bg-white text-slate-900 shadow-xl'
                                             : isLocked
-                                                ? 'text-slate-600 cursor-not-allowed'
-                                                : 'text-slate-400 hover:text-white hover:bg-white/5'
+                                                ? 'text-slate-600 cursor-not-allowed opacity-50'
+                                                : 'text-slate-500 hover:text-white hover:bg-white/5'
                                         }
                                     `}
                                 >
-                                    <span className="relative z-10 flex items-center gap-2">
+                                    <span className="relative z-10 flex items-center gap-1">
+                                        {isActive && <div className="w-1 h-1 bg-teal-600 rounded-full sm:hidden" />}
                                         {s.name}
                                         {isLocked && <span className="text-[8px]">🔒</span>}
                                     </span>
@@ -462,45 +465,41 @@ export default function StudentExamPage() {
                     </div>
                 </div>
 
-                <div className="flex items-center gap-8">
-                    {/* Timer - High Visibility */}
-                    <div className={`flex items-center gap-4 px-6 py-2.5 rounded-2xl border transition-all ${timeLeft < 300 ? 'bg-rose-500/10 border-rose-500/50 text-rose-500' : 'bg-slate-900 border-slate-800 text-teal-400'}`}>
-                        <Clock className={`w-5 h-5 ${timeLeft < 300 ? 'animate-pulse' : ''}`} />
-                        <div className="flex flex-col items-center">
-                            <span className="text-2xl font-black font-mono tracking-[0.1em]">{formatTime(timeLeft)}</span>
-                            <span className="text-[8px] font-black uppercase tracking-widest opacity-50 mt-[-2px]">Total Time Remaining</span>
-                        </div>
+                <div className="flex items-center gap-2 lg:gap-6 shrink-0">
+                    {/* Timer */}
+                    <div className={`flex items-center gap-2 lg:gap-3 px-3 lg:px-5 py-1.5 lg:py-2.5 rounded-lg lg:rounded-2xl border transition-all ${timeLeft < 300 ? 'bg-rose-500/10 border-rose-500/50 text-rose-500' : 'bg-slate-900 border-slate-800 text-teal-400'}`}>
+                        <Clock className={`w-3.5 h-3.5 lg:w-5 lg:h-5 ${timeLeft < 300 ? 'animate-pulse' : ''}`} />
+                        <span className="text-sm lg:text-xl font-black font-mono tracking-wider">{formatTime(timeLeft)}</span>
                     </div>
 
-                    <div className="flex items-center gap-4 border-l border-slate-800 pl-8">
-                        <button
-                            onClick={toggleFullScreen}
-                            className="p-3 bg-slate-800 text-slate-400 rounded-xl hover:bg-slate-700 hover:text-white transition-all active:scale-95"
-                            title="Toggle Fullscreen"
-                        >
-                            <Maximize2 className="w-5 h-5" />
-                        </button>
-                        <button
-                            onClick={() => {
-                                if (confirm('Finish and submit your exam? This cannot be undone.')) finalizeAttempt(attemptId!);
-                            }}
-                            className="px-8 py-4 bg-teal-600 text-white rounded-2xl text-[10px] font-black uppercase tracking-[0.2em] hover:bg-teal-700 transition-all shadow-xl shadow-teal-900/20 active:scale-95"
-                        >
-                            Finalize Assessment
-                        </button>
-                    </div>
+                    <button
+                        onClick={() => {
+                            if (confirm('Finish and submit your exam? This cannot be undone.')) finalizeAttempt(attemptId!);
+                        }}
+                        className="px-4 lg:px-8 py-2 lg:py-4 bg-teal-600 text-white rounded-lg lg:rounded-2xl text-[9px] lg:text-[10px] font-black uppercase tracking-widest hover:bg-teal-700 transition-all shadow-lg active:scale-95 shrink-0"
+                    >
+                        Finalize
+                    </button>
+
+                    {/* Mobile Menu Toggle for Nav Matrix */}
+                    <button
+                        onClick={() => setShowNavMatrix(prev => !prev)}
+                        className="lg:hidden p-2 bg-slate-800 rounded-lg text-white"
+                    >
+                        <Layers className="w-4 h-4" />
+                    </button>
                 </div>
             </div>
 
-            <div className="flex-1 flex overflow-hidden">
+            <div className="flex-1 flex flex-col lg:flex-row overflow-hidden">
                 {/* Passage Side Area (conditionally shown) */}
                 {activeQuestion?.passage_id && passages[activeQuestion.passage_id] && (
-                    <div className="w-1/2 overflow-y-auto bg-slate-50 p-10 border-r border-slate-100 animate-in slide-in-from-left duration-500 custom-scrollbar">
-                        <div className="max-w-prose mx-auto py-10">
+                    <div className="w-full lg:w-1/2 overflow-y-auto bg-slate-50 p-6 lg:p-10 border-b lg:border-b-0 lg:border-r border-slate-100 animate-in slide-in-from-left duration-500 custom-scrollbar max-h-[40vh] lg:max-h-none">
+                        <div className="max-w-prose mx-auto">
                             {passages[activeQuestion.passage_id].title && (
-                                <h1 className="text-3xl font-black text-slate-900 mb-8 leading-tight">{passages[activeQuestion.passage_id].title}</h1>
+                                <h1 className="text-xl lg:text-3xl font-black text-slate-900 mb-6 lg:mb-8 leading-tight">{passages[activeQuestion.passage_id].title}</h1>
                             )}
-                            <div className="prose prose-slate prose-lg max-w-none text-slate-700 font-medium leading-[2.2] whitespace-pre-wrap">
+                            <div className="prose prose-slate prose-sm lg:prose-lg max-w-none text-slate-700 font-medium leading-relaxed lg:leading-[2.2] whitespace-pre-wrap">
                                 {passages[activeQuestion.passage_id].content}
                             </div>
                         </div>
@@ -508,47 +507,51 @@ export default function StudentExamPage() {
                 )}
 
                 {/* Main Content Area - Clean Workspace */}
-                <div className="flex-1 overflow-y-auto p-12 custom-scrollbar relative bg-[#fcfdfe]">
+                <div className="flex-1 overflow-y-auto p-6 lg:p-12 custom-scrollbar relative bg-[#fcfdfe]">
                     {activeQuestion ? (
                         <div className={`max-w-4xl mx-auto ${activeQuestion.passage_id ? 'w-full' : ''}`}>
-                            <div className="flex items-center gap-4 mb-10">
-                                <div className="w-12 h-12 bg-slate-900 text-white rounded-2xl flex items-center justify-center font-black text-xl shadow-lg">
+                            <div className="flex items-center gap-4 mb-8 lg:mb-10">
+                                <div className="w-10 h-10 lg:w-12 lg:h-12 bg-slate-900 text-white rounded-xl lg:rounded-2xl flex items-center justify-center font-black text-lg lg:text-xl shadow-lg shrink-0">
                                     {activeQuestionIdx + 1}
                                 </div>
-                                <div>
-                                    <h4 className="text-[10px] font-black text-indigo-600 uppercase tracking-widest">Question Workspace</h4>
-                                    <p className="text-xs font-bold text-slate-400">{activeQuestion.marks} Mark(s) Assigned</p>
+                                <div className="min-w-0">
+                                    <h4 className="text-[9px] lg:text-[10px] font-black text-indigo-600 uppercase tracking-widest flex flex-wrap items-center gap-2">
+                                        <span>Question Workspace</span>
+                                        <span className="w-1 h-1 bg-indigo-200 rounded-full hidden sm:inline" />
+                                        <span className="bg-indigo-50 px-2 py-0.5 rounded text-indigo-700">{sections.find(s => s.id === activeSectionId)?.name}</span>
+                                    </h4>
+                                    <p className="text-[10px] lg:text-xs font-bold text-slate-400 mt-0.5 text-wrap">{activeQuestion.marks} Mark(s) • Correct Option Required</p>
                                 </div>
                             </div>
 
-                            <div className="space-y-10">
+                            <div className="space-y-8 lg:space-y-10">
                                 <div className="prose prose-slate max-w-none">
-                                    <p className="text-3xl font-bold text-slate-900 leading-snug tracking-tight">
+                                    <p className="text-xl lg:text-3xl font-bold text-slate-900 leading-snug tracking-tight">
                                         {activeQuestion.question_text}
                                     </p>
                                 </div>
 
                                 {activeQuestion.image_url && (
-                                    <div className={`relative rounded-[3rem] overflow-hidden border-4 border-white shadow-2xl transition-all duration-500 ${isZoomed ? 'scale-150 z-50 fixed inset-10 bg-white/20 backdrop-blur-md' : 'w-full max-w-lg'}`}>
+                                    <div className={`relative rounded-3xl lg:rounded-[3rem] overflow-hidden border-4 border-white shadow-2xl transition-all duration-500 ${isZoomed ? 'scale-100 z-50 fixed inset-0 lg:inset-10 bg-white' : 'w-full max-w-lg'}`}>
                                         <img
                                             src={activeQuestion.image_url}
                                             alt="Figure"
-                                            className={`w-full h-auto cursor-zoom-in rounded-[2.5rem] ${isZoomed ? 'h-full object-contain' : ''}`}
+                                            className={`w-full h-auto cursor-zoom-in rounded-3xl lg:rounded-[2.5rem] ${isZoomed ? 'h-full object-contain' : ''}`}
                                             onClick={() => setIsZoomed(!isZoomed)}
                                         />
                                         <button
                                             onClick={() => setIsZoomed(!isZoomed)}
-                                            className="absolute top-6 right-6 p-4 bg-white/90 backdrop-blur rounded-2xl shadow-xl text-slate-900"
+                                            className="absolute top-4 right-4 lg:top-6 lg:right-6 p-3 lg:p-4 bg-white/90 backdrop-blur rounded-xl lg:rounded-2xl shadow-xl text-slate-900"
                                         >
-                                            <ZoomIn className="w-6 h-6" />
+                                            {isZoomed ? <X className="w-5 h-5 lg:w-6 lg:h-6" /> : <ZoomIn className="w-5 h-5 lg:w-6 lg:h-6" />}
                                         </button>
                                     </div>
                                 )}
 
                                 {/* Options & Response Area */}
-                                <div className="space-y-10">
+                                <div className="space-y-6 lg:space-y-10">
                                     {(activeQuestion.question_type === 'mcq_single' || activeQuestion.question_type === 'mcq_multiple') && (
-                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 lg:gap-6">
                                             {activeQuestion.options.map((opt: any) => {
                                                 const isSelected = activeQuestion.question_type === 'mcq_single'
                                                     ? answers[activeQuestion.id] === opt.id
@@ -568,12 +571,12 @@ export default function StudentExamPage() {
                                                                 handleAnswer(activeQuestion.id, next);
                                                             }
                                                         }}
-                                                        className={`p-7 rounded-[2.5rem] border-2 text-left transition-all flex items-center gap-6 group ${isSelected ? 'bg-teal-600 border-teal-600 text-white shadow-2xl shadow-teal-100' : 'bg-white border-slate-100 hover:border-teal-200 hover:bg-teal-50/30'}`}
+                                                        className={`p-5 lg:p-7 rounded-2xl lg:rounded-[2.5rem] border-2 text-left transition-all flex items-center gap-4 lg:gap-6 group ${isSelected ? 'bg-teal-600 border-teal-600 text-white shadow-2xl shadow-teal-100' : 'bg-white border-slate-100 hover:border-teal-200 hover:bg-teal-50/30'}`}
                                                     >
-                                                        <div className={`w-10 h-10 rounded-2xl border-2 flex items-center justify-center font-black text-sm transition-all ${isSelected ? 'bg-white text-teal-600 border-white shadow-sm' : 'bg-slate-50 text-slate-400 border-slate-200 group-hover:bg-white group-hover:text-teal-600 group-hover:border-teal-600'}`}>
+                                                        <div className={`w-8 h-8 lg:w-10 lg:h-10 rounded-xl lg:rounded-2xl border-2 flex items-center justify-center font-black text-xs lg:text-sm transition-all ${isSelected ? 'bg-white text-teal-600 border-white shadow-sm' : 'bg-slate-50 text-slate-400 border-slate-200 group-hover:bg-white group-hover:text-teal-600 group-hover:border-teal-600'}`}>
                                                             {opt.id.toUpperCase()}
                                                         </div>
-                                                        <span className="text-base font-semibold">{opt.text}</span>
+                                                        <span className="text-sm lg:text-base font-semibold">{opt.text}</span>
                                                     </button>
                                                 );
                                             })}
@@ -581,12 +584,12 @@ export default function StudentExamPage() {
                                     )}
 
                                     {activeQuestion.question_type === 'true_false' && (
-                                        <div className="flex gap-6">
+                                        <div className="flex flex-col sm:flex-row gap-4 lg:gap-6">
                                             {['true', 'false'].map((val) => (
                                                 <button
                                                     key={val}
                                                     onClick={() => handleAnswer(activeQuestion.id, val)}
-                                                    className={`flex-1 py-8 rounded-[2.5rem] border-2 font-black text-sm uppercase tracking-widest transition-all ${answers[activeQuestion.id] === val ? 'bg-indigo-600 border-indigo-600 text-white shadow-2xl shadow-indigo-200' : 'bg-white border-slate-100 hover:border-indigo-200'}`}
+                                                    className={`flex-1 py-6 lg:py-8 rounded-2xl lg:rounded-[2.5rem] border-2 font-black text-xs lg:text-sm uppercase tracking-widest transition-all ${answers[activeQuestion.id] === val ? 'bg-indigo-600 border-indigo-600 text-white shadow-2xl shadow-indigo-200' : 'bg-white border-slate-100 hover:border-indigo-200'}`}
                                                 >
                                                     {val}
                                                 </button>
@@ -596,11 +599,11 @@ export default function StudentExamPage() {
 
                                     {activeQuestion.question_type === 'numerical' && (
                                         <div className="max-w-md">
-                                            <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-4">Numerical Response</label>
+                                            <label className="block text-[9px] lg:text-[10px] font-black text-slate-400 uppercase tracking-widest mb-4">Numerical Response</label>
                                             <input
                                                 type="text"
-                                                className="w-full p-10 bg-white border-2 border-slate-100 rounded-[3rem] outline-none focus:border-teal-600 focus:ring-[12px] focus:ring-teal-600/5 font-black text-4xl text-slate-900 shadow-sm transition-all"
-                                                placeholder="Type numerical answer..."
+                                                className="w-full p-6 lg:p-10 bg-white border-2 border-slate-100 rounded-2xl lg:rounded-[3rem] outline-none focus:border-teal-600 focus:ring-[8px] lg:focus:ring-[12px] focus:ring-teal-600/5 font-black text-2xl lg:text-4xl text-slate-900 shadow-sm transition-all"
+                                                placeholder="0.00"
                                                 value={answers[activeQuestion.id] || ''}
                                                 onChange={(e) => handleAnswer(activeQuestion.id, e.target.value)}
                                             />
@@ -609,44 +612,30 @@ export default function StudentExamPage() {
 
                                     {activeQuestion.question_type === 'essay' && (
                                         <div className="space-y-4">
-                                            <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-4">Essay / Long Answer</label>
+                                            <label className="block text-[9px] lg:text-[10px] font-black text-slate-400 uppercase tracking-widest mb-4">Essay / Long Answer</label>
                                             <textarea
-                                                className="w-full p-8 bg-white border-2 border-slate-100 rounded-[2.5rem] outline-none focus:border-indigo-600 focus:ring-4 focus:ring-indigo-600/10 font-bold text-lg text-slate-700 shadow-sm min-h-[400px] leading-relaxed"
+                                                className="w-full p-6 lg:p-8 bg-white border-2 border-slate-100 rounded-2xl lg:rounded-[2.5rem] outline-none focus:border-indigo-600 focus:ring-4 focus:ring-indigo-600/10 font-bold text-base lg:text-lg text-slate-700 shadow-sm min-h-[300px] lg:min-h-[400px] leading-relaxed"
                                                 placeholder="Begin typing your response here..."
                                                 value={answers[activeQuestion.id] || ''}
                                                 onChange={(e) => handleAnswer(activeQuestion.id, e.target.value)}
                                             />
-                                            <div className="flex justify-between items-center px-4">
-                                                <div className="bg-slate-900 text-white px-6 py-2 rounded-full text-[10px] font-black uppercase tracking-widest shadow-lg">
+                                            <div className="flex flex-col sm:flex-row justify-between items-center gap-4 px-4">
+                                                <div className="bg-slate-900 text-white px-6 py-2 rounded-full text-[9px] lg:text-[10px] font-black uppercase tracking-widest shadow-lg">
                                                     Word Count: {(answers[activeQuestion.id] || '').trim() ? (answers[activeQuestion.id] || '').trim().split(/\s+/).length : 0}
                                                 </div>
-                                                <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Your progress is saved automatically</p>
+                                                <p className="text-[9px] lg:text-[10px] font-black text-slate-400 uppercase tracking-widest">Progress saved automatically</p>
                                             </div>
-                                        </div>
-                                    )}
-
-                                    {activeQuestion.question_type === 'passage' && (
-                                        <div className="py-20 text-center">
-                                            <div className="w-24 h-24 bg-indigo-50 rounded-[2rem] flex items-center justify-center mx-auto mb-8 text-indigo-600 shadow-inner">
-                                                <Search className="w-10 h-10" />
-                                            </div>
-                                            <h3 className="text-3xl font-black text-slate-900 mb-4 tracking-tighter">Read Carefully</h3>
-                                            <p className="text-slate-500 font-medium max-w-sm mx-auto leading-relaxed">
-                                                This section contains a reading passage or context. Please review the content on the left, then click
-                                                <span className="font-black text-slate-900 mx-1">Save & Next</span>
-                                                to proceed to the questions.
-                                            </p>
                                         </div>
                                     )}
                                 </div>
                             </div>
 
                             {/* Navigation Controls */}
-                            <div className="max-w-4xl mx-auto mt-20 flex justify-between items-center border-t border-slate-200 pt-10 px-4">
+                            <div className="max-w-4xl mx-auto mt-12 lg:mt-20 flex flex-col sm:flex-row justify-between items-center gap-6 border-t border-slate-200 pt-8 lg:pt-10 px-4">
                                 <button
                                     disabled={activeQuestionIdx === 0}
                                     onClick={() => setActiveQuestionIdx(prev => prev - 1)}
-                                    className="flex items-center gap-3 px-8 py-4 bg-white border border-slate-200 rounded-2xl text-xs font-black uppercase tracking-widest text-slate-500 hover:bg-slate-50 disabled:opacity-30 disabled:grayscale transition-all"
+                                    className="w-full sm:w-auto flex items-center justify-center gap-3 px-8 py-4 bg-white border border-slate-200 rounded-2xl text-[10px] lg:text-xs font-black uppercase tracking-widest text-slate-500 hover:bg-slate-50 disabled:opacity-30 disabled:grayscale transition-all"
                                 >
                                     <ChevronLeft className="w-5 h-5" />
                                     Previous
@@ -661,9 +650,9 @@ export default function StudentExamPage() {
                                             }
                                         }
                                     }}
-                                    className="flex items-center gap-4 px-12 py-5 bg-[#0f172a] text-white rounded-[2rem] text-xs font-black uppercase tracking-[0.2em] hover:bg-teal-600 transition-all shadow-2xl shadow-slate-200 active:scale-95 group"
+                                    className="w-full sm:w-auto flex items-center justify-center gap-4 px-10 lg:px-12 py-4 lg:py-5 bg-[#0f172a] text-white rounded-2xl lg:rounded-[2rem] text-[10px] lg:text-xs font-black uppercase tracking-[0.2em] hover:bg-teal-600 transition-all shadow-2xl shadow-slate-200 active:scale-95 group"
                                 >
-                                    {activeQuestionIdx < currentSectionQuestions.length - 1 ? 'Save & Continue' : 'Finish Section Partition'}
+                                    {activeQuestionIdx < currentSectionQuestions.length - 1 ? 'Save & Next' : 'Finish Section'}
                                     <ChevronRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
                                 </button>
                             </div>
@@ -675,36 +664,47 @@ export default function StudentExamPage() {
                     )}
                 </div>
 
-                {/* Right Sidebar - Intelligent Palette */}
-                <div className="w-[380px] bg-white border-l border-slate-100 flex flex-col z-10">
-                    <div className="p-10 border-b border-slate-50 bg-slate-50/30">
-                        <div className="flex items-center justify-between mb-8">
-                            <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-[0.3em]">Navigation Matrix</h4>
-                            <div className="px-3 py-1 bg-white rounded-full border border-slate-100 shadow-sm text-[9px] font-black text-teal-600 uppercase">
-                                Section Partition
+                {/* Right Sidebar - Navigation Matrix (Responsive Drawer/Sidebar) */}
+                <div className={`
+                    w-full lg:w-[380px] bg-white border-t lg:border-t-0 lg:border-l border-slate-100 flex flex-col z-50 
+                    fixed inset-x-0 bottom-0 lg:relative lg:translate-y-0 transition-transform duration-300 ease-in-out
+                    ${showNavMatrix ? 'translate-y-0' : 'translate-y-full lg:translate-y-0'}
+                    lg:flex max-h-[70vh] lg:max-h-none overflow-hidden shadow-2xl lg:shadow-none
+                `}>
+                    <div className="p-4 lg:p-10 border-b border-slate-50 bg-slate-50/30 flex items-center justify-between">
+                        <div className="flex flex-col">
+                            <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-[0.3em] mb-1">Navigation Matrix</h4>
+                            <div className="flex items-center gap-4">
+                                <div className="flex items-center gap-1.5">
+                                    <div className="w-2 h-2 bg-teal-600 rounded-full" />
+                                    <span className="text-[8px] font-black text-slate-500 uppercase tracking-widest">Logged</span>
+                                </div>
+                                <div className="flex items-center gap-1.5">
+                                    <div className="w-2 h-2 bg-slate-100 border border-slate-300 rounded-full" />
+                                    <span className="text-[8px] font-black text-slate-500 uppercase tracking-widest">Pending</span>
+                                </div>
                             </div>
                         </div>
-                        <div className="flex items-center gap-6">
-                            <div className="flex items-center gap-2">
-                                <div className="w-3 h-3 bg-teal-600 rounded-[4px] shadow-lg shadow-teal-500/20" />
-                                <span className="text-[9px] font-black text-slate-500 uppercase tracking-widest">Logged</span>
-                            </div>
-                            <div className="flex items-center gap-2">
-                                <div className="w-3 h-3 bg-slate-100 border border-slate-200 rounded-[4px]" />
-                                <span className="text-[9px] font-black text-slate-500 uppercase tracking-widest">Pending</span>
-                            </div>
-                        </div>
+                        <button
+                            onClick={() => setShowNavMatrix(false)}
+                            className="lg:hidden p-2 text-slate-400 hover:text-slate-900"
+                        >
+                            <ChevronDown className="w-6 h-6" />
+                        </button>
                     </div>
 
-                    <div className="flex-1 overflow-y-auto p-10 custom-scrollbar">
-                        <div className="grid grid-cols-5 gap-3">
+                    <div className="flex-1 overflow-y-auto p-6 lg:p-10 custom-scrollbar">
+                        <div className="grid grid-cols-6 sm:grid-cols-8 lg:grid-cols-5 gap-2 lg:gap-3">
                             {currentSectionQuestions.map((q, idx) => {
                                 const isAnswered = answers[q.id] !== undefined && answers[q.id] !== '';
                                 return (
                                     <button
                                         key={q.id}
-                                        onClick={() => setActiveQuestionIdx(idx)}
-                                        className={`w-full aspect-square rounded-2xl flex items-center justify-center text-[10px] font-black border-2 transition-all relative group
+                                        onClick={() => {
+                                            setActiveQuestionIdx(idx);
+                                            if (window.innerWidth < 1024) setShowNavMatrix(false);
+                                        }}
+                                        className={`w-full aspect-square rounded-xl lg:rounded-2xl flex items-center justify-center text-[10px] font-black border-2 transition-all relative
                                             ${activeQuestionIdx === idx
                                                 ? 'scale-110 shadow-2xl z-10 border-slate-900 bg-slate-900 text-white'
                                                 : isAnswered
@@ -722,24 +722,18 @@ export default function StudentExamPage() {
                         </div>
                     </div>
 
-                    <div className="p-10 bg-slate-50/50 border-t border-slate-100">
-                        <div className="p-8 bg-white rounded-[2.5rem] border border-slate-100 shadow-2xl shadow-slate-200/50">
-                            <div className="flex items-center justify-between mb-4">
-                                <div className="flex flex-col">
-                                    <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Curriculum Performance</span>
-                                    <span className="text-xl font-black text-slate-900">Partition Mapping</span>
-                                </div>
-                                <div className="text-right">
-                                    <span className="text-2xl font-black text-teal-600 block">
-                                        {Math.round((Object.keys(answers).length / questions.length) * 100)}%
-                                    </span>
-                                    <span className="text-[8px] font-black text-slate-400 uppercase tracking-widest">Total Complete</span>
-                                </div>
+                    <div className="p-4 lg:p-10 bg-slate-50/50 border-t border-slate-100">
+                        <div className="p-4 lg:p-8 bg-white rounded-2xl lg:rounded-[2.5rem] border border-slate-100 shadow-xl overflow-hidden">
+                            <div className="flex items-center justify-between mb-2 lg:mb-4">
+                                <span className="text-[9px] lg:text-[10px] font-black text-slate-400 uppercase tracking-widest">Overall Progress</span>
+                                <span className="text-sm lg:text-xl font-black text-teal-600">
+                                    {questions.length > 0 ? Math.round((Object.keys(answers).length / questions.length) * 100) : 0}%
+                                </span>
                             </div>
-                            <div className="w-full h-3 bg-slate-100 rounded-full overflow-hidden p-[2px] border border-slate-50">
+                            <div className="w-full h-1.5 lg:h-3 bg-slate-100 rounded-full overflow-hidden">
                                 <div
-                                    className="h-full bg-gradient-to-r from-teal-500 to-teal-600 rounded-full transition-all duration-1000 shadow-lg"
-                                    style={{ width: `${(Object.keys(answers).length / questions.length) * 100}%` }}
+                                    className="h-full bg-teal-600 rounded-full transition-all duration-1000"
+                                    style={{ width: `${questions.length > 0 ? (Object.keys(answers).length / questions.length) * 100 : 0}%` }}
                                 />
                             </div>
                         </div>

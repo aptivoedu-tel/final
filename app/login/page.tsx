@@ -1,9 +1,9 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { Mail, Lock, Eye, EyeOff, AlertCircle, CheckCircle, User, Building2 } from 'lucide-react';
+import { Mail, Lock, Eye, EyeOff, AlertCircle, CheckCircle, Shield, GraduationCap, Chrome, Apple, User, Building2, ArrowRight } from 'lucide-react';
 import { AuthService } from '@/lib/services/authService';
-import { useSearchParams } from 'next/navigation';
+import Link from 'next/link';
 
 export default function LoginPage() {
     const [email, setEmail] = useState('');
@@ -12,39 +12,56 @@ export default function LoginPage() {
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState('');
     const [infoMessage, setInfoMessage] = useState('');
+
+    // UI States
+    const [mode, setMode] = useState<'login' | 'register'>('login');
     const [role, setRole] = useState<'student' | 'admin'>('student');
+
+    // Slideshow State
+    const [currentSlide, setCurrentSlide] = useState(0);
+    const slides = [
+        {
+            image: "/login_illustration.png",
+            title: "Aptivo Learning",
+            description: "Empowering students and institutions through structured excellence."
+        },
+        {
+            image: "/login_illustration_2.png",
+            title: "University Access",
+            description: "Browse curricula and master your institutional path with ease."
+        },
+        {
+            image: "/login_illustration_3.png",
+            title: "Achieve Success",
+            description: "Track your progress and unlock new academic milestones."
+        }
+    ];
 
     useEffect(() => {
         const checkSession = async () => {
-            // Check actual Supabase session, not just localStorage
             const { data: { session } } = await AuthService.getSession();
-
             if (session) {
                 const user = AuthService.getCurrentUser();
                 if (user) {
                     let target = '/dashboard';
-                    if (user.role === 'super_admin') {
-                        target = '/admin/dashboard';
-                    } else if (user.role === 'institution_admin') {
-                        target = '/institution-admin';
-                    }
+                    if (user.role === 'super_admin') target = '/admin/dashboard';
+                    else if (user.role === 'institution_admin') target = '/institution-admin';
                     window.location.href = target;
-                }
-            } else {
-                // If no session but we have local user, it's stale
-                if (localStorage.getItem('aptivo_user')) {
-                    localStorage.removeItem('aptivo_user');
-                    localStorage.removeItem('aptivo_session');
                 }
             }
         };
-
         checkSession();
 
         const searchParams = new URLSearchParams(window.location.search);
         if (searchParams.get('verified') === 'true') {
             setInfoMessage('Email verified successfully! You can now log in.');
         }
+
+        const timer = setInterval(() => {
+            setCurrentSlide((prev) => (prev + 1) % slides.length);
+        }, 5000);
+
+        return () => clearInterval(timer);
     }, []);
 
     const handleSubmit = async (e: React.FormEvent) => {
@@ -55,7 +72,6 @@ export default function LoginPage() {
 
         try {
             const result = await AuthService.login({ email, password });
-
             if (result.error) {
                 setError(result.error);
                 setLoading(false);
@@ -64,167 +80,281 @@ export default function LoginPage() {
 
             if (result.user) {
                 const user = result.user;
-                console.log("Login Success. Role:", user.role);
                 setInfoMessage('Login successful! Entering dashboard...');
-
-                // FORCE SYNC
                 if (typeof window !== 'undefined') {
                     localStorage.setItem('aptivo_user', JSON.stringify(user));
                 }
-
-                // DETERMINE DESTINATION
                 let target = '/dashboard';
-                if (user.role === 'super_admin') {
-                    target = '/admin/dashboard';
-                } else if (user.role === 'institution_admin') {
-                    target = '/institution-admin';
-                }
+                if (user.role === 'super_admin') target = '/admin/dashboard';
+                else if (user.role === 'institution_admin') target = '/institution-admin';
 
-                console.log("Navigating to:", target);
-
-                // Wait for success message to be seen and cookies to settle
                 setTimeout(() => {
                     window.location.href = target;
                 }, 800);
             }
         } catch (err: any) {
-            console.error("Critical login error:", err);
             setError(err.message || 'An unexpected error occurred during login');
         } finally {
-            // Only stop loading if we haven't navigated away
             setTimeout(() => setLoading(false), 2000);
         }
     };
 
     return (
-        <div className="min-h-screen bg-slate-50 flex items-center justify-center p-4">
-            <div className="absolute inset-0 bg-mesh-gradient opacity-30"></div>
+        <div className="min-h-screen bg-[#F8FAFC] flex items-center justify-center p-0 sm:p-4 overflow-hidden">
+            <div className="w-full max-w-4xl max-h-[95vh] flex flex-col lg:flex-row bg-white rounded-none sm:rounded-[2.5rem] shadow-[0_20px_60px_-15px_rgba(0,0,0,0.1)] overflow-hidden animate-scale-in border border-slate-100/50">
 
-            <div className="bg-white rounded-3xl shadow-2xl w-full max-w-md p-8 md:p-10 animate-scale-in relative border border-gray-100">
+                {/* Left Side: Branding Slideshow */}
+                <div className="hidden lg:flex lg:w-[42%] bg-[#EAF5E9] p-8 flex-col items-center justify-center text-center relative overflow-hidden">
+                    <div className="relative z-10 w-full space-y-6">
+                        <div className="relative h-[320px] w-full flex flex-col items-center justify-center">
+                            {slides.map((slide, index) => (
+                                <div
+                                    key={index}
+                                    className={`absolute inset-0 flex flex-col items-center transition-all duration-1000 ease-in-out transform ${index === currentSlide
+                                        ? 'opacity-100 translate-x-0'
+                                        : index < currentSlide
+                                            ? 'opacity-0 -translate-x-full'
+                                            : 'opacity-0 translate-x-full'
+                                        }`}
+                                >
+                                    <div className="w-full aspect-square max-w-[240px] mx-auto relative group">
+                                        <div className="absolute inset-0 bg-white/20 rounded-[2rem] blur-2xl group-hover:blur-3xl transition-all duration-700"></div>
+                                        <div className="relative bg-white rounded-[2rem] shadow-xl p-5 border border-white/50">
+                                            <img
+                                                src={slide.image}
+                                                alt={slide.title}
+                                                className="w-full h-full object-contain"
+                                                onError={(e) => {
+                                                    e.currentTarget.src = "https://illustrations.popsy.co/green/remote-work.svg";
+                                                }}
+                                            />
+                                        </div>
+                                    </div>
 
-                <div className="text-center mb-10">
-                    <h1 className="text-3xl font-bold text-slate-800 mb-2 tracking-tight">Welcome Back</h1>
-                    <p className="text-slate-500 font-medium">Sign in to access your Aptivo portal</p>
-                </div>
-
-                {/* Role Toggle */}
-                <div className="flex p-1 bg-slate-100 rounded-2xl mb-8">
-                    <button
-                        type="button"
-                        onClick={() => setRole('student')}
-                        className={`flex-1 py-3 text-sm font-bold rounded-xl transition-all ${role === 'student'
-                            ? 'bg-white text-slate-900 shadow-md'
-                            : 'text-slate-500 hover:text-slate-700'
-                            }`}
-                    >
-                        Student
-                    </button>
-                    <button
-                        type="button"
-                        onClick={() => setRole('admin')}
-                        className={`flex-1 py-3 text-sm font-bold rounded-xl transition-all ${role === 'admin'
-                            ? 'bg-white text-slate-900 shadow-md'
-                            : 'text-slate-500 hover:text-slate-700'
-                            }`}
-                    >
-                        Institution
-                    </button>
-                </div>
-
-                {infoMessage && (
-                    <div className="mb-6 p-4 bg-green-50 border border-green-100 rounded-2xl flex items-start gap-3 animate-fade-in text-green-700 text-sm font-medium">
-                        <CheckCircle className="w-5 h-5 text-green-500 flex-shrink-0 mt-0.5" />
-                        {infoMessage}
-                    </div>
-                )}
-
-                {error && (
-                    <div className="mb-6 p-4 bg-red-50 border border-red-100 rounded-2xl flex items-start gap-3 animate-fade-in text-red-700 text-sm font-medium">
-                        <AlertCircle className="w-5 h-5 text-red-500 flex-shrink-0 mt-0.5" />
-                        {error}
-                    </div>
-                )}
-
-                <form onSubmit={handleSubmit} className="space-y-6">
-                    <div>
-                        <label className="block text-sm font-bold text-slate-700 mb-2">
-                            Email Address
-                        </label>
-                        <div className="relative group">
-                            <Mail className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400 group-focus-within:text-slate-600 transition-colors" />
-                            <input
-                                type="email"
-                                value={email}
-                                onChange={(e) => setEmail(e.target.value)}
-                                required
-                                className="w-full px-4 py-4 pl-12 bg-slate-50 border border-slate-200 rounded-2xl text-slate-900 focus:outline-none focus:ring-4 focus:ring-slate-900/5 focus:border-slate-900 transition-all font-medium"
-                                placeholder={role === 'student' ? "student@university.edu" : "admin@aptivo.com"}
-                            />
+                                    <div className="mt-8 space-y-3">
+                                        <div className="w-12 h-12 bg-[#4CAF50] rounded-2xl flex items-center justify-center mx-auto shadow-lg shadow-green-200">
+                                            <GraduationCap className="w-7 h-7 text-white" />
+                                        </div>
+                                        <h2 className="text-xl font-black text-[#1B3A3A] tracking-tight">
+                                            {slide.title}
+                                        </h2>
+                                        <p className="text-[#4A7272] text-[11px] font-medium leading-relaxed max-w-[200px] mx-auto opacity-75">
+                                            {slide.description}
+                                        </p>
+                                    </div>
+                                </div>
+                            ))}
                         </div>
-                    </div>
 
-                    <div>
-                        <label className="block text-sm font-bold text-slate-700 mb-2">
-                            Password
-                        </label>
-                        <div className="relative group">
-                            <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400 group-focus-within:text-slate-600 transition-colors" />
-                            <input
-                                type={showPassword ? 'text' : 'password'}
-                                value={password}
-                                onChange={(e) => setPassword(e.target.value)}
-                                required
-                                className="w-full px-4 py-4 pl-12 bg-slate-50 border border-slate-200 rounded-2xl text-slate-900 focus:outline-none focus:ring-4 focus:ring-slate-900/5 focus:border-slate-900 transition-all font-medium pr-12"
-                                placeholder="••••••••"
-                            />
+                    </div>
+                    <div className="absolute top-[-15%] right-[-15%] w-64 h-64 bg-white/50 rounded-full blur-[80px]"></div>
+                    <div className="absolute bottom-[-15%] left-[-15%] w-64 h-64 bg-white/50 rounded-full blur-[80px]"></div>
+                </div>
+
+                {/* Right Side: Form Content */}
+                <div className="flex-1 p-6 sm:p-10 lg:p-14 flex flex-col items-center justify-center bg-white overflow-y-auto custom-scrollbar relative">
+                    <div className="w-full max-w-sm space-y-6">
+
+                        <div className="text-center">
+                            <h1 className="text-2xl font-black text-[#1B3A3A] mt-1 tracking-tight">
+                                {mode === 'login' ? 'Welcome Back' : 'Create Account'}
+                            </h1>
+                            <p className="text-[11px] text-slate-400 font-bold uppercase tracking-widest mt-2">
+                                {mode === 'login' ? 'Security Portal' : 'Select Your Path'}
+                            </p>
+                        </div>
+
+                        {/* Mode Controller */}
+                        <div className="flex p-1 bg-slate-50 rounded-2xl relative border border-slate-100">
                             <button
-                                type="button"
-                                onClick={() => setShowPassword(!showPassword)}
-                                className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 p-1"
+                                onClick={() => setMode('login')}
+                                className={`flex-1 py-2 text-[11px] font-black rounded-xl transition-all relative z-10 ${mode === 'login' ? 'text-[#1B3A3A]' : 'text-slate-400 hover:text-slate-600'}`}
                             >
-                                {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+                                LOGIN
                             </button>
+                            <button
+                                onClick={() => setMode('register')}
+                                className={`flex-1 py-2 text-[11px] font-black rounded-xl transition-all relative z-10 ${mode === 'register' ? 'text-[#1B3A3A]' : 'text-slate-400 hover:text-slate-600'}`}
+                            >
+                                REGISTER
+                            </button>
+                            <div className={`absolute top-1 bottom-1 w-[calc(50%-4px)] bg-white rounded-xl shadow-sm border border-slate-100 transition-all duration-300 ${mode === 'login' ? 'left-1' : 'left-[calc(50%+2px)]'}`}></div>
+                        </div>
+
+                        {(infoMessage || error) && (
+                            <div className={`p-3 rounded-2xl flex items-start gap-3 animate-fade-in text-[11px] font-medium leading-relaxed ${infoMessage ? 'bg-green-50 border border-green-100 text-green-700' : 'bg-red-50 border border-red-100 text-red-700'}`}>
+                                {infoMessage ? <CheckCircle className="w-4 h-4 text-green-500 shrink-0 mt-0.5" /> : <AlertCircle className="w-4 h-4 text-red-500 shrink-0 mt-0.5" />}
+                                {infoMessage || error}
+                            </div>
+                        )}
+
+                        {/* Conditional Rendering: Login vs Register Views */}
+                        <div className="animate-in fade-in slide-in-from-bottom-2 duration-500">
+                            {mode === 'login' ? (
+                                <div className="space-y-6">
+                                    {/* Role Toggle */}
+                                    <div className="flex p-0.5 bg-slate-100/50 rounded-xl border border-slate-50">
+                                        <button
+                                            onClick={() => setRole('student')}
+                                            className={`flex-1 py-1.5 text-[10px] font-bold rounded-lg transition-all ${role === 'student' ? 'bg-[#244D4D] text-white shadow-sm' : 'text-slate-400 hover:text-slate-500'}`}
+                                        >
+                                            Student
+                                        </button>
+                                        <button
+                                            onClick={() => setRole('admin')}
+                                            className={`flex-1 py-1.5 text-[10px] font-bold rounded-lg transition-all ${role === 'admin' ? 'bg-[#244D4D] text-white shadow-sm' : 'text-slate-400 hover:text-slate-500'}`}
+                                        >
+                                            Institution
+                                        </button>
+                                    </div>
+
+                                    <form onSubmit={handleSubmit} className="space-y-4">
+                                        <div className="space-y-1.5">
+                                            <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">{role === 'student' ? 'Student ID / Email' : 'Admin Email'}</label>
+                                            <div className="relative">
+                                                <Mail className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-300" />
+                                                <input
+                                                    type="email"
+                                                    value={email}
+                                                    onChange={(e) => setEmail(e.target.value)}
+                                                    required
+                                                    className="w-full pl-11 pr-5 py-3.5 bg-slate-50 border border-slate-100 rounded-2xl text-xs text-slate-900 focus:outline-none focus:ring-4 focus:ring-green-500/5 focus:border-[#4CAF50] transition-all font-medium placeholder:text-slate-300"
+                                                    placeholder={role === 'student' ? "student@university.edu" : "admin@aptivo.com"}
+                                                />
+                                            </div>
+                                        </div>
+
+                                        <div className="space-y-1.5">
+                                            <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Secure Password</label>
+                                            <div className="relative">
+                                                <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-300" />
+                                                <input
+                                                    type={showPassword ? 'text' : 'password'}
+                                                    value={password}
+                                                    onChange={(e) => setPassword(e.target.value)}
+                                                    required
+                                                    className="w-full pl-11 pr-12 py-3.5 bg-slate-50 border border-slate-100 rounded-2xl text-xs text-slate-900 focus:outline-none focus:ring-4 focus:ring-green-500/5 focus:border-[#4CAF50] transition-all font-medium placeholder:text-slate-300"
+                                                    placeholder="••••••••"
+                                                />
+                                                <button
+                                                    type="button"
+                                                    onClick={() => setShowPassword(!showPassword)}
+                                                    className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-300 hover:text-[#4CAF50] transition-colors p-1"
+                                                >
+                                                    {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                                                </button>
+                                            </div>
+                                        </div>
+
+                                        <div className="flex items-center justify-between px-1">
+                                            <label className="flex items-center gap-2.5 cursor-pointer group">
+                                                <input type="checkbox" className="w-4 h-4 rounded-md border-slate-200 text-[#4CAF50] focus:ring-[#4CAF50] transition-all cursor-pointer shadow-sm" />
+                                                <span className="text-[11px] text-slate-500 font-bold group-hover:text-slate-900 transition-colors">Remember me</span>
+                                            </label>
+                                            <Link href="#" className="text-[11px] text-[#4CAF50] hover:underline font-black">
+                                                Forgot Password?
+                                            </Link>
+                                        </div>
+
+                                        <button
+                                            type="submit"
+                                            disabled={loading}
+                                            className="w-full py-4 bg-[#244D4D] text-white text-[12px] font-black rounded-2xl hover:bg-[#1B3A3A] hover:scale-[1.01] active:scale-[0.98] transition-all shadow-xl shadow-[#244D4D]/10 flex items-center justify-center gap-3"
+                                        >
+                                            {loading ? (
+                                                <div className="w-5 h-5 border-[3px] border-white/20 border-t-white rounded-full animate-spin"></div>
+                                            ) : (
+                                                <>
+                                                    <Shield className="w-4 h-4" />
+                                                    <span>SIGN IN TO PORTAL</span>
+                                                </>
+                                            )}
+                                        </button>
+                                    </form>
+
+                                    <div className="space-y-4 pt-2">
+                                        <div className="relative">
+                                            <div className="absolute inset-0 flex items-center">
+                                                <div className="w-full border-t border-slate-100"></div>
+                                            </div>
+                                            <div className="relative flex justify-center">
+                                                <span className="bg-white px-3 text-[9px] font-black text-slate-300 uppercase tracking-widest">Connect with</span>
+                                            </div>
+                                        </div>
+                                        <div className="flex items-center justify-center gap-3">
+                                            {[Chrome, Apple, Shield].map((Icon, i) => (
+                                                <button key={i} className="w-11 h-11 rounded-xl border border-slate-100 flex items-center justify-center hover:bg-slate-50 transition-all active:scale-95 shadow-sm group">
+                                                    <Icon className="w-4.5 h-4.5 text-slate-400 group-hover:text-[#4CAF50] transition-colors" />
+                                                </button>
+                                            ))}
+                                        </div>
+                                    </div>
+                                </div>
+                            ) : (
+                                <div className="space-y-5 py-4">
+                                    <div className="text-center space-y-2 mb-6">
+                                        <p className="text-xs text-slate-500 font-medium leading-relaxed">
+                                            Choose your account type below to get started with the Aptivo ecosystem.
+                                        </p>
+                                    </div>
+
+                                    <div className="grid grid-cols-1 gap-4">
+                                        <button
+                                            onClick={() => window.location.href = '/register'}
+                                            className="group w-full p-5 bg-white border border-slate-100 text-left rounded-[1.5rem] hover:border-[#4CAF50] hover:shadow-xl hover:shadow-green-500/5 transition-all active:scale-[0.98]"
+                                        >
+                                            <div className="flex items-center gap-4">
+                                                <div className="w-12 h-12 bg-green-50 rounded-2xl flex items-center justify-center group-hover:bg-[#4CAF50] transition-colors">
+                                                    <User className="w-6 h-6 text-[#4CAF50] group-hover:text-white" />
+                                                </div>
+                                                <div className="flex-1">
+                                                    <h4 className="text-sm font-black text-[#1B3A3A]">Student Account</h4>
+                                                    <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider mt-0.5">Start Learning Today</p>
+                                                </div>
+                                                <ArrowRight className="w-4 h-4 text-slate-300 group-hover:text-[#4CAF50] group-hover:translate-x-1 transition-all" />
+                                            </div>
+                                        </button>
+
+                                        <button
+                                            onClick={() => window.location.href = '/register?role=institution_admin'}
+                                            className="group w-full p-5 bg-white border border-slate-100 text-left rounded-[1.5rem] hover:border-[#4CAF50] hover:shadow-xl hover:shadow-green-500/5 transition-all active:scale-[0.98]"
+                                        >
+                                            <div className="flex items-center gap-4">
+                                                <div className="w-12 h-12 bg-blue-50 rounded-2xl flex items-center justify-center group-hover:bg-[#4CAF50] transition-colors">
+                                                    <Building2 className="w-6 h-6 text-blue-500 group-hover:text-white" />
+                                                </div>
+                                                <div className="flex-1">
+                                                    <h4 className="text-sm font-black text-[#1B3A3A]">Institution Portal</h4>
+                                                    <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider mt-0.5">Management & Scale</p>
+                                                </div>
+                                                <ArrowRight className="w-4 h-4 text-slate-300 group-hover:text-[#4CAF50] group-hover:translate-x-1 transition-all" />
+                                            </div>
+                                        </button>
+                                    </div>
+
+                                    <div className="bg-slate-50/50 p-4 rounded-2xl border border-slate-100 text-center">
+                                        <p className="text-[10px] text-slate-500 font-medium">
+                                            Need custom solutions? <Link href="#" className="text-[#4CAF50] font-black hover:underline underline-offset-2">Contact Sales</Link>
+                                        </p>
+                                    </div>
+                                </div>
+                            )}
+                        </div>
+
+                        <div className="text-center pt-2">
+                            <p className="text-[11px] font-bold text-slate-500">
+                                {mode === 'login' ? "Don't have an account?" : "Already joined the community?"} {' '}
+                                <button
+                                    onClick={() => setMode(mode === 'login' ? 'register' : 'login')}
+                                    className="text-[#4CAF50] hover:underline font-black"
+                                >
+                                    {mode === 'login' ? 'Join Now' : 'Sign In'}
+                                </button>
+                            </p>
                         </div>
                     </div>
-
-                    <div className="flex items-center justify-between pt-2">
-                        <label className="flex items-center gap-2 cursor-pointer group">
-                            <input type="checkbox" className="w-5 h-5 text-slate-900 border-slate-300 rounded-lg focus:ring-slate-900 transition-all" />
-                            <span className="text-sm text-slate-500 font-bold group-hover:text-slate-700 transition-colors">Stay signed in</span>
-                        </label>
-                        <a href="#" className="text-sm text-slate-900 hover:underline font-black">
-                            Forgot password?
-                        </a>
-                    </div>
-
-                    <button
-                        type="submit"
-                        disabled={loading}
-                        className="w-full py-5 bg-slate-900 text-white text-base font-black rounded-2xl hover:bg-black hover:scale-[1.01] active:scale-95 transition-all shadow-xl shadow-slate-200 flex items-center justify-center gap-2"
-                    >
-                        {loading ? <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div> : 'Sign In to Portal'}
-                    </button>
-                </form>
-
-                <div className="mt-12 pt-8 border-t border-slate-100">
-                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] text-center mb-8">New to Aptivo?</p>
-                    <div className="grid grid-cols-1 gap-4">
-                        <button
-                            onClick={() => window.location.href = '/register'}
-                            className="w-full py-4 bg-white border border-slate-200 text-slate-700 font-bold rounded-2xl hover:bg-slate-50 hover:border-slate-300 transition-all flex items-center justify-center gap-3 shadow-sm active:scale-[0.98]"
-                        >
-                            <User className="w-5 h-5 text-slate-400" />
-                            Create Student Account
-                        </button>
-                        <button
-                            onClick={() => window.location.href = '/register?role=institution_admin'}
-                            className="w-full py-4 bg-white border border-slate-200 text-slate-700 font-bold rounded-2xl hover:bg-slate-50 hover:border-slate-300 transition-all flex items-center justify-center gap-3 shadow-sm active:scale-[0.98]"
-                        >
-                            <Building2 className="w-5 h-5 text-slate-400" />
-                            Register Your Institution
-                        </button>
-                    </div>
                 </div>
+
             </div>
         </div>
     );

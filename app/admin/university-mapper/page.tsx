@@ -299,24 +299,24 @@ export default function UniversityContentMapperPage() {
     return (
         <div className="min-h-screen bg-gray-50 flex font-sans">
             <Sidebar userRole="super_admin" />
-            <div className="flex-1 flex flex-col transition-all duration-300">
+            <div className={`flex-1 flex flex-col min-h-screen transition-all duration-300 ${isSidebarCollapsed ? 'lg:ml-28' : 'lg:ml-80'}`}>
                 <Header userName="Admin" userEmail="admin@system.com" />
 
-                <main className={`${isSidebarCollapsed ? 'ml-20' : 'ml-72'} mt-16 p-8 transition-all duration-300`}>
+                <main className="flex-1 pt-28 lg:pt-24 pb-12 px-4 sm:px-8">
                     <div className="max-w-4xl mx-auto">
                         <div className="mb-8">
-                            <h1 className="text-3xl font-bold text-slate-900">University Content Mapper</h1>
-                            <p className="text-slate-500 mt-2">Assign granular content permissions to Universities.</p>
+                            <h1 className="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight">University Content Mapper</h1>
+                            <p className="text-sm sm:text-base text-slate-500 mt-1 font-medium">Assign granular content permissions to Universities.</p>
                         </div>
 
                         {/* Selector */}
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
-                            <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 h-full">
-                                <label className="block text-sm font-bold text-slate-700 mb-2">Select University</label>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-8">
+                            <div className="bg-white p-5 sm:p-6 rounded-2xl shadow-sm border border-gray-100 h-full">
+                                <label className="block text-xs font-black text-slate-400 uppercase tracking-widest mb-3">Target University</label>
                                 <select
                                     value={selectedUniId || ''}
                                     onChange={(e) => setSelectedUniId(parseInt(e.target.value))}
-                                    className="w-full p-3 bg-gray-50 border border-gray-200 rounded-xl outline-none focus:ring-2 focus:ring-indigo-500"
+                                    className="w-full p-3.5 bg-slate-50 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-indigo-500 transition-all font-bold text-slate-700 text-sm"
                                 >
                                     <option value="">-- Choose a University --</option>
                                     {universities.map(u => (
@@ -324,12 +324,12 @@ export default function UniversityContentMapperPage() {
                                     ))}
                                 </select>
                             </div>
-                            <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 h-full">
-                                <label className="block text-sm font-bold text-slate-700 mb-2">Select Institution (Override)</label>
+                            <div className="bg-white p-5 sm:p-6 rounded-2xl shadow-sm border border-gray-100 h-full">
+                                <label className="block text-xs font-black text-slate-400 uppercase tracking-widest mb-3">Institution Override</label>
                                 <select
                                     value={selectedInstId}
                                     onChange={(e) => setSelectedInstId(e.target.value === 'none' ? 'none' : parseInt(e.target.value))}
-                                    className="w-full p-3 bg-gray-50 border border-gray-200 rounded-xl outline-none focus:ring-2 focus:ring-indigo-500"
+                                    className="w-full p-3.5 bg-slate-50 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-indigo-500 transition-all font-bold text-slate-700 text-sm"
                                 >
                                     <option value="none">Global Default (No Institution)</option>
                                     {institutions.map(inst => (
@@ -341,41 +341,49 @@ export default function UniversityContentMapperPage() {
 
                         {selectedUniId && (
                             <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
-                                <div className="p-6 border-b border-gray-100 flex flex-col md:flex-row items-center justify-between gap-4 bg-gray-50/50">
-                                    <div className="flex items-center gap-2">
-                                        <h2 className="font-bold text-slate-800">Content Hierarchy</h2>
-                                        {selectedInstId !== 'none' && <span className="text-[10px] bg-amber-100 text-amber-700 px-2 py-0.5 rounded font-black uppercase">Institution Specific</span>}
+                                <div className="p-6 border-b border-slate-100 flex flex-col lg:flex-row items-stretch lg:items-center justify-between gap-6 bg-slate-50/50">
+                                    <div className="flex items-center gap-3">
+                                        <div className="w-10 h-10 rounded-xl bg-white shadow-sm border border-slate-100 flex items-center justify-center text-indigo-600">
+                                            <Layers className="w-5 h-5" />
+                                        </div>
+                                        <div>
+                                            <h2 className="text-sm font-black text-slate-900 uppercase tracking-widest leading-none">Content Hierarchy</h2>
+                                            {selectedInstId !== 'none' && <p className="text-[10px] font-black text-amber-600 uppercase tracking-tighter mt-1">Institution Specific Override</p>}
+                                        </div>
                                     </div>
-                                    <div className="flex items-center gap-4">
-                                        <div className="flex items-center gap-2 bg-white px-3 py-1.5 rounded-lg border border-gray-200">
-                                            <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Limit:</span>
+
+                                    <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-4">
+                                        <div className="flex items-center justify-between gap-3 bg-white px-4 py-2 rounded-xl border border-slate-200">
+                                            <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Session Limit</span>
                                             <input
                                                 type="number"
                                                 value={globalSessionLimit}
                                                 onChange={(e) => setGlobalSessionLimit(parseInt(e.target.value) || 10)}
-                                                className="w-12 bg-transparent outline-none text-center font-bold text-indigo-600"
+                                                className="w-12 bg-transparent outline-none text-center font-black text-indigo-600 border-b border-indigo-100 focus:border-indigo-600 transition-colors"
                                             />
                                         </div>
-                                        <div className="flex items-center gap-2 bg-white px-3 py-1.5 rounded-lg border border-gray-200">
-                                            <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Difficulty:</span>
+
+                                        <div className="flex items-center justify-between gap-3 bg-white px-4 py-2 rounded-xl border border-slate-200">
+                                            <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Difficulty</span>
                                             <select
                                                 value={globalDifficultyLevel}
                                                 onChange={(e) => setGlobalDifficultyLevel(e.target.value as any)}
-                                                className="bg-transparent outline-none font-bold text-indigo-600 text-xs"
+                                                className="bg-transparent outline-none font-bold text-indigo-600 text-xs cursor-pointer"
                                             >
                                                 <option value="all">All Levels</option>
-                                                <option value="easy">Basic Only</option>
-                                                <option value="medium">Intermediate Only</option>
-                                                <option value="hard">Advanced Only</option>
+                                                <option value="easy">Basic</option>
+                                                <option value="medium">Intermediate</option>
+                                                <option value="hard">Advanced</option>
                                             </select>
                                         </div>
+
                                         <button
                                             onClick={handleSave}
                                             disabled={saving}
-                                            className="flex items-center gap-2 px-6 py-2 bg-indigo-600 text-white rounded-lg font-bold hover:bg-indigo-700 transition-colors disabled:opacity-50"
+                                            className="w-full sm:w-auto flex items-center justify-center gap-2 px-6 py-2.5 bg-indigo-600 text-white font-black uppercase tracking-wider text-[11px] rounded-xl hover:bg-slate-900 transition-all shadow-lg shadow-indigo-100 active:scale-95 disabled:opacity-50"
                                         >
                                             {saving ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
-                                            Save Changes
+                                            {saving ? 'Syncing...' : 'Save Changes'}
                                         </button>
                                     </div>
                                 </div>

@@ -85,7 +85,7 @@ export default function AdminDashboard() {
             <Sidebar userRole="super_admin" />
             <Header userName={user?.full_name || 'Admin User'} userEmail={user?.email} />
 
-            <main className={`${isSidebarCollapsed ? 'ml-24' : 'ml-72'} mt-20 p-4 lg:p-8 transition-all duration-300`}>
+            <main className={`flex-1 transition-all duration-300 pt-28 lg:pt-24 pb-12 px-4 sm:px-8 ${isSidebarCollapsed ? 'lg:ml-28' : 'lg:ml-80'}`}>
                 {/* Header */}
                 <div className="mb-8">
                     <h1 className="text-2xl font-bold text-slate-800">Admin Dashboard</h1>

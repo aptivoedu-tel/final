@@ -20,7 +20,7 @@ export default function InstitutionAdminLayout({ children }: { children: React.R
                     userName="Institution Admin"
                     userEmail="admin@institution.edu"
                 />
-                <main className="flex-1 overflow-auto px-8 pb-8 pt-24">
+                <main className="flex-1 overflow-auto px-8 pb-8 pt-28 lg:pt-24">
                     {children}
                 </main>
             </div>

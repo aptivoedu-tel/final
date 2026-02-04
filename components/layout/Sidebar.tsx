@@ -35,7 +35,14 @@ const Sidebar: React.FC<SidebarProps> = ({ userRole }) => {
     const { isSidebarOpen, closeSidebar, isSidebarCollapsed, setSidebarCollapsed } = useUI();
     const pathname = usePathname();
 
-    const isActive = (path: string) => pathname === path || pathname.startsWith(path + '/');
+    const isActive = (path: string, exact = false) => {
+        if (exact) return pathname === path;
+        // special case for root dashboard paths to prevent double highlighting
+        if (path === '/admin/dashboard' || path === '/institution-admin' || path === '/dashboard') {
+            return pathname === path;
+        }
+        return pathname === path || pathname.startsWith(path + '/');
+    };
 
     const handleLogout = async () => {
         await AuthService.logout();
@@ -119,8 +126,11 @@ const Sidebar: React.FC<SidebarProps> = ({ userRole }) => {
             <aside
                 onMouseEnter={() => !isSuperAdmin && setSidebarCollapsed(false)}
                 onMouseLeave={() => !isSuperAdmin && setSidebarCollapsed(true)}
-                className={`fixed top-4 bottom-4 left-4 flex flex-col z-50 transition-all duration-300 transform 
-                ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}
+                className={`fixed top-4 bottom-4 flex flex-col z-50 transition-all duration-300 transform 
+                ${isSidebarOpen
+                        ? 'left-4 translate-x-0'
+                        : '-translate-x-full left-0 lg:left-4 lg:translate-x-0'
+                    }
                 bg-white border-slate-200/80
                 ${isSidebarCollapsed ? 'w-[72px]' : 'w-64'}
                 rounded-[1.5rem] shadow-2xl border
@@ -217,7 +227,7 @@ const Sidebar: React.FC<SidebarProps> = ({ userRole }) => {
                         )}
                     </button>
                 </div>
-            </aside>
+            </aside >
         </>
     );
 };

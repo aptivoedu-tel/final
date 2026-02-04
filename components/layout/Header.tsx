@@ -18,7 +18,7 @@ interface HeaderProps {
 }
 
 const Header: React.FC<HeaderProps> = ({ userName, userEmail, userAvatar, avatarUrl, isPremium = false }) => {
-    const { toggleSidebar, isSidebarCollapsed } = useUI();
+    const { toggleSidebar, isSidebarCollapsed, isSidebarOpen } = useUI();
     const [showUserMenu, setShowUserMenu] = useState(false);
     const [showNotifications, setShowNotifications] = useState(false);
     const [searchQuery, setSearchQuery] = useState('');
@@ -175,14 +175,15 @@ const Header: React.FC<HeaderProps> = ({ userName, userEmail, userAvatar, avatar
     };
 
     return (
-        <header className={`fixed top-4 right-4 h-14 rounded-2xl border z-30 transition-all duration-300 shadow-lg
-            bg-white border-slate-200/80
+        <header className={`fixed top-4 right-4 h-16 lg:h-14 rounded-2xl border z-40 transition-all duration-300 shadow-xl
+            bg-white/95 backdrop-blur-md border-slate-200/80
             ${isSidebarCollapsed ? 'lg:left-24 left-4' : 'lg:left-[17.5rem] left-4'}
+            ${isSidebarOpen ? 'max-lg:opacity-0 max-lg:pointer-events-none' : 'max-lg:opacity-100'}
         `}>
             <div className="h-full px-4 lg:px-5 flex items-center justify-between gap-4">
                 <button
                     onClick={toggleSidebar}
-                    className="p-2 -ml-2 rounded-lg lg:hidden transition-colors text-slate-600 hover:bg-slate-100"
+                    className="p-2 mr-2 rounded-lg lg:hidden transition-colors text-slate-600 hover:bg-slate-100"
                 >
                     <Menu className="w-5 h-5" />
                 </button>
@@ -193,19 +194,19 @@ const Header: React.FC<HeaderProps> = ({ userName, userEmail, userAvatar, avatar
                         <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
                         <input
                             type="text"
-                            placeholder="Search curricula, topics, or questions..."
+                            placeholder="Search..."
                             value={searchQuery}
                             onChange={(e) => setSearchQuery(e.target.value)}
                             onFocus={() => searchQuery.trim() && setShowSearchDropdown(true)}
-                            className="w-full pl-10 pr-10 py-2 rounded-xl border text-sm transition-all focus:outline-none focus:ring-2 bg-slate-50 border-slate-200 text-slate-700 placeholder:text-slate-400 focus:ring-teal-500/20 focus:border-teal-500"
+                            className="w-full pl-8 lg:pl-10 pr-8 py-1.5 lg:py-2 rounded-xl border text-[11px] lg:text-sm transition-all focus:outline-none focus:ring-2 bg-slate-50 border-slate-200 text-slate-700 placeholder:text-slate-400 focus:ring-teal-500/20 focus:border-teal-500"
                         />
                         {searchQuery && (
                             <button
                                 type="button"
                                 onClick={() => { setSearchQuery(''); setShowSearchDropdown(false); }}
-                                className="absolute right-4 top-1/2 -translate-y-1/2 p-1 rounded-full transition-colors hover:bg-slate-200"
+                                className="absolute right-2 lg:right-4 top-1/2 -translate-y-1/2 p-1 rounded-full transition-colors hover:bg-slate-200"
                             >
-                                <X className="w-4 h-4 text-slate-500" />
+                                <X className="w-3 h-3 lg:w-4 lg:h-4 text-slate-500" />
                             </button>
                         )}
 
@@ -260,7 +261,7 @@ const Header: React.FC<HeaderProps> = ({ userName, userEmail, userAvatar, avatar
                 </form>
 
                 {/* Right Section */}
-                <div className="flex items-center gap-4 ml-6">
+                <div className="flex items-center gap-2 lg:gap-4 shrink-0">
                     {/* Notifications */}
                     <div className="relative">
                         <button
@@ -277,7 +278,7 @@ const Header: React.FC<HeaderProps> = ({ userName, userEmail, userAvatar, avatar
 
                         {/* Notifications Dropdown */}
                         {showNotifications && (
-                            <div className="absolute right-0 mt-2 w-80 rounded-2xl shadow-xl border overflow-hidden animate-scale-in z-50 bg-white border-gray-200">
+                            <div className="absolute right-[-45px] sm:right-0 mt-2 w-[calc(100vw-2.5rem)] sm:w-80 rounded-2xl shadow-xl border overflow-hidden animate-scale-in z-50 bg-white border-gray-200">
                                 <div className="p-4 border-b flex justify-between items-center border-gray-100">
                                     <span className="font-semibold text-gray-900">Notifications</span>
                                     {unreadCount > 0 && (

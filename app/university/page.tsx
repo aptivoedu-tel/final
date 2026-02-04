@@ -363,7 +363,7 @@ export default function UniversityPortalPage() {
             <div className="flex-1 flex flex-col">
                 <Header userName={user?.full_name} userEmail={user?.email} />
 
-                <main className={`${isSidebarCollapsed ? 'lg:ml-24' : 'lg:ml-72'} mt-20 p-4 lg:p-8 transition-all duration-300`}>
+                <main className={`${isSidebarCollapsed ? 'lg:ml-24' : 'lg:ml-72'} pt-28 lg:pt-24 p-4 lg:p-8 transition-all duration-300`}>
                     <div className="max-w-7xl mx-auto space-y-8 bg-white/60 backdrop-blur-sm p-4 lg:p-8 rounded-[2rem] lg:rounded-[3rem] border border-slate-100 shadow-[0_8px_30px_rgb(0,0,0,0.02)]">
                         {enrollments.length > 0 && showRegistration && (
                             <button
@@ -396,16 +396,14 @@ export default function UniversityPortalPage() {
                                             .filter(u => !enrollments.some(e => e.university_id === u.id))
                                             .map(u => (
                                                 <div key={u.id} className="flex items-center justify-between p-5 border border-gray-100 rounded-2xl hover:bg-slate-50 transition-all group hover:border-indigo-100">
-                                                    <div className="flex items-center gap-4">
-                                                        <div className="w-12 h-12 bg-indigo-50 rounded-xl flex items-center justify-center text-indigo-600 font-black group-hover:bg-indigo-600 group-hover:text-white transition-all shadow-sm overflow-hidden">
-                                                            {u.logo_url ? (
-                                                                <img src={u.logo_url} alt={u.name} className="w-full h-full object-cover" />
-                                                            ) : (
-                                                                u.name.substring(0, 1)
-                                                            )}
-                                                        </div>
-                                                        <span className="font-bold text-slate-700">{u.name}</span>
+                                                    <div className="w-12 h-12 bg-white rounded-xl flex items-center justify-center border border-gray-100 group-hover:border-indigo-200 transition-all shadow-sm overflow-hidden p-2 shrink-0">
+                                                        {u.logo_url ? (
+                                                            <img src={u.logo_url} alt={u.name} className="w-full h-full object-contain" />
+                                                        ) : (
+                                                            <span className="text-indigo-600 font-black">{u.name.substring(0, 1)}</span>
+                                                        )}
                                                     </div>
+                                                    <span className="font-bold text-slate-700 truncate max-w-[120px] sm:max-w-none">{u.name}</span>
                                                     <button
                                                         onClick={() => handleRegister(u.id)}
                                                         className="px-6 py-2.5 bg-slate-900 text-white rounded-xl text-xs font-black uppercase tracking-widest hover:bg-slate-800 transition-all shadow-md active:scale-95"
@@ -422,7 +420,7 @@ export default function UniversityPortalPage() {
                             <div className="max-w-6xl mx-auto space-y-12">
                                 <div className="flex flex-col md:flex-row md:items-end justify-between gap-6">
                                     <div>
-                                        <h1 className="text-4xl font-black text-slate-900 mb-2">My Universities</h1>
+                                        <h1 className="text-2xl lg:text-4xl font-black text-slate-900 mb-2">My Universities</h1>
                                         <p className="text-slate-500 font-medium tracking-tight uppercase text-xs">Command Center / Institutional Dashboard</p>
                                     </div>
                                     {(!user?.institution_id) && (
@@ -436,7 +434,7 @@ export default function UniversityPortalPage() {
                                     )}
                                 </div>
 
-                                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+                                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 lg:gap-8">
                                     {enrollments.length > 0 ? (
                                         enrollments.map((en) => (
                                             <div
@@ -452,9 +450,9 @@ export default function UniversityPortalPage() {
                                                 className={`group relative bg-white p-6 lg:p-8 rounded-[2.5rem] border-2 transition-all cursor-pointer ${en.status === 'approved' ? 'hover:border-indigo-600 border-gray-100 shadow-xl hover:shadow-indigo-100/50' : 'opacity-80 border-gray-50 grayscale select-none'}`}
                                             >
                                                 <div className="flex justify-between items-start mb-8">
-                                                    <div className={`w-16 h-16 rounded-2xl flex items-center justify-center text-2xl font-black shadow-lg overflow-hidden border-2 ${en.status === 'approved' ? 'bg-indigo-600 text-white border-indigo-500' : 'bg-slate-200 text-slate-400 border-slate-100'}`}>
+                                                    <div className={`w-14 h-14 sm:w-16 sm:h-16 rounded-2xl flex items-center justify-center text-2xl font-black shadow-lg overflow-hidden border-2 p-2 ${en.status === 'approved' ? 'bg-white text-indigo-600 border-indigo-50' : 'bg-slate-200 text-slate-400 border-slate-100'}`}>
                                                         {en.university.logo_url ? (
-                                                            <img src={en.university.logo_url} alt={en.university.name} className="w-full h-full object-cover" />
+                                                            <img src={en.university.logo_url} alt={en.university.name} className="w-full h-full object-contain" />
                                                         ) : (
                                                             en.university.name.substring(0, 1)
                                                         )}
@@ -528,61 +526,71 @@ export default function UniversityPortalPage() {
                         ) : (
                             // Detailed University View
                             <div className="max-w-5xl mx-auto space-y-8 animate-fade-in">
-                                <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 pb-6 border-b border-gray-100">
-                                    <div className="flex items-center gap-4">
+                                <div className="flex flex-col sm:flex-row items-center sm:items-end justify-between gap-6 pb-6 border-b border-slate-100/80">
+                                    <div className="flex items-center gap-4 sm:gap-6 w-full">
                                         <button
                                             onClick={() => setActiveUniversityId(null)}
-                                            className="w-10 h-10 border border-gray-200 rounded-xl flex items-center justify-center text-slate-400 hover:text-slate-900 hover:border-slate-900 transition-all shadow-sm bg-white"
+                                            className="w-12 h-12 border border-slate-200 rounded-2xl flex items-center justify-center text-slate-400 hover:text-indigo-600 hover:border-indigo-600 transition-all shadow-sm bg-white shrink-0 group"
                                         >
-                                            <ChevronLeft className="w-5 h-5" />
+                                            <ChevronLeft className="w-6 h-6 group-hover:-translate-x-1 transition-transform" />
                                         </button>
-                                        <div>
-                                            <div className="flex items-center gap-3">
-                                                <h1 className="text-3xl font-black text-slate-900 tracking-tight">{enrollments.find(e => e.university_id === activeUniversityId)?.university.name}</h1>
-                                                {(!user?.institution_id) && (
-                                                    <button
-                                                        onClick={() => handleUnenroll(activeUniversityId!)}
-                                                        className="flex items-center gap-1.5 px-3 py-1.5 bg-red-50 text-red-600 rounded-lg text-[10px] font-black uppercase tracking-widest hover:bg-red-100 transition-all border border-red-100"
-                                                    >
-                                                        <LogOut className="w-3.5 h-3.5" />
-                                                        Unenroll
-                                                    </button>
+                                        <div className="flex items-center gap-4 lg:gap-6 flex-1 min-w-0">
+                                            <div className="w-16 h-16 lg:w-20 lg:h-20 bg-white rounded-[1.5rem] shadow-xl shadow-indigo-100/50 border border-slate-100 p-3 shrink-0 flex items-center justify-center overflow-hidden">
+                                                {enrollments.find(e => e.university_id === activeUniversityId)?.university.logo_url ? (
+                                                    <img
+                                                        src={enrollments.find(e => e.university_id === activeUniversityId)?.university.logo_url}
+                                                        alt="Logo"
+                                                        className="w-full h-full object-contain"
+                                                    />
+                                                ) : (
+                                                    <span className="text-2xl font-black text-indigo-600 uppercase">
+                                                        {enrollments.find(e => e.university_id === activeUniversityId)?.university.name.substring(0, 1)}
+                                                    </span>
                                                 )}
                                             </div>
-                                            <div className="flex items-center gap-2 text-slate-400 mt-1">
-                                                <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
-                                                <span className="text-[10px] font-black uppercase tracking-widest">Active Academic Session</span>
+                                            <div className="min-w-0 flex-1">
+                                                <div className="flex flex-col">
+                                                    <span className="text-[10px] font-black text-indigo-600 uppercase tracking-[0.2em] mb-1">Campus Portal</span>
+                                                    <h1 className="text-2xl sm:text-3xl lg:text-4xl font-black text-slate-900 tracking-tight leading-tight truncate">
+                                                        {enrollments.find(e => e.university_id === activeUniversityId)?.university.name}
+                                                    </h1>
+                                                </div>
                                             </div>
                                         </div>
                                     </div>
+                                    <div className="flex items-center gap-3 w-full sm:w-auto">
+                                        {(!user?.institution_id) && (
+                                            <button
+                                                onClick={() => handleUnenroll(activeUniversityId!)}
+                                                className="flex-1 sm:flex-none flex items-center justify-center px-4 py-2.5 bg-rose-50 text-rose-600 rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-rose-600 hover:text-white transition-all border border-rose-100 shadow-sm"
+                                            >
+                                                <LogOut className="w-4 h-4 mr-2" />
+                                                Unenroll
+                                            </button>
+                                        )}
+                                    </div>
+                                </div>
 
-                                    <div className="flex items-center gap-4 overflow-x-auto pb-2 md:pb-0 w-full md:w-auto">
-                                        <div className="flex bg-white p-1 rounded-2xl border border-gray-200 shadow-sm whitespace-nowrap">
+                                <div className="flex items-center gap-2 overflow-x-auto pb-4 no-scrollbar -mx-4 px-4 sm:mx-0 sm:px-0">
+                                    <div className="flex bg-slate-100/80 p-1.5 rounded-2xl border border-slate-200/50 whitespace-nowrap">
+                                        {[
+                                            { id: 'library', label: 'Curriculum', icon: BookOpen },
+                                            { id: 'exams', label: 'Examinations', icon: FileText },
+                                            { id: 'pattern', label: 'Standards', icon: ShieldAlert },
+                                            { id: 'insights', label: 'Analytics', icon: BarChart }
+                                        ].map((tab) => (
                                             <button
-                                                onClick={() => setActiveTab('library')}
-                                                className={`px-6 lg:px-8 py-3 rounded-xl text-[10px] font-black tracking-widest uppercase transition-all ${activeTab === 'library' ? 'bg-slate-900 text-white shadow-lg' : 'text-slate-400 hover:text-slate-600'}`}
+                                                key={tab.id}
+                                                onClick={() => setActiveTab(tab.id as any)}
+                                                className={`flex items-center gap-2 px-6 py-3 rounded-xl text-[10px] font-black tracking-widest uppercase transition-all duration-300 ${activeTab === tab.id
+                                                    ? 'bg-slate-900 text-white shadow-xl shadow-slate-200 translate-y-[-1px]'
+                                                    : 'text-slate-500 hover:text-slate-900 hover:bg-white/50'
+                                                    }`}
                                             >
-                                                Library
+                                                <tab.icon className={`w-3.5 h-3.5 ${activeTab === tab.id ? 'text-indigo-400' : 'text-slate-400'}`} />
+                                                {tab.label}
                                             </button>
-                                            <button
-                                                onClick={() => setActiveTab('exams')}
-                                                className={`px-6 lg:px-8 py-3 rounded-xl text-[10px] font-black tracking-widest uppercase transition-all ${activeTab === 'exams' ? 'bg-slate-900 text-white shadow-lg' : 'text-slate-400 hover:text-slate-600'}`}
-                                            >
-                                                Exams
-                                            </button>
-                                            <button
-                                                onClick={() => setActiveTab('pattern')}
-                                                className={`px-6 lg:px-8 py-3 rounded-xl text-[10px] font-black tracking-widest uppercase transition-all ${activeTab === 'pattern' ? 'bg-slate-900 text-white shadow-lg' : 'text-slate-400 hover:text-slate-600'}`}
-                                            >
-                                                Test Pattern
-                                            </button>
-                                            <button
-                                                onClick={() => setActiveTab('insights')}
-                                                className={`px-6 lg:px-8 py-3 rounded-xl text-[10px] font-black tracking-widest uppercase transition-all ${activeTab === 'insights' ? 'bg-slate-900 text-white shadow-lg' : 'text-slate-400 hover:text-slate-600'}`}
-                                            >
-                                                Insights
-                                            </button>
-                                        </div>
+                                        ))}
                                     </div>
                                 </div>
 
@@ -653,20 +661,21 @@ export default function UniversityPortalPage() {
                                     // Active Content (The Library)
                                     <div className="grid grid-cols-1 gap-8">
                                         {content.length > 0 ? content.map((subjectItem) => (
-                                            <div key={subjectItem.subject.id} className="bg-white rounded-3xl border border-gray-100 overflow-hidden shadow-sm hover:shadow-md transition-shadow">
-                                                <div className="bg-slate-900 px-8 py-6 flex items-center justify-between">
-                                                    <div>
-                                                        <span className="text-indigo-400 text-xs font-bold uppercase tracking-widest mb-1 block">Curriculum</span>
-                                                        <h3 className="text-xl font-bold text-white">{subjectItem.subject.name}</h3>
+                                            <div key={subjectItem.subject.id} className="bg-white rounded-[2.5rem] border border-slate-100 overflow-hidden shadow-xl shadow-slate-100/50 hover:shadow-2xl hover:shadow-indigo-100/20 transition-all duration-500">
+                                                <div className="bg-gradient-to-br from-slate-900 to-indigo-950 px-8 py-8 flex items-center justify-between relative overflow-hidden">
+                                                    <div className="absolute top-0 right-0 w-64 h-64 bg-indigo-500/10 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2" />
+                                                    <div className="relative z-10">
+                                                        <span className="text-indigo-400 text-[10px] font-black uppercase tracking-[0.25em] mb-2 block">Foundational Curriculum</span>
+                                                        <h3 className="text-2xl font-black text-white tracking-tight">{subjectItem.subject.name}</h3>
                                                     </div>
-                                                    <div className="w-10 h-10 bg-white/10 rounded-xl flex items-center justify-center">
-                                                        <BookOpen className="w-5 h-5 text-indigo-400" />
+                                                    <div className="relative z-10 w-14 h-14 bg-white/10 backdrop-blur-md rounded-2xl flex items-center justify-center border border-white/10 shadow-inner">
+                                                        <BookOpen className="w-7 h-7 text-indigo-300" />
                                                     </div>
                                                 </div>
-                                                <div className="p-4 bg-gray-50/50 border-b border-gray-100">
-                                                    <div className="flex items-center justify-between px-4 text-xs font-bold text-slate-500 uppercase tracking-wider">
-                                                        <span>Library Modules</span>
-                                                        <span>{subjectItem.topics.length} Topics</span>
+                                                <div className="p-4 bg-slate-50/50 border-b border-slate-100">
+                                                    <div className="flex items-center justify-between px-6 text-[10px] font-black text-slate-400 uppercase tracking-[0.15em]">
+                                                        <span>Available Learning Modules</span>
+                                                        <span className="bg-indigo-600 text-white px-3 py-1 rounded-full text-xs">{subjectItem.topics.length} Topics</span>
                                                     </div>
                                                 </div>
                                                 <div className="p-8 space-y-4">
@@ -851,72 +860,70 @@ export default function UniversityPortalPage() {
             </div>
 
             {/* Test Pattern Drawer (Slider) */}
-            {
-                isPatternDrawerOpen && (
-                    <div className="fixed inset-0 z-[100] flex justify-end">
-                        <div
-                            className="absolute inset-0 bg-slate-900/40 backdrop-blur-sm animate-in fade-in duration-300"
-                            onClick={() => setIsPatternDrawerOpen(false)}
-                        />
-                        <div className="relative w-full max-w-xl bg-white h-full shadow-2xl animate-in slide-in-from-right duration-500 flex flex-col">
-                            <div className="p-8 border-b border-gray-100 flex items-center justify-between bg-slate-900 text-white">
-                                <div>
-                                    <h3 className="text-2xl font-black tracking-tight">University Test Pattern</h3>
-                                    <p className="text-indigo-400 text-[10px] font-black uppercase tracking-[0.2em] mt-1">Institutional Entry Standards</p>
+            {isPatternDrawerOpen && (
+                <div className="fixed inset-0 z-[100] flex justify-end">
+                    <div
+                        className="absolute inset-0 bg-slate-900/40 backdrop-blur-sm animate-in fade-in duration-300"
+                        onClick={() => setIsPatternDrawerOpen(false)}
+                    />
+                    <div className="relative w-full max-w-xl bg-white h-full shadow-2xl animate-in slide-in-from-right duration-500 flex flex-col">
+                        <div className="p-8 border-b border-gray-100 flex items-center justify-between bg-slate-900 text-white">
+                            <div>
+                                <h3 className="text-2xl font-black tracking-tight">University Test Pattern</h3>
+                                <p className="text-indigo-400 text-[10px] font-black uppercase tracking-[0.2em] mt-1">Institutional Entry Standards</p>
+                            </div>
+                            <button
+                                onClick={() => setIsPatternDrawerOpen(false)}
+                                className="w-10 h-10 rounded-full bg-white/10 flex items-center justify-center hover:bg-white/20 transition-all"
+                            >
+                                <X className="w-5 h-5" />
+                            </button>
+                        </div>
+
+                        <div className="flex-1 overflow-y-auto p-5 sm:p-10 custom-scrollbar">
+                            {enrollments.find(e => e.university_id === activeUniversityId)?.university.test_pattern_markdown ? (
+                                <div className="prose prose-indigo max-w-none prose-sm">
+                                    <ReactMarkdown
+                                        remarkPlugins={[remarkGfm]}
+                                        components={{
+                                            table: ({ node, ...props }) => (
+                                                <div className="overflow-x-auto my-6 rounded-2xl border border-gray-100 shadow-sm">
+                                                    <table className="w-full border-collapse text-sm" {...props} />
+                                                </div>
+                                            ),
+                                            th: ({ node, ...props }) => <th className="bg-slate-50 border-b border-gray-100 px-4 py-3 text-left font-black text-slate-700 uppercase tracking-widest text-[10px]" {...props} />,
+                                            td: ({ node, ...props }) => <td className="border-b border-gray-50 px-4 py-4 text-slate-600 font-medium" {...props} />,
+                                            h1: ({ node, ...props }) => <h1 className="text-2xl font-black text-slate-900 mb-6 border-b-4 border-indigo-600 pb-2 inline-block" {...props} />,
+                                            h2: ({ node, ...props }) => <h2 className="text-lg font-black text-slate-800 mb-4 mt-8 flex items-center gap-2 before:w-1.5 before:h-6 before:bg-indigo-600 before:rounded-full" {...props} />,
+                                            strong: ({ node, ...props }) => <strong className="font-black text-indigo-600" {...props} />,
+                                            p: ({ node, ...props }) => <p className="text-slate-600 leading-relaxed mb-4 font-medium" {...props} />
+                                        }}
+                                    >
+                                        {enrollments.find(e => e.university_id === activeUniversityId)?.university.test_pattern_markdown}
+                                    </ReactMarkdown>
                                 </div>
-                                <button
-                                    onClick={() => setIsPatternDrawerOpen(false)}
-                                    className="w-10 h-10 rounded-full bg-white/10 flex items-center justify-center hover:bg-white/20 transition-all"
-                                >
-                                    <X className="w-5 h-5" />
-                                </button>
-                            </div>
-
-                            <div className="flex-1 overflow-y-auto p-10 custom-scrollbar">
-                                {enrollments.find(e => e.university_id === activeUniversityId)?.university.test_pattern_markdown ? (
-                                    <div className="prose prose-indigo max-w-none prose-sm">
-                                        <ReactMarkdown
-                                            remarkPlugins={[remarkGfm]}
-                                            components={{
-                                                table: ({ node, ...props }) => (
-                                                    <div className="overflow-x-auto my-6 rounded-2xl border border-gray-100 shadow-sm">
-                                                        <table className="w-full border-collapse text-sm" {...props} />
-                                                    </div>
-                                                ),
-                                                th: ({ node, ...props }) => <th className="bg-slate-50 border-b border-gray-100 px-4 py-3 text-left font-black text-slate-700 uppercase tracking-widest text-[10px]" {...props} />,
-                                                td: ({ node, ...props }) => <td className="border-b border-gray-50 px-4 py-4 text-slate-600 font-medium" {...props} />,
-                                                h1: ({ node, ...props }) => <h1 className="text-2xl font-black text-slate-900 mb-6 border-b-4 border-indigo-600 pb-2 inline-block" {...props} />,
-                                                h2: ({ node, ...props }) => <h2 className="text-lg font-black text-slate-800 mb-4 mt-8 flex items-center gap-2 before:w-1.5 before:h-6 before:bg-indigo-600 before:rounded-full" {...props} />,
-                                                strong: ({ node, ...props }) => <strong className="font-black text-indigo-600" {...props} />,
-                                                p: ({ node, ...props }) => <p className="text-slate-600 leading-relaxed mb-4 font-medium" {...props} />
-                                            }}
-                                        >
-                                            {enrollments.find(e => e.university_id === activeUniversityId)?.university.test_pattern_markdown}
-                                        </ReactMarkdown>
+                            ) : (
+                                <div className="h-full flex flex-col items-center justify-center text-center px-10">
+                                    <div className="w-20 h-20 bg-gray-50 rounded-full flex items-center justify-center mb-6">
+                                        <FileText className="w-10 h-10 text-gray-200" />
                                     </div>
-                                ) : (
-                                    <div className="h-full flex flex-col items-center justify-center text-center px-10">
-                                        <div className="w-20 h-20 bg-gray-50 rounded-full flex items-center justify-center mb-6">
-                                            <FileText className="w-10 h-10 text-gray-200" />
-                                        </div>
-                                        <h4 className="text-xl font-black text-slate-900 mb-2">Pattern Awaiting Release</h4>
-                                        <p className="text-slate-400 text-sm font-medium">The official entrance test pattern for this institution has not been uploaded to the portal yet. Check back soon for updates.</p>
-                                    </div>
-                                )}
-                            </div>
+                                    <h4 className="text-xl font-black text-slate-900 mb-2">Pattern Awaiting Release</h4>
+                                    <p className="text-slate-400 text-sm font-medium">The official entrance test pattern for this institution has not been uploaded to the portal yet. Check back soon for updates.</p>
+                                </div>
+                            )}
+                        </div>
 
-                            <div className="p-8 border-t border-gray-100 bg-gray-50/50">
-                                <button
-                                    onClick={() => setIsPatternDrawerOpen(false)}
-                                    className="w-full py-4 bg-slate-900 text-white rounded-2xl font-black tracking-widest uppercase hover:bg-slate-800 transition-all shadow-lg"
-                                >
-                                    Got it, thanks!
-                                </button>
-                            </div>
+                        <div className="p-4 sm:p-8 border-t border-gray-100 bg-gray-50/50">
+                            <button
+                                onClick={() => setIsPatternDrawerOpen(false)}
+                                className="w-full py-4 bg-slate-900 text-white rounded-2xl font-black tracking-widest uppercase hover:bg-slate-800 transition-all shadow-lg"
+                            >
+                                Got it, thanks!
+                            </button>
                         </div>
                     </div>
-                )
-            }
-        </div >
+                </div>
+            )}
+        </div>
     );
 }

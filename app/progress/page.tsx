@@ -145,7 +145,7 @@ export default function ProgressPage() {
             <Sidebar userRole="student" />
             <Header userName={user?.full_name || 'Student'} userEmail={user?.email} />
 
-            <main className={`${isSidebarCollapsed ? 'lg:ml-24' : 'lg:ml-72'} mt-20 p-4 lg:p-8 transition-all duration-300`} id="report-content">
+            <main className={`${isSidebarCollapsed ? 'lg:ml-24' : 'lg:ml-72'} pt-28 lg:pt-24 p-4 lg:p-8 transition-all duration-300`} id="report-content">
                 {/* Hero Header */}
                 <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">
                     <div>
@@ -160,7 +160,7 @@ export default function ProgressPage() {
                         <button
                             onClick={handleDownloadReport}
                             disabled={exporting}
-                            className="bg-primary text-white px-4 py-2 rounded-xl text-sm font-bold shadow-lg shadow-primary/20 hover:bg-primary-dark transition-all active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 whitespace-nowrap"
+                            className="bg-primary text-black px-4 py-2 rounded-xl text-sm font-bold shadow-lg shadow-primary/20 hover:bg-primary-dark hover:text-white transition-all active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 whitespace-nowrap"
                         >
                             {exporting ? 'Generating...' : 'Download PDF Report'}
                         </button>

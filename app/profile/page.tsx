@@ -179,7 +179,7 @@ export default function ProfilePage() {
             <Sidebar userRole={user?.role || 'student'} />
             <Header userName={user?.full_name} userEmail={user?.email} userAvatar={user?.avatar_url} />
 
-            <main className={`transition-all duration-300 mt-20 p-4 lg:p-8 ${isSidebarCollapsed ? 'lg:ml-24' : 'lg:ml-72'}`}>
+            <main className={`transition-all duration-300 pt-28 lg:pt-24 p-4 lg:p-8 ${isSidebarCollapsed ? 'lg:ml-24' : 'lg:ml-72'}`}>
                 <div className="max-w-6xl mx-auto">
                     {/* Header */}
                     <div className="mb-8">

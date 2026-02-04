@@ -161,22 +161,22 @@ export default function UniversitiesPage() {
     return (
         <div className="min-h-screen bg-gray-50 flex font-sans">
             <Sidebar userRole="super_admin" />
-            <div className="flex-1 flex flex-col transition-all duration-300">
+            <div className={`flex-1 flex flex-col min-h-screen transition-all duration-300 ${isSidebarCollapsed ? 'lg:ml-28' : 'lg:ml-80'}`}>
                 <Header userName="Admin" userEmail="admin@system.com" />
 
-                <main className={`transition-all duration-300 ${isSidebarCollapsed ? 'ml-20' : 'ml-72'} mt-16 p-8`}>
+                <main className="flex-1 pt-28 lg:pt-24 pb-12 px-4 sm:px-8">
                     <div className="max-w-6xl mx-auto">
-                        <div className="flex justify-between items-center mb-8">
+                        <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4 mb-8">
                             <div>
-                                <h1 className="text-3xl font-bold text-slate-900">Universities</h1>
-                                <p className="text-slate-500 mt-1">Manage partner universities and institutions.</p>
+                                <h1 className="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight">Universities</h1>
+                                <p className="text-sm sm:text-base text-slate-500 mt-1 font-medium">Manage partner universities and institutions.</p>
                             </div>
                             <button
                                 onClick={() => setIsModalOpen(true)}
-                                className="flex items-center gap-2 px-6 py-3 bg-indigo-600 text-white rounded-xl font-bold hover:bg-indigo-700 transition-colors shadow-lg shadow-indigo-200"
+                                className="flex items-center justify-center gap-2 px-6 py-3 bg-indigo-600 text-white rounded-xl font-bold hover:bg-indigo-700 transition-all shadow-lg shadow-indigo-200 active:scale-95"
                             >
                                 <Plus className="w-5 h-5" />
-                                Add University
+                                <span className="text-sm">Add University</span>
                             </button>
                         </div>
 
@@ -410,28 +410,28 @@ export default function UniversitiesPage() {
                     <div className="fixed inset-0 z-[60] flex items-center justify-center bg-slate-900/60 backdrop-blur-sm p-4">
                         <div className="bg-white rounded-[2.5rem] shadow-2xl w-full max-w-5xl h-[85vh] overflow-hidden flex flex-col animate-in fade-in zoom-in duration-200 border border-slate-200">
                             {/* Header */}
-                            <div className="px-8 py-6 border-b border-slate-100 flex justify-between items-center bg-white">
+                            <div className="px-6 sm:px-8 py-6 border-b border-slate-100 flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4 bg-white">
                                 <div className="flex items-center gap-4">
-                                    <div className="w-12 h-12 rounded-2xl bg-indigo-600 flex items-center justify-center text-white shadow-lg shadow-indigo-200">
-                                        <FileText className="w-6 h-6" />
+                                    <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-2xl bg-indigo-600 flex items-center justify-center text-white shadow-lg shadow-indigo-200">
+                                        <FileText className="w-5 h-5 sm:w-6 sm:h-6" />
                                     </div>
                                     <div>
-                                        <h3 className="text-xl font-black text-slate-900">Entry Test Pattern</h3>
-                                        <p className="text-xs font-bold text-slate-400 mt-0.5 uppercase tracking-widest">{testPatternData.name}</p>
+                                        <h3 className="text-lg sm:text-xl font-black text-slate-900">Entry Test Pattern</h3>
+                                        <p className="text-[10px] font-bold text-slate-400 mt-0.5 uppercase tracking-widest truncate max-w-[150px] sm:max-w-none">{testPatternData.name}</p>
                                     </div>
                                 </div>
                                 <div className="flex items-center gap-3">
                                     <button
                                         onClick={handleSaveTestPattern}
                                         disabled={isSavingPattern}
-                                        className="flex items-center gap-2 px-6 py-2.5 bg-indigo-600 text-white font-black rounded-xl hover:bg-indigo-700 transition-all shadow-lg shadow-indigo-200 disabled:opacity-50"
+                                        className="flex-1 sm:flex-none flex items-center justify-center gap-2 px-6 py-2.5 bg-indigo-600 text-white font-black rounded-xl hover:bg-indigo-700 transition-all shadow-lg shadow-indigo-200 disabled:opacity-50 text-xs sm:text-sm"
                                     >
                                         {isSavingPattern ? (
                                             <div className="w-4 h-4 border-2 border-white/20 border-t-white rounded-full animate-spin" />
                                         ) : (
                                             <Save className="w-4 h-4" />
                                         )}
-                                        Save Pattern
+                                        Save
                                     </button>
                                     <button
                                         onClick={() => setIsTestPatternModalOpen(false)}
@@ -443,11 +443,11 @@ export default function UniversitiesPage() {
                             </div>
 
                             {/* Dual Pane Editor */}
-                            <div className="flex-1 flex overflow-hidden">
+                            <div className="flex-1 flex flex-col lg:flex-row overflow-hidden">
                                 {/* Editor Pane */}
-                                <div className="flex-1 flex flex-col border-r border-slate-100 bg-slate-50/30">
+                                <div className="flex-1 flex flex-col lg:border-r border-slate-100 bg-slate-50/30 overflow-hidden min-h-[300px] lg:min-h-0">
                                     <div className="p-4 border-b border-slate-100 bg-white flex items-center justify-between">
-                                        <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Editor (Markdown + HTML Support)</span>
+                                        <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Editor</span>
                                         <div className="flex items-center gap-2">
                                             <button
                                                 onClick={() => setTestPatternData(prev => ({
@@ -464,13 +464,13 @@ export default function UniversitiesPage() {
                                     <textarea
                                         value={testPatternData.markdown}
                                         onChange={(e) => setTestPatternData({ ...testPatternData, markdown: e.target.value })}
-                                        className="flex-1 p-8 bg-transparent outline-none font-mono text-sm leading-relaxed text-slate-700 resize-none"
+                                        className="flex-1 p-6 sm:p-8 bg-transparent outline-none font-mono text-xs sm:text-sm leading-relaxed text-slate-700 resize-none overflow-y-auto"
                                         placeholder="Define the entrance exam sequence, marks distribution, and pattern here. Use markdown tables for clarity."
                                     />
                                 </div>
 
                                 {/* Preview Pane */}
-                                <div className="flex-1 flex flex-col bg-white">
+                                <div className="hidden lg:flex flex-1 flex-col bg-white overflow-hidden">
                                     <div className="p-4 border-b border-slate-100 flex items-center gap-2">
                                         <span className="text-[10px] font-black text-indigo-500 uppercase tracking-widest bg-indigo-50 px-2 py-0.5 rounded">Live Preview</span>
                                     </div>

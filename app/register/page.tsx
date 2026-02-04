@@ -1,12 +1,13 @@
 'use client';
 
-import React from 'react';
-import { GraduationCap, Brain, Mail, Lock, User, Eye, EyeOff, AlertCircle, CheckCircle, Users, Building2, Clock, Globe, ArrowLeft } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { Mail, Lock, User, GraduationCap, Building2, Eye, EyeOff, AlertCircle, CheckCircle, Globe, ArrowLeft, Shield, Check, Info } from 'lucide-react';
 import { AuthService } from '@/lib/services/authService';
 import { supabase } from '@/lib/supabase/client';
+import Link from 'next/link';
 
 export default function RegisterPage() {
-    const [formData, setFormData] = React.useState({
+    const [formData, setFormData] = useState({
         fullName: '',
         email: '',
         password: '',
@@ -18,16 +19,31 @@ export default function RegisterPage() {
         isNewInstitution: false
     });
 
-    const [institutions, setInstitutions] = React.useState<any[]>([]);
-    const [showPassword, setShowPassword] = React.useState(false);
-    const [showConfirmPassword, setShowConfirmPassword] = React.useState(false);
-    const [loading, setLoading] = React.useState(false);
-    const [error, setError] = React.useState('');
-    const [success, setSuccess] = React.useState(false);
-    const [passwordStrength, setPasswordStrength] = React.useState(0);
+    const [institutions, setInstitutions] = useState<any[]>([]);
+    const [showPassword, setShowPassword] = useState(false);
+    const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+    const [loading, setLoading] = useState(false);
+    const [error, setError] = useState('');
+    const [success, setSuccess] = useState(false);
+    const [passwordStrength, setPasswordStrength] = useState(0);
 
-    React.useEffect(() => {
-        const searchParams = new URLSearchParams(window.location.search);
+    // Slideshow State (Theme consistency)
+    const [currentSlide, setCurrentSlide] = useState(0);
+    const slides = [
+        {
+            image: "/login_illustration.png",
+            title: "Join the Future",
+            description: "Empowering students and institutions with modern educational tools."
+        },
+        {
+            image: "/login_illustration_2.png",
+            title: "Strategic Excellence",
+            description: "Built for scale, designed for simplicity, and focused on your success."
+        }
+    ];
+
+    useEffect(() => {
+        const searchParams = new URLSearchParams(window.location.search || '');
         const roleParam = searchParams.get('role');
         if (roleParam === 'institution_admin' || roleParam === 'student') {
             setFormData(prev => ({ ...prev, role: roleParam as any }));
@@ -38,9 +54,14 @@ export default function RegisterPage() {
             if (data) setInstitutions(data);
         };
         fetchInstitutions();
+
+        const timer = setInterval(() => {
+            setCurrentSlide((prev) => (prev + 1) % slides.length);
+        }, 6000);
+        return () => clearInterval(timer);
     }, []);
 
-    React.useEffect(() => {
+    useEffect(() => {
         const password = formData.password;
         let strength = 0;
         if (password.length >= 8) strength++;
@@ -53,11 +74,7 @@ export default function RegisterPage() {
     const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
         const { name, value, type } = e.target as HTMLInputElement;
         const val = type === 'checkbox' ? (e.target as HTMLInputElement).checked : value;
-
-        setFormData({
-            ...formData,
-            [name]: val
-        });
+        setFormData(prev => ({ ...prev, [name]: val }));
         setError('');
     };
 
@@ -67,7 +84,7 @@ export default function RegisterPage() {
         setLoading(true);
 
         if (!formData.fullName || !formData.email || !formData.password) {
-            setError('Please fill in all fields');
+            setError('Please fill in all required fields');
             setLoading(false);
             return;
         }
@@ -85,16 +102,10 @@ export default function RegisterPage() {
                 return;
             }
             if (!formData.isNewInstitution && !formData.institutionId) {
-                setError('Please select an institution or register a new one');
+                setError('Please select an existing institution');
                 setLoading(false);
                 return;
             }
-        }
-
-        if (formData.password.length < 8) {
-            setError('Password must be at least 8 characters');
-            setLoading(false);
-            return;
         }
 
         try {
@@ -114,324 +125,267 @@ export default function RegisterPage() {
                 return;
             }
 
-            if (user) {
-                setSuccess(true);
-            }
+            if (user) setSuccess(true);
         } catch (err) {
-            setError('An unexpected error occurred');
+            setError('An unexpected error occurred during registration');
             setLoading(false);
         }
     };
 
     if (success) {
         return (
-            <div className="min-h-screen bg-slate-50 flex items-center justify-center p-4">
-                <div className="absolute inset-0 bg-mesh-gradient opacity-30"></div>
-                <div className="relative bg-white rounded-3xl shadow-2xl p-12 text-center max-w-md animate-scale-in border border-slate-100">
-                    {formData.role === 'student' ? (
-                        <>
-                            <div className="w-24 h-24 bg-green-50 rounded-full flex items-center justify-center mx-auto mb-8 border-4 border-white shadow-xl">
-                                <Mail className="w-12 h-12 text-green-500 animate-bounce-slow" />
-                            </div>
-                            <h2 className="text-3xl font-black text-slate-900 mb-3 tracking-tight">Check Your Email! 📧</h2>
-                            <p className="text-slate-600 mb-8 font-medium italic">We've sent a link to <span className="font-black text-slate-800 underline decoration-green-400 decoration-2">{formData.email}</span>.</p>
-                            <div className="bg-slate-50 p-6 rounded-2xl border border-slate-100 text-sm text-slate-500 leading-relaxed font-semibold">
-                                Please click the link in your email to activate and start your journey with Aptivo.
-                            </div>
-                        </>
-                    ) : (
-                        <>
-                            <div className="w-24 h-24 bg-amber-50 rounded-full flex items-center justify-center mx-auto mb-8 border-4 border-white shadow-xl">
-                                <Clock className="w-12 h-12 text-amber-500 animate-pulse" />
-                            </div>
-                            <h2 className="text-3xl font-black text-slate-900 mb-3 tracking-tight">Pending Approval! 🏛️</h2>
-                            <p className="text-slate-600 mb-8 font-medium">Your request for <span className="font-black text-slate-800">{formData.institutionName || 'your institution'}</span> is being reviewed.</p>
-                            <div className="text-left space-y-4 bg-amber-50/50 p-6 rounded-2xl border border-amber-100">
-                                <p className="text-sm text-amber-900 font-black uppercase tracking-wider">Next steps:</p>
-                                <ul className="text-sm text-amber-800 space-y-3 font-semibold list-none">
-                                    <li className="flex items-start gap-2">
-                                        <div className="w-5 h-5 rounded-full bg-amber-200 flex-shrink-0 flex items-center justify-center text-[10px] text-amber-900 font-bold">1</div>
-                                        Application review (up to 7 days)
-                                    </li>
-                                    <li className="flex items-start gap-2">
-                                        <div className="w-5 h-5 rounded-full bg-amber-200 flex-shrink-0 flex items-center justify-center text-[10px] text-amber-900 font-bold">2</div>
-                                        Domain verification audit
-                                    </li>
-                                    <li className="flex items-start gap-2">
-                                        <div className="w-5 h-5 rounded-full bg-amber-200 flex-shrink-0 flex items-center justify-center text-[10px] text-amber-900 font-bold">3</div>
-                                        Final activation email
-                                    </li>
-                                </ul>
-                            </div>
-                        </>
-                    )}
-
+            <div className="min-h-screen bg-[#F8FAFC] flex items-center justify-center p-4">
+                <div className="bg-white rounded-[3rem] shadow-2xl p-12 text-center max-w-sm animate-scale-in border border-slate-100 relative">
+                    <div className="w-24 h-24 bg-green-50 rounded-3xl flex items-center justify-center mx-auto mb-8 animate-bounce-slow">
+                        <Mail className="w-12 h-12 text-[#4CAF50]" />
+                    </div>
+                    <h2 className="text-3xl font-black text-[#1B3A3A] mb-3">Verification Sent!</h2>
+                    <p className="text-[#4A7272] text-[13px] font-medium leading-relaxed mb-10">
+                        {formData.role === 'student'
+                            ? "A welcome link is on its way to your inbox. Please verify to enter your dashboard."
+                            : "Your institution registration is received and currently under audit."}
+                    </p>
                     <button
                         onClick={() => window.location.href = '/login'}
-                        className="mt-10 w-full py-5 bg-slate-900 text-white font-black rounded-2xl hover:bg-black transition-all shadow-2xl active:scale-95"
+                        className="w-full py-5 bg-[#244D4D] text-white font-black rounded-2xl hover:bg-[#1B3A3A] transition-all shadow-xl active:scale-95"
                     >
-                        Return to Sign In
+                        RETURN TO LOGIN
                     </button>
+                    <div className="absolute top-10 right-10 w-24 h-24 bg-green-500/5 rounded-full blur-3xl -z-10"></div>
                 </div>
             </div>
         );
     }
 
     return (
-        <div className="min-h-screen bg-slate-50 flex items-center justify-center p-4">
-            <div className="absolute inset-0 bg-mesh-gradient opacity-30"></div>
+        <div className="min-h-screen bg-[#F8FAFC] flex items-center justify-center p-0 sm:p-4 lg:p-6 overflow-hidden">
+            <div className="w-full max-w-6xl max-h-[98vh] flex flex-col lg:flex-row bg-white rounded-none sm:rounded-[2.5rem] shadow-[0_20px_60px_-15px_rgba(0,0,0,0.1)] overflow-hidden animate-scale-in border border-slate-100/50">
 
-            <div className="relative w-full max-w-md">
-                <div className="bg-white rounded-3xl shadow-2xl p-8 animate-scale-in border border-slate-100">
-                    <button
-                        onClick={() => window.location.href = '/login'}
-                        className="mb-6 flex items-center gap-2 text-slate-400 hover:text-slate-900 transition-colors text-xs font-bold uppercase tracking-widest"
-                    >
-                        <ArrowLeft className="w-4 h-4" />
-                        Back to Login
-                    </button>
-
-                    <div className="text-center mb-8">
-                        <div className="w-16 h-16 bg-slate-900 rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-xl rotate-3">
-                            <GraduationCap className="w-8 h-8 text-white -rotate-3" />
-                        </div>
-                        <h1 className="text-3xl font-black text-slate-900 mb-2 tracking-tight">Join Aptivo</h1>
-                        <p className="text-slate-500 font-medium">Create your secure learning account</p>
+                {/* Horizontal Branding Frame (Left) */}
+                <div className="hidden lg:flex lg:w-[40%] bg-[#EAF5E9] p-10 flex-col items-center justify-between text-center relative overflow-hidden">
+                    <div className="w-full">
+                        <Link href="/login" className="inline-flex items-center gap-2 text-[10px] font-black text-slate-400 hover:text-[#4CAF50] transition-colors uppercase tracking-[0.2em]">
+                            <ArrowLeft className="w-4 h-4" />
+                            Return
+                        </Link>
                     </div>
 
-                    {error && (
-                        <div className="mb-6 p-4 bg-red-50 border border-red-100 rounded-2xl flex items-start gap-3 animate-fade-in text-red-700 text-sm font-semibold">
-                            <AlertCircle className="w-5 h-5 text-red-500 flex-shrink-0 mt-0.5" />
-                            {error}
+                    <div className="relative z-10 w-full space-y-8">
+                        <div className="relative h-[300px] w-full flex flex-col items-center justify-center">
+                            {slides.map((slide, index) => (
+                                <div
+                                    key={index}
+                                    className={`absolute inset-0 flex flex-col items-center transition-all duration-1000 transform ${index === currentSlide ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-8 pointer-events-none'
+                                        }`}
+                                >
+                                    <div className="w-full aspect-square max-w-[240px] mx-auto bg-white rounded-[2.5rem] shadow-xl p-6 border border-white/50 relative group">
+                                        <div className="absolute inset-0 bg-green-400/10 rounded-[2.5rem] blur-xl opacity-0 group-hover:opacity-100 transition-opacity"></div>
+                                        <img src={slide.image} alt={slide.title} className="w-full h-full object-contain relative" />
+                                    </div>
+                                    <div className="mt-10 space-y-3">
+                                        <h2 className="text-2xl font-black text-[#1B3A3A] tracking-tight">{slide.title}</h2>
+                                        <p className="text-[#4A7272] text-xs font-medium max-w-[240px] mx-auto leading-relaxed opacity-70">{slide.description}</p>
+                                    </div>
+                                </div>
+                            ))}
                         </div>
-                    )}
 
-                    <form onSubmit={handleSubmit} className="space-y-5">
-                        {/* Role Selection */}
-                        <div className="grid grid-cols-2 gap-3 mb-6">
+                    </div>
+
+                    <div className="w-full flex justify-center gap-8 border-t border-slate-900/5 pt-8 mt-4">
+                        <div className="flex flex-col items-center">
+                            <span className="text-[18px] font-black text-[#1B3A3A]">12k+</span>
+                            <span className="text-[10px] font-bold text-slate-400 uppercase">Users</span>
+                        </div>
+                        <div className="flex flex-col items-center">
+                            <span className="text-[18px] font-black text-[#1B3A3A]">500+</span>
+                            <span className="text-[10px] font-bold text-slate-400 uppercase">Colleges</span>
+                        </div>
+                    </div>
+
+                    {/* Decorative blobs */}
+                    <div className="absolute top-[-10%] right-[-10%] w-72 h-72 bg-white/40 rounded-full blur-[100px]"></div>
+                    <div className="absolute bottom-[-10%] left-[-10%] w-72 h-72 bg-white/40 rounded-full blur-[100px]"></div>
+                </div>
+
+                {/* Registration Content (Right) */}
+                <div className="flex-1 p-6 sm:p-10 lg:p-14 flex flex-col items-center bg-white overflow-y-auto custom-scrollbar">
+                    <div className="w-full max-w-xl space-y-8">
+
+                        {/* Header Section */}
+                        <div className="text-center space-y-3">
+                            <div className="w-14 h-14 bg-[#1B3A3A] rounded-2xl flex items-center justify-center mx-auto shadow-lg shadow-slate-200">
+                                <GraduationCap className="w-7 h-7 text-white" />
+                            </div>
+                            <div>
+                                <h1 className="text-3xl font-black text-[#1B3A3A] tracking-tight">Join Aptivo</h1>
+                                <p className="text-xs text-slate-400 font-bold uppercase tracking-widest mt-1">Create your secure learning account</p>
+                            </div>
+                        </div>
+
+                        {/* Interactive Role Switcher - Large */}
+                        <div className="grid grid-cols-2 gap-4">
                             <button
                                 type="button"
                                 onClick={() => setFormData({ ...formData, role: 'student' })}
-                                className={`py-4 px-4 rounded-2xl text-sm font-black border-2 transition-all flex flex-col items-center gap-2 ${formData.role === 'student' ? 'border-slate-900 bg-slate-900 text-white shadow-lg' : 'border-slate-100 text-slate-400 hover:border-slate-200'}`}
+                                className={`group p-4 rounded-[1.5rem] border-2 transition-all flex items-center gap-4 ${formData.role === 'student' ? 'border-[#244D4D] bg-[#244D4D] text-white shadow-xl translate-y-[-2px]' : 'border-slate-50 bg-slate-50/50 text-slate-400 hover:border-slate-200'}`}
                             >
-                                <Users className="w-5 h-5" />
-                                Student
+                                <div className={`w-10 h-10 rounded-xl flex items-center justify-center transition-colors ${formData.role === 'student' ? 'bg-white/10' : 'bg-white shadow-sm'}`}>
+                                    <User className="w-5 h-5" />
+                                </div>
+                                <div className="text-left">
+                                    <span className="block text-[11px] font-black uppercase tracking-wider">Student</span>
+                                    <span className="block text-[9px] font-medium opacity-60">Personal Access</span>
+                                </div>
                             </button>
                             <button
                                 type="button"
                                 onClick={() => setFormData({ ...formData, role: 'institution_admin' })}
-                                className={`py-4 px-4 rounded-2xl text-sm font-black border-2 transition-all flex flex-col items-center gap-2 ${formData.role === 'institution_admin' ? 'border-slate-900 bg-slate-900 text-white shadow-lg' : 'border-slate-100 text-slate-400 hover:border-slate-200'}`}
+                                className={`group p-4 rounded-[1.5rem] border-2 transition-all flex items-center gap-4 ${formData.role === 'institution_admin' ? 'border-[#244D4D] bg-[#244D4D] text-white shadow-xl translate-y-[-2px]' : 'border-slate-50 bg-slate-50/50 text-slate-400 hover:border-slate-200'}`}
                             >
-                                <Building2 className="w-5 h-5" />
-                                Institution
+                                <div className={`w-10 h-10 rounded-xl flex items-center justify-center transition-colors ${formData.role === 'institution_admin' ? 'bg-white/10' : 'bg-white shadow-sm'}`}>
+                                    <Building2 className="w-5 h-5" />
+                                </div>
+                                <div className="text-left">
+                                    <span className="block text-[11px] font-black uppercase tracking-wider">Institution</span>
+                                    <span className="block text-[9px] font-medium opacity-60">Admin Portal</span>
+                                </div>
                             </button>
                         </div>
 
-                        {formData.role === 'institution_admin' && (
-                            <div className="space-y-4 py-4 px-4 bg-slate-50 rounded-2xl border border-slate-100 animate-in slide-in-from-top-2 duration-300">
-                                <div className="flex items-center gap-2 mb-2 bg-white p-1.5 rounded-xl border border-slate-100">
-                                    <button
-                                        type="button"
-                                        onClick={() => setFormData({ ...formData, isNewInstitution: false })}
-                                        className={`flex-1 py-2 text-[10px] font-black uppercase tracking-wider rounded-lg transition-all ${!formData.isNewInstitution ? 'bg-slate-900 text-white shadow-md' : 'text-slate-400'}`}
-                                    >
-                                        Join Existing
-                                    </button>
-                                    <button
-                                        type="button"
-                                        onClick={() => setFormData({ ...formData, isNewInstitution: true })}
-                                        className={`flex-1 py-2 text-[10px] font-black uppercase tracking-wider rounded-lg transition-all ${formData.isNewInstitution ? 'bg-slate-900 text-white shadow-md' : 'text-slate-400'}`}
-                                    >
-                                        New Registration
-                                    </button>
-                                </div>
-
-                                {!formData.isNewInstitution ? (
-                                    <div className="relative">
-                                        <Building2 className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
-                                        <select
-                                            id="institutionId"
-                                            name="institutionId"
-                                            value={formData.institutionId}
-                                            onChange={handleChange}
-                                            required
-                                            className="w-full pl-12 pr-4 py-3 bg-white border border-slate-200 rounded-xl appearance-none text-slate-800 font-black focus:outline-none focus:ring-4 focus:ring-slate-900/5 focus:border-slate-900"
-                                        >
-                                            <option value="">Select Institution...</option>
-                                            {institutions.map(inst => (
-                                                <option key={inst.id} value={inst.id}>{inst.name}</option>
-                                            ))}
-                                        </select>
-                                    </div>
-                                ) : (
-                                    <div className="space-y-4">
-                                        <div className="relative">
-                                            <Building2 className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
-                                            <input
-                                                id="institutionName"
-                                                name="institutionName"
-                                                type="text"
-                                                value={formData.institutionName}
-                                                onChange={handleChange}
-                                                required
-                                                placeholder="Institution Name"
-                                                className="w-full pl-12 pr-4 py-3 bg-white border border-slate-200 rounded-xl focus:outline-none focus:ring-4 focus:ring-slate-900/5 focus:border-slate-900 font-bold"
-                                            />
-                                        </div>
-                                        <div className="relative">
-                                            <Globe className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
-                                            <select
-                                                id="institutionType"
-                                                name="institutionType"
-                                                value={formData.institutionType}
-                                                onChange={handleChange}
-                                                className="w-full pl-12 pr-4 py-3 bg-white border border-slate-200 rounded-xl focus:outline-none focus:ring-4 focus:ring-slate-900/5 focus:border-slate-900 font-bold appearance-none"
-                                            >
-                                                <option value="college">University / College</option>
-                                                <option value="school">High School</option>
-                                                <option value="coaching">Coaching Center</option>
-                                                <option value="corporate">Corporate Training</option>
-                                            </select>
-                                        </div>
-                                    </div>
-                                )}
+                        {error && (
+                            <div className="p-4 bg-red-50 border border-red-100 rounded-2xl flex items-center gap-3 text-red-700 text-xs font-bold animate-in fade-in slide-in-from-top-1">
+                                <AlertCircle className="w-4 h-4 text-red-500 shrink-0" />
+                                {error}
                             </div>
                         )}
 
-                        <div>
-                            <label className="block text-sm font-black text-slate-700 mb-2">
-                                Full Name
-                            </label>
-                            <div className="relative">
-                                <User className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
-                                <input
-                                    id="fullName"
-                                    name="fullName"
-                                    type="text"
-                                    value={formData.fullName}
-                                    onChange={handleChange}
-                                    required
-                                    placeholder="John Doe"
-                                    className="w-full px-4 py-4 bg-slate-50 border border-slate-200 rounded-2xl focus:outline-none focus:ring-4 focus:ring-slate-900/5 focus:border-slate-900 pl-12 font-bold"
-                                />
-                            </div>
-                        </div>
-
-                        <div>
-                            <label className="block text-sm font-black text-slate-700 mb-2">
-                                Email Address
-                            </label>
-                            <div className="relative">
-                                <Mail className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
-                                <input
-                                    id="email"
-                                    name="email"
-                                    type="email"
-                                    value={formData.email}
-                                    onChange={handleChange}
-                                    required
-                                    placeholder="your.email@university.edu"
-                                    className="w-full px-4 py-4 bg-slate-50 border border-slate-200 rounded-2xl focus:outline-none focus:ring-4 focus:ring-slate-900/5 focus:border-slate-900 pl-12 font-bold"
-                                />
-                            </div>
-                        </div>
-
-                        <div>
-                            <label className="block text-sm font-black text-slate-700 mb-2">
-                                Password
-                            </label>
-                            <div className="relative">
-                                <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
-                                <input
-                                    id="password"
-                                    name="password"
-                                    type={showPassword ? 'text' : 'password'}
-                                    value={formData.password}
-                                    onChange={handleChange}
-                                    required
-                                    placeholder="Create strong password"
-                                    className="w-full pl-12 pr-12 py-4 bg-slate-50 border border-slate-200 rounded-2xl focus:outline-none focus:ring-4 focus:ring-slate-900/5 focus:border-slate-900 font-bold"
-                                />
-                                <button
-                                    type="button"
-                                    onClick={() => setShowPassword(!showPassword)}
-                                    className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 p-1"
-                                >
-                                    {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
-                                </button>
-                            </div>
-
-                            {formData.password && (
-                                <div className="mt-3 px-1">
-                                    <div className="flex gap-1.5 mb-1.5">
-                                        {[1, 2, 3, 4].map((level) => (
-                                            <div
-                                                key={level}
-                                                className={`h-1.5 flex-1 rounded-full transition-all duration-500 ${passwordStrength >= level
-                                                    ? passwordStrength === 1 ? 'bg-red-400' : passwordStrength === 2 ? 'bg-amber-400' : passwordStrength === 3 ? 'bg-blue-400' : 'bg-green-400'
-                                                    : 'bg-slate-100'}`}
-                                            />
-                                        ))}
+                        <form onSubmit={handleSubmit} className="space-y-5">
+                            {/* Institution Specific Logic */}
+                            {formData.role === 'institution_admin' && (
+                                <div className="p-5 bg-slate-50 rounded-[2rem] border border-slate-100 space-y-4 animate-in slide-in-from-top-4 duration-500">
+                                    <div className="flex p-1 bg-white rounded-2xl border border-slate-100">
+                                        <button type="button" onClick={() => setFormData({ ...formData, isNewInstitution: false })} className={`flex-1 py-2 text-[10px] font-black rounded-xl transition-all ${!formData.isNewInstitution ? 'bg-[#244D4D] text-white shadow-sm' : 'text-slate-400 hover:text-slate-600'}`}>JOIN EXISTING</button>
+                                        <button type="button" onClick={() => setFormData({ ...formData, isNewInstitution: true })} className={`flex-1 py-2 text-[10px] font-black rounded-xl transition-all ${formData.isNewInstitution ? 'bg-[#244D4D] text-white shadow-sm' : 'text-slate-400 hover:text-slate-600'}`}>NEW REGISTRATION</button>
                                     </div>
-                                    <p className="text-[10px] font-black uppercase tracking-wider text-slate-400">
-                                        {passwordStrength === 0 && 'Insecure'}
-                                        {passwordStrength === 1 && 'Weak'}
-                                        {passwordStrength === 2 && 'Average'}
-                                        {passwordStrength === 3 && 'Good Quality'}
-                                        {passwordStrength === 4 && 'High Security'}
-                                    </p>
+
+                                    <div className="relative">
+                                        {!formData.isNewInstitution ? (
+                                            <>
+                                                <Building2 className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-300" />
+                                                <select
+                                                    name="institutionId"
+                                                    value={formData.institutionId}
+                                                    onChange={handleChange}
+                                                    className="w-full pl-11 pr-4 py-3.5 bg-white border border-slate-200 rounded-2xl text-xs font-bold focus:border-[#4CAF50] focus:ring-4 focus:ring-green-500/5 outline-none transition-all appearance-none"
+                                                >
+                                                    <option value="">Select Institution...</option>
+                                                    {institutions.map(inst => <option key={inst.id} value={inst.id}>{inst.name}</option>)}
+                                                </select>
+                                            </>
+                                        ) : (
+                                            <div className="space-y-3">
+                                                <div className="relative">
+                                                    <Building2 className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-300" />
+                                                    <input type="text" name="institutionName" value={formData.institutionName} onChange={handleChange} placeholder="Full Institution Name" className="w-full pl-11 pr-4 py-3.5 bg-white border border-slate-200 rounded-2xl text-xs font-bold focus:border-[#4CAF50] focus:ring-4 focus:ring-green-500/5 outline-none" />
+                                                </div>
+                                                <div className="relative">
+                                                    <Globe className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-300" />
+                                                    <select name="institutionType" value={formData.institutionType} onChange={handleChange} className="w-full pl-11 pr-4 py-3.5 bg-white border border-slate-200 rounded-2xl text-xs font-bold focus:border-[#4CAF50] outline-none appearance-none">
+                                                        <option value="college">University / College</option>
+                                                        <option value="school">High School</option>
+                                                        <option value="coaching">Academy / Coaching</option>
+                                                    </select>
+                                                </div>
+                                            </div>
+                                        )}
+                                    </div>
                                 </div>
                             )}
-                        </div>
 
-                        <div>
-                            <label className="block text-sm font-black text-slate-700 mb-2">
-                                Confirm Password
-                            </label>
-                            <div className="relative">
-                                <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
-                                <input
-                                    id="confirmPassword"
-                                    name="confirmPassword"
-                                    type={showConfirmPassword ? 'text' : 'password'}
-                                    value={formData.confirmPassword}
-                                    onChange={handleChange}
-                                    required
-                                    placeholder="Repeat your password"
-                                    className="w-full pl-12 pr-12 py-4 bg-slate-50 border border-slate-200 rounded-2xl focus:outline-none focus:ring-4 focus:ring-slate-900/5 focus:border-slate-900 font-bold"
-                                />
-                                <button
-                                    type="button"
-                                    onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                                    className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 p-1"
-                                >
-                                    {showConfirmPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
-                                </button>
+                            {/* Base Fields Grid */}
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <div className="space-y-1.5">
+                                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Full Name</label>
+                                    <div className="relative">
+                                        <User className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-300" />
+                                        <input type="text" name="fullName" value={formData.fullName} onChange={handleChange} required placeholder="John Doe" className="w-full pl-11 pr-4 py-3.5 bg-slate-50/50 border border-slate-100 rounded-2xl text-[13px] font-medium focus:bg-white focus:border-[#4CAF50] focus:ring-4 focus:ring-green-500/5 outline-none transition-all" />
+                                    </div>
+                                </div>
+                                <div className="space-y-1.5">
+                                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Email Address</label>
+                                    <div className="relative">
+                                        <Mail className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-300" />
+                                        <input type="email" name="email" value={formData.email} onChange={handleChange} required placeholder="john@example.com" className="w-full pl-11 pr-4 py-3.5 bg-slate-50/50 border border-slate-100 rounded-2xl text-[13px] font-medium focus:bg-white focus:border-[#4CAF50] focus:ring-4 focus:ring-green-500/5 outline-none transition-all" />
+                                    </div>
+                                </div>
                             </div>
+
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <div className="space-y-1.5">
+                                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Secure Password</label>
+                                    <div className="relative">
+                                        <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-300" />
+                                        <input type={showPassword ? 'text' : 'password'} name="password" value={formData.password} onChange={handleChange} required placeholder="••••••••" className="w-full pl-11 pr-12 py-3.5 bg-slate-50/50 border border-slate-100 rounded-2xl text-[13px] font-medium focus:bg-white focus:border-[#4CAF50] focus:ring-4 focus:ring-green-500/5 outline-none transition-all" />
+                                        <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-300 hover:text-[#4CAF50] transition-colors p-1">
+                                            {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                                        </button>
+                                    </div>
+                                    <div className="flex gap-1 px-1">
+                                        {[1, 2, 3, 4].map((v) => (
+                                            <div key={v} className={`h-1 flex-1 rounded-full ${passwordStrength >= v ? 'bg-[#4CAF50]' : 'bg-slate-100'}`} />
+                                        ))}
+                                    </div>
+                                </div>
+                                <div className="space-y-1.5">
+                                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Confirm Identity</label>
+                                    <div className="relative">
+                                        <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-300" />
+                                        <input type={showConfirmPassword ? 'text' : 'password'} name="confirmPassword" value={formData.confirmPassword} onChange={handleChange} required placeholder="••••••••" className="w-full pl-11 pr-12 py-3.5 bg-slate-50/50 border border-slate-100 rounded-2xl text-[13px] font-medium focus:bg-white focus:border-[#4CAF50] focus:ring-4 focus:ring-green-500/5 outline-none transition-all" />
+                                        <button type="button" onClick={() => setShowConfirmPassword(!showConfirmPassword)} className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-300 hover:text-[#4CAF50] transition-colors p-1">
+                                            {showConfirmPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div className="flex items-start gap-3 px-1 pt-2">
+                                <div className="relative flex h-5 items-center">
+                                    <input type="checkbox" required className="h-4 w-4 rounded border-slate-200 text-[#4CAF50] focus:ring-[#4CAF50] cursor-pointer" />
+                                </div>
+                                <div className="text-[11px] leading-snug">
+                                    <label className="font-bold text-slate-500">I agree to the <Link href="/terms" className="text-[#1B3A3A] hover:underline underline-offset-2">Terms of Service</Link> and <Link href="/privacy" className="text-[#1B3A3A] hover:underline underline-offset-2">Privacy Policy</Link></label>
+                                    <p className="text-[10px] text-slate-400 mt-1 font-medium italic">Your data is stored securely in our encrypted vault.</p>
+                                </div>
+                            </div>
+
+                            <button
+                                type="submit"
+                                disabled={loading}
+                                className="w-full py-5 bg-[#1B3A3A] text-white text-[13px] font-black rounded-[1.25rem] hover:bg-black hover:scale-[1.01] active:scale-[0.98] transition-all shadow-2xl shadow-slate-200 flex items-center justify-center gap-3 mt-4"
+                            >
+                                {loading ? (
+                                    <div className="w-5 h-5 border-[3px] border-white/20 border-t-white rounded-full animate-spin"></div>
+                                ) : (
+                                    <>
+                                        <Check className="w-5 h-5" />
+                                        <span>{formData.role === 'student' ? 'CREATE STUDENT ACCOUNT' : 'REGISTER INSTITUTION'}</span>
+                                    </>
+                                )}
+                            </button>
+                        </form>
+
+                        {/* Footer Section */}
+                        <div className="text-center pt-4 border-t border-slate-50">
+                            <p className="text-[12px] font-bold text-slate-500">
+                                Already part of the community? {' '}
+                                <Link href="/login" className="text-[#4CAF50] hover:underline font-black ml-1">Sign In</Link>
+                            </p>
                         </div>
 
-                        <div className="flex items-start gap-3 pt-2">
-                            <input type="checkbox" id="terms" required className="w-5 h-5 text-slate-900 border-slate-300 rounded focus:ring-slate-900 mt-0.5" />
-                            <label htmlFor="terms" className="text-[11px] text-slate-500 font-bold leading-snug">
-                                I agree to the <a href="#" className="text-slate-900 underline">Terms of Platform</a> and authorize Aptivo to process my data for educational purposes.
-                            </label>
-                        </div>
-
-                        <button
-                            type="submit"
-                            disabled={loading}
-                            className="w-full py-5 bg-slate-900 text-white font-black rounded-2xl hover:bg-black transition-all shadow-2xl active:scale-[0.98] disabled:opacity-50 flex items-center justify-center gap-3 mt-4"
-                        >
-                            {loading ? <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div> : (formData.role === 'student' ? 'Create Account' : 'Register Institution')}
-                        </button>
-                    </form>
-
-                    <div className="mt-10 text-center">
-                        <p className="text-sm text-slate-500 font-bold">
-                            Member already? <a href="/login" className="text-slate-900 font-black hover:underline underline-offset-4 ml-1">Sign in here</a>
-                        </p>
                     </div>
                 </div>
+
             </div>
         </div>
     );

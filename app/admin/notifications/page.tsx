@@ -215,7 +215,7 @@ export default function AdminNotificationsPage() {
             <Sidebar userRole="super_admin" />
             <Header userName={user?.full_name} userEmail={user?.email} userAvatar={user?.avatar_url} />
 
-            <main className={`${isSidebarCollapsed ? 'ml-28' : 'ml-80'} mt-16 p-8 transition-all duration-300`}>
+            <main className={`flex-1 transition-all duration-300 pt-28 lg:pt-24 pb-12 px-4 sm:px-8 ${isSidebarCollapsed ? 'lg:ml-28' : 'lg:ml-80'}`}>
                 <div className="max-w-5xl mx-auto">
                     {/* Header */}
                     <div className="mb-8">
@@ -242,21 +242,21 @@ export default function AdminNotificationsPage() {
 
                                 <form onSubmit={handleSend} className="space-y-6">
                                     {/* Target Selection */}
-                                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4">
                                         <label className={`cursor-pointer border-2 rounded-xl p-4 flex flex-col items-center gap-2 hover:bg-gray-50 transition-all ${targetType === 'all' ? 'border-indigo-500 bg-indigo-50/50' : 'border-gray-100'}`}>
                                             <input type="radio" name="target" className="hidden" checked={targetType === 'all'} onChange={() => setTargetType('all')} />
-                                            <Users className={`w-6 h-6 ${targetType === 'all' ? 'text-indigo-600' : 'text-slate-400'}`} />
-                                            <span className={`text-sm font-bold ${targetType === 'all' ? 'text-indigo-900' : 'text-slate-500'}`}>All Users</span>
+                                            <Users className={`w-5 h-5 sm:w-6 sm:h-6 ${targetType === 'all' ? 'text-indigo-600' : 'text-slate-400'}`} />
+                                            <span className={`text-xs sm:text-sm font-bold ${targetType === 'all' ? 'text-indigo-900' : 'text-slate-500'}`}>All Users</span>
                                         </label>
                                         <label className={`cursor-pointer border-2 rounded-xl p-4 flex flex-col items-center gap-2 hover:bg-gray-50 transition-all ${targetType === 'role' ? 'border-indigo-500 bg-indigo-50/50' : 'border-gray-100'}`}>
                                             <input type="radio" name="target" className="hidden" checked={targetType === 'role'} onChange={() => setTargetType('role')} />
-                                            <Users className={`w-6 h-6 ${targetType === 'role' ? 'text-indigo-600' : 'text-slate-400'}`} />
-                                            <span className={`text-sm font-bold ${targetType === 'role' ? 'text-indigo-900' : 'text-slate-500'}`}>By Role</span>
+                                            <Users className={`w-5 h-5 sm:w-6 sm:h-6 ${targetType === 'role' ? 'text-indigo-600' : 'text-slate-400'}`} />
+                                            <span className={`text-xs sm:text-sm font-bold ${targetType === 'role' ? 'text-indigo-900' : 'text-slate-500'}`}>By Role</span>
                                         </label>
                                         <label className={`cursor-pointer border-2 rounded-xl p-4 flex flex-col items-center gap-2 hover:bg-gray-50 transition-all ${targetType === 'institution' ? 'border-indigo-500 bg-indigo-50/50' : 'border-gray-100'}`}>
                                             <input type="radio" name="target" className="hidden" checked={targetType === 'institution'} onChange={() => setTargetType('institution')} />
-                                            <Building2 className={`w-6 h-6 ${targetType === 'institution' ? 'text-indigo-600' : 'text-slate-400'}`} />
-                                            <span className={`text-sm font-bold ${targetType === 'institution' ? 'text-indigo-900' : 'text-slate-500'}`}>By Institution</span>
+                                            <Building2 className={`w-5 h-5 sm:w-6 sm:h-6 ${targetType === 'institution' ? 'text-indigo-600' : 'text-slate-400'}`} />
+                                            <span className={`text-xs sm:text-sm font-bold ${targetType === 'institution' ? 'text-indigo-900' : 'text-slate-500'}`}>By Institution</span>
                                         </label>
                                     </div>
 
@@ -301,25 +301,25 @@ export default function AdminNotificationsPage() {
                                     {/* Main Content */}
                                     <div>
                                         <label className="block text-sm font-medium text-slate-700 mb-2">Message Category</label>
-                                        <div className="flex gap-4">
+                                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                                             <button
                                                 type="button"
                                                 onClick={() => setCategory('info')}
-                                                className={`flex-1 py-2 rounded-lg text-sm font-medium border transition-colors flex items-center justify-center gap-2 ${category === 'info' ? 'bg-blue-50 border-blue-200 text-blue-700' : 'border-gray-200 text-slate-500 hover:bg-gray-50'}`}
+                                                className={`py-2 px-3 rounded-xl text-xs sm:text-sm font-black uppercase tracking-wider border transition-colors flex items-center justify-center gap-2 ${category === 'info' ? 'bg-blue-50 border-blue-200 text-blue-700' : 'border-gray-200 text-slate-500 hover:bg-gray-50'}`}
                                             >
                                                 <Info className="w-4 h-4" /> Info
                                             </button>
                                             <button
                                                 type="button"
                                                 onClick={() => setCategory('alert')}
-                                                className={`flex-1 py-2 rounded-lg text-sm font-medium border transition-colors flex items-center justify-center gap-2 ${category === 'alert' ? 'bg-red-50 border-red-200 text-red-700' : 'border-gray-200 text-slate-500 hover:bg-gray-50'}`}
+                                                className={`py-2 px-3 rounded-xl text-xs sm:text-sm font-black uppercase tracking-wider border transition-colors flex items-center justify-center gap-2 ${category === 'alert' ? 'bg-red-50 border-red-200 text-red-700' : 'border-gray-200 text-slate-500 hover:bg-gray-50'}`}
                                             >
                                                 <AlertTriangle className="w-4 h-4" /> Alert
                                             </button>
                                             <button
                                                 type="button"
                                                 onClick={() => setCategory('success')}
-                                                className={`flex-1 py-2 rounded-lg text-sm font-medium border transition-colors flex items-center justify-center gap-2 ${category === 'success' ? 'bg-green-50 border-green-200 text-green-700' : 'border-gray-200 text-slate-500 hover:bg-gray-50'}`}
+                                                className={`py-2 px-3 rounded-xl text-xs sm:text-sm font-black uppercase tracking-wider border transition-colors flex items-center justify-center gap-2 ${category === 'success' ? 'bg-green-50 border-green-200 text-green-700' : 'border-gray-200 text-slate-500 hover:bg-gray-50'}`}
                                             >
                                                 <CheckCircle className="w-4 h-4" /> Success
                                             </button>

@@ -382,165 +382,167 @@ export default function HierarchyManagerPage() {
             onDragStart={handleDragStart}
             onDragEnd={handleDragEnd}
         >
-            <div className="min-h-screen bg-gray-50 font-sans">
+            <div className="min-h-screen bg-gray-50 flex font-sans">
                 <Sidebar userRole="super_admin" />
-                <Header userName={user?.full_name || 'Admin'} userEmail={user?.email || 'admin@aptivo.edu'} />
+                <div className={`flex-1 flex flex-col min-h-screen transition-all duration-300 ${isSidebarCollapsed ? 'lg:ml-28' : 'lg:ml-80'}`}>
+                    <Header userName={user?.full_name || 'Admin'} userEmail={user?.email || 'admin@aptivo.edu'} />
 
-                <main className={`${isSidebarCollapsed ? 'ml-28' : 'ml-80'} mt-16 p-4 lg:p-8 relative transition-all duration-300`}>
-                    <div className="mb-8">
-                        <h1 className="text-2xl font-bold text-slate-900 mb-2">Hierarchy Manager</h1>
-                        <p className="text-slate-500">Drag items to reorder or change hierarchy. Convert Topics ↔ Subtopics by dragging them.</p>
-                    </div>
-
-                    <div className="bg-white rounded-3xl shadow-sm border border-gray-200 overflow-hidden min-h-[600px] flex flex-col">
-                        <div className="p-6 border-b border-gray-100 flex flex-col md:flex-row justify-between items-center gap-4 bg-white sticky top-0 z-10">
-                            <div className="text-sm font-medium text-slate-500 flex items-center gap-2">
-                                <AlertTriangle className="w-4 h-4 text-orange-400" />
-                                Drag items to organize structure
-                            </div>
-                            <div className="flex gap-2 flex-wrap">
-                                <button
-                                    onClick={() => openAddModal('subject')}
-                                    className="flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white text-sm font-bold rounded-xl hover:bg-indigo-700 transition-colors shadow-lg shadow-indigo-600/20"
-                                >
-                                    <Plus className="w-4 h-4" />
-                                    Add Subject
-                                </button>
-                                <button
-                                    onClick={() => openAddModal('topic')}
-                                    disabled={data.length === 0}
-                                    className="flex items-center gap-2 px-4 py-2 bg-white text-slate-600 border border-gray-200 text-sm font-bold rounded-xl hover:bg-gray-50 transition-colors disabled:opacity-50"
-                                >
-                                    <Plus className="w-4 h-4" />
-                                    Add Topic
-                                </button>
-                                <button
-                                    onClick={() => openAddModal('subtopic')}
-                                    disabled={data.length === 0}
-                                    className="flex items-center gap-2 px-4 py-2 bg-white text-slate-600 border border-gray-200 text-sm font-bold rounded-xl hover:bg-gray-50 transition-colors disabled:opacity-50"
-                                >
-                                    <Plus className="w-4 h-4" />
-                                    Add Subtopic
-                                </button>
-                            </div>
+                    <main className="flex-1 pt-28 lg:pt-24 pb-12 px-4 sm:px-8">
+                        <div className="mb-8">
+                            <h1 className="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight">Hierarchy Manager</h1>
+                            <p className="text-sm sm:text-base text-slate-500 mt-1 font-medium italic">Drag items to reorder or change hierarchy. Convert Topics ↔ Subtopics by dragging them.</p>
                         </div>
 
-                        <div className="px-6 py-3 bg-gray-50/50 border-b border-gray-100 text-xs font-semibold text-gray-400 uppercase tracking-wider flex justify-between">
-                            <span>Structure</span>
-                            <span>Actions</span>
-                        </div>
-
-                        <div className="flex-1 overflow-y-auto custom-scrollbar pb-10">
-                            {loading ? <div className="p-8 text-center text-slate-400">Loading...</div> : renderTree(data)}
-                        </div>
-                    </div>
-
-                    {/* Drag Overlay for smooth visuals */}
-                    {createPortal(
-                        <DragOverlay>
-                            {activeDragItem ? (
-                                <div className="p-4 bg-white shadow-2xl rounded-lg border-2 border-indigo-500 w-[300px] flex items-center gap-3 opacity-90 cursor-grabbing">
-                                    <GripVertical className="w-4 h-4 text-indigo-500" />
-                                    <span className="font-bold text-slate-800">{activeDragItem.title}</span>
+                        <div className="bg-white rounded-3xl shadow-sm border border-gray-200 overflow-hidden min-h-[600px] flex flex-col">
+                            <div className="p-6 border-b border-gray-100 flex flex-col lg:flex-row justify-between items-center gap-4 bg-white sticky top-0 z-10">
+                                <div className="text-xs font-bold text-slate-400 flex items-center gap-2 uppercase tracking-widest">
+                                    <AlertTriangle className="w-4 h-4 text-amber-500" />
+                                    Interactive Structure Mode
                                 </div>
-                            ) : null}
-                        </DragOverlay>,
-                        document.body
-                    )}
-
-                    {/* Add Modal */}
-                    {isAddModalOpen && (
-                        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
-                            <div className="bg-white rounded-2xl shadow-xl w-full max-w-md overflow-hidden animate-in fade-in zoom-in duration-200">
-                                <div className="p-6 border-b border-gray-100 flex justify-between items-center">
-                                    <h3 className="text-lg font-bold text-slate-800 capitalize">Add New {addType}</h3>
-                                    <button onClick={() => setIsAddModalOpen(false)} className="text-slate-400 hover:text-slate-600"><X className="w-5 h-5" /></button>
+                                <div className="flex gap-2 flex-wrap justify-center sm:justify-start">
+                                    <button
+                                        onClick={() => openAddModal('subject')}
+                                        className="flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white text-[11px] font-black uppercase tracking-wider rounded-xl hover:bg-slate-900 transition-all shadow-lg shadow-indigo-100 active:scale-95"
+                                    >
+                                        <Plus className="w-4 h-4" />
+                                        Subject
+                                    </button>
+                                    <button
+                                        onClick={() => openAddModal('topic')}
+                                        disabled={data.length === 0}
+                                        className="flex items-center gap-2 px-4 py-2 bg-slate-50 text-slate-600 border border-slate-200 text-[11px] font-black uppercase tracking-wider rounded-xl hover:bg-slate-100 transition-all disabled:opacity-50 active:scale-95"
+                                    >
+                                        <Plus className="w-4 h-4" />
+                                        Topic
+                                    </button>
+                                    <button
+                                        onClick={() => openAddModal('subtopic')}
+                                        disabled={data.length === 0}
+                                        className="flex items-center gap-2 px-4 py-2 bg-slate-50 text-slate-600 border border-slate-200 text-[11px] font-black uppercase tracking-wider rounded-xl hover:bg-slate-100 transition-all disabled:opacity-50 active:scale-95"
+                                    >
+                                        <Plus className="w-4 h-4" />
+                                        Subtopic
+                                    </button>
                                 </div>
-                                <div className="p-6 space-y-4">
-                                    <div>
-                                        <label className="block text-sm font-medium text-slate-700 mb-2">Names</label>
-                                        <div className="space-y-3 max-h-[200px] overflow-y-auto pr-2 custom-scrollbar">
-                                            {inputList.map((item, index) => (
-                                                <div key={index} className="flex gap-2">
-                                                    <input
-                                                        type="text"
-                                                        value={item}
-                                                        onChange={(e) => {
-                                                            const newList = [...inputList];
-                                                            newList[index] = e.target.value;
-                                                            setInputList(newList);
-                                                        }}
-                                                        className="flex-1 px-4 py-2 rounded-lg border border-gray-200 focus:ring-2 focus:ring-indigo-100 focus:border-indigo-500 outline-none"
-                                                        placeholder={`Enter ${addType} name`}
-                                                        autoFocus={index === inputList.length - 1}
-                                                    />
-                                                    {inputList.length > 1 && (
-                                                        <button
-                                                            onClick={() => {
-                                                                const newList = inputList.filter((_, i) => i !== index);
+                            </div>
+
+                            <div className="px-6 py-4 bg-slate-50 border-b border-slate-100 text-[10px] font-black text-slate-400 uppercase tracking-widest flex justify-between">
+                                <span>Content Tree Structure</span>
+                                <span className="hidden sm:inline">Contextual Actions</span>
+                            </div>
+
+                            <div className="flex-1 overflow-y-auto custom-scrollbar pb-10">
+                                {loading ? <div className="p-8 text-center text-slate-400">Loading...</div> : renderTree(data)}
+                            </div>
+                        </div>
+
+                        {/* Drag Overlay for smooth visuals */}
+                        {createPortal(
+                            <DragOverlay>
+                                {activeDragItem ? (
+                                    <div className="p-4 bg-white shadow-2xl rounded-lg border-2 border-indigo-500 w-[300px] flex items-center gap-3 opacity-90 cursor-grabbing">
+                                        <GripVertical className="w-4 h-4 text-indigo-500" />
+                                        <span className="font-bold text-slate-800">{activeDragItem.title}</span>
+                                    </div>
+                                ) : null}
+                            </DragOverlay>,
+                            document.body
+                        )}
+
+                        {/* Add Modal */}
+                        {isAddModalOpen && (
+                            <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
+                                <div className="bg-white rounded-2xl shadow-xl w-full max-w-md overflow-hidden animate-in fade-in zoom-in duration-200">
+                                    <div className="p-6 border-b border-gray-100 flex justify-between items-center">
+                                        <h3 className="text-lg font-bold text-slate-800 capitalize">Add New {addType}</h3>
+                                        <button onClick={() => setIsAddModalOpen(false)} className="text-slate-400 hover:text-slate-600"><X className="w-5 h-5" /></button>
+                                    </div>
+                                    <div className="p-6 space-y-4">
+                                        <div>
+                                            <label className="block text-sm font-medium text-slate-700 mb-2">Names</label>
+                                            <div className="space-y-3 max-h-[200px] overflow-y-auto pr-2 custom-scrollbar">
+                                                {inputList.map((item, index) => (
+                                                    <div key={index} className="flex gap-2">
+                                                        <input
+                                                            type="text"
+                                                            value={item}
+                                                            onChange={(e) => {
+                                                                const newList = [...inputList];
+                                                                newList[index] = e.target.value;
                                                                 setInputList(newList);
                                                             }}
-                                                            className="p-2 text-red-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
-                                                        >
-                                                            <Trash2 className="w-4 h-4" />
-                                                        </button>
-                                                    )}
-                                                </div>
-                                            ))}
+                                                            className="flex-1 px-4 py-2 rounded-lg border border-gray-200 focus:ring-2 focus:ring-indigo-100 focus:border-indigo-500 outline-none"
+                                                            placeholder={`Enter ${addType} name`}
+                                                            autoFocus={index === inputList.length - 1}
+                                                        />
+                                                        {inputList.length > 1 && (
+                                                            <button
+                                                                onClick={() => {
+                                                                    const newList = inputList.filter((_, i) => i !== index);
+                                                                    setInputList(newList);
+                                                                }}
+                                                                className="p-2 text-red-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                                                            >
+                                                                <Trash2 className="w-4 h-4" />
+                                                            </button>
+                                                        )}
+                                                    </div>
+                                                ))}
+                                            </div>
+                                            <button
+                                                onClick={() => setInputList([...inputList, ''])}
+                                                className="mt-3 flex items-center gap-2 text-sm font-bold text-indigo-600 hover:text-indigo-800"
+                                            >
+                                                <Plus className="w-4 h-4" />
+                                                Add Another
+                                            </button>
                                         </div>
-                                        <button
-                                            onClick={() => setInputList([...inputList, ''])}
-                                            className="mt-3 flex items-center gap-2 text-sm font-bold text-indigo-600 hover:text-indigo-800"
-                                        >
-                                            <Plus className="w-4 h-4" />
-                                            Add Another
-                                        </button>
+
+                                        {addType === 'topic' && (
+                                            <div>
+                                                <label className="block text-sm font-medium text-slate-700 mb-1">Parent Subject</label>
+                                                <select
+                                                    onChange={(e) => setParentId(parseInt(e.target.value))}
+                                                    className="w-full px-4 py-2 rounded-lg border border-gray-200"
+                                                    defaultValue=""
+                                                >
+                                                    <option value="" disabled>Select Subject</option>
+                                                    {data.filter(i => i.type === 'subject').map(s => (
+                                                        <option key={s.dbId} value={s.dbId}>{s.title}</option>
+                                                    ))}
+                                                </select>
+                                            </div>
+                                        )}
+
+                                        {addType === 'subtopic' && (
+                                            <div>
+                                                <label className="block text-sm font-medium text-slate-700 mb-1">Parent Topic</label>
+                                                <select
+                                                    onChange={(e) => setParentId(parseInt(e.target.value))}
+                                                    className="w-full px-4 py-2 rounded-lg border border-gray-200"
+                                                    defaultValue=""
+                                                >
+                                                    <option value="" disabled>Select Topic</option>
+                                                    {data.filter(i => i.type === 'subject').map(s => (
+                                                        <optgroup key={s.dbId} label={s.title}>
+                                                            {s.children?.map(t => (
+                                                                <option key={t.dbId} value={t.dbId}>{t.title}</option>
+                                                            ))}
+                                                        </optgroup>
+                                                    ))}
+                                                </select>
+                                            </div>
+                                        )}
                                     </div>
-
-                                    {addType === 'topic' && (
-                                        <div>
-                                            <label className="block text-sm font-medium text-slate-700 mb-1">Parent Subject</label>
-                                            <select
-                                                onChange={(e) => setParentId(parseInt(e.target.value))}
-                                                className="w-full px-4 py-2 rounded-lg border border-gray-200"
-                                                defaultValue=""
-                                            >
-                                                <option value="" disabled>Select Subject</option>
-                                                {data.filter(i => i.type === 'subject').map(s => (
-                                                    <option key={s.dbId} value={s.dbId}>{s.title}</option>
-                                                ))}
-                                            </select>
-                                        </div>
-                                    )}
-
-                                    {addType === 'subtopic' && (
-                                        <div>
-                                            <label className="block text-sm font-medium text-slate-700 mb-1">Parent Topic</label>
-                                            <select
-                                                onChange={(e) => setParentId(parseInt(e.target.value))}
-                                                className="w-full px-4 py-2 rounded-lg border border-gray-200"
-                                                defaultValue=""
-                                            >
-                                                <option value="" disabled>Select Topic</option>
-                                                {data.filter(i => i.type === 'subject').map(s => (
-                                                    <optgroup key={s.dbId} label={s.title}>
-                                                        {s.children?.map(t => (
-                                                            <option key={t.dbId} value={t.dbId}>{t.title}</option>
-                                                        ))}
-                                                    </optgroup>
-                                                ))}
-                                            </select>
-                                        </div>
-                                    )}
-                                </div>
-                                <div className="p-6 bg-gray-50 flex justify-end gap-3">
-                                    <button onClick={() => setIsAddModalOpen(false)} className="px-4 py-2 text-slate-600 font-medium hover:bg-gray-200 rounded-lg">Cancel</button>
-                                    <button onClick={handleSave} className="px-4 py-2 bg-indigo-600 text-white font-bold rounded-lg hover:bg-indigo-700">Save</button>
+                                    <div className="p-6 bg-gray-50 flex justify-end gap-3">
+                                        <button onClick={() => setIsAddModalOpen(false)} className="px-4 py-2 text-slate-600 font-medium hover:bg-gray-200 rounded-lg">Cancel</button>
+                                        <button onClick={handleSave} className="px-4 py-2 bg-indigo-600 text-white font-bold rounded-lg hover:bg-indigo-700">Save</button>
+                                    </div>
                                 </div>
                             </div>
-                        </div>
-                    )}
-                </main>
+                        )}
+                    </main>
+                </div>
             </div>
         </DndContext>
     );

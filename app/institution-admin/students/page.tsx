@@ -215,12 +215,12 @@ export default function StudentManagerPage() {
 
     return (
         <div className="max-w-[1400px] mx-auto">
-            <div className="flex justify-between items-center mb-8">
+            <div className="flex flex-col lg:flex-row lg:justify-between lg:items-center gap-6 mb-8">
                 <div>
-                    <h1 className="text-3xl font-bold text-slate-900">Student Manager</h1>
-                    <p className="text-slate-500 text-lg">Manage accounts, status, and access.</p>
+                    <h1 className="text-2xl lg:text-3xl font-black text-slate-900 leading-tight">Student Manager</h1>
+                    <p className="text-slate-500 text-base lg:text-lg">Manage accounts, status, and access.</p>
                 </div>
-                <div className="flex gap-3">
+                <div className="grid grid-cols-2 lg:flex lg:items-center gap-2 lg:gap-3">
                     <input
                         type="file"
                         ref={fileInputRef}
@@ -230,59 +230,60 @@ export default function StudentManagerPage() {
                     />
                     <button
                         onClick={downloadTemplate}
-                        className="flex items-center gap-2 px-4 py-2 bg-white border border-gray-200 text-slate-700 rounded-lg hover:bg-gray-50 font-medium transition-colors"
+                        className="flex items-center justify-center gap-2 px-3 lg:px-4 py-2 bg-white border border-gray-200 text-slate-700 rounded-xl hover:bg-gray-50 font-bold transition-all shadow-sm text-xs sm:text-sm"
                         title="Download Excel Template"
                     >
                         <FileSpreadsheet className="w-4 h-4 text-green-600" />
-                        <span className="hidden sm:inline">Template</span>
+                        <span>Template</span>
                     </button>
                     <button
                         onClick={() => fileInputRef.current?.click()}
                         disabled={uploading}
-                        className="flex items-center gap-2 px-4 py-2 bg-white border border-gray-200 text-slate-700 rounded-lg hover:bg-gray-50 font-medium transition-colors"
+                        className="flex items-center justify-center gap-2 px-3 lg:px-4 py-2 bg-white border border-gray-200 text-slate-700 rounded-xl hover:bg-gray-50 font-bold transition-all shadow-sm text-xs sm:text-sm"
                     >
                         {uploading ? <RefreshCw className="w-4 h-4 animate-spin" /> : <FileSpreadsheet className="w-4 h-4" />}
-                        {uploading ? 'Uploading...' : 'Bulk Upload (Excel)'}
+                        <span className="whitespace-nowrap">{uploading ? 'Processing...' : 'Bulk Upload'}</span>
                     </button>
                     <button
                         onClick={() => setShowAddModal(true)}
-                        className="flex items-center gap-2 px-5 py-2.5 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 font-bold shadow-sm transition-all hover:scale-105"
+                        className="col-span-2 lg:flex-none flex items-center justify-center gap-2 px-5 py-2.5 bg-indigo-600 text-white rounded-xl hover:bg-indigo-700 font-black shadow-lg shadow-indigo-100 transition-all hover:scale-[1.02] active:scale-95 text-sm"
                     >
                         <Plus className="w-5 h-5" />
-                        Add Student
+                        Add Student Account
                     </button>
                 </div>
             </div>
 
             {/* Tool Bar */}
-            <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-100 flex items-center justify-between mb-6">
-                <div className="relative w-96">
+            <div className="bg-white p-4 rounded-2xl shadow-sm border border-gray-100 flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
+                <div className="relative w-full sm:w-96">
                     <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 w-4 h-4" />
                     <input
                         type="text"
                         placeholder="Search name, roll no, or email..."
                         value={search}
                         onChange={(e) => setSearch(e.target.value)}
-                        className="w-full pl-10 pr-4 py-2 bg-gray-50 border border-gray-200 rounded-lg outline-none focus:ring-2 focus:ring-indigo-500"
+                        className="w-full pl-10 pr-4 py-2 bg-gray-50 border border-gray-200 rounded-xl outline-none focus:ring-2 focus:ring-indigo-500 text-sm transition-all shadow-inner"
                     />
                 </div>
-                <div className="text-sm text-slate-500">
-                    Total: <span className="font-bold text-slate-900">{students.length}</span> |
-                    Active: <span className="font-bold text-green-600">{students.filter(s => s.status !== 'blocked').length}</span>
+                <div className="flex items-center justify-between sm:justify-end gap-3 text-[10px] lg:text-sm font-black uppercase tracking-widest text-slate-400">
+                    <div>Total: <span className="text-slate-900">{students.length}</span></div>
+                    <div className="w-1 h-1 rounded-full bg-slate-200" />
+                    <div>Active: <span className="text-green-600">{students.filter(s => s.status !== 'blocked').length}</span></div>
                 </div>
             </div>
 
             {/* Table */}
-            <div className="bg-white border border-gray-200 rounded-xl overflow-hidden shadow-sm">
-                <table className="w-full">
+            <div className="bg-white border border-gray-200 rounded-2xl overflow-hidden shadow-sm overflow-x-auto no-scrollbar">
+                <table className="w-full min-w-[800px]">
                     <thead className="bg-gray-50 border-b border-gray-200">
                         <tr>
-                            <th className="text-left py-4 px-6 text-xs font-bold text-gray-500 uppercase tracking-wider">Student</th>
-                            <th className="text-left py-4 px-6 text-xs font-bold text-gray-500 uppercase tracking-wider">Roll No</th>
-                            <th className="text-left py-4 px-6 text-xs font-bold text-gray-500 uppercase tracking-wider">Initial Password</th>
-                            <th className="text-left py-4 px-6 text-xs font-bold text-gray-500 uppercase tracking-wider">Email (Login)</th>
-                            <th className="text-left py-4 px-6 text-xs font-bold text-gray-500 uppercase tracking-wider">Status</th>
-                            <th className="text-right py-4 px-6 text-xs font-bold text-gray-500 uppercase tracking-wider">Actions</th>
+                            <th className="text-left py-4 px-6 text-[10px] font-black text-gray-400 uppercase tracking-widest">Student</th>
+                            <th className="text-left py-4 px-6 text-[10px] font-black text-gray-400 uppercase tracking-widest">Roll No</th>
+                            <th className="text-left py-4 px-6 text-[10px] font-black text-gray-400 uppercase tracking-widest">Initial Password</th>
+                            <th className="text-left py-4 px-6 text-[10px] font-black text-gray-400 uppercase tracking-widest">Email (Login)</th>
+                            <th className="text-left py-4 px-6 text-[10px] font-black text-gray-400 uppercase tracking-widest">Status</th>
+                            <th className="text-right py-4 px-6 text-[10px] font-black text-gray-400 uppercase tracking-widest">Actions</th>
                         </tr>
                     </thead>
                     <tbody className="divide-y divide-gray-100">

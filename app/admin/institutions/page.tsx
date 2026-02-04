@@ -129,32 +129,32 @@ export default function InstitutionsPage() {
     return (
         <div className="min-h-screen bg-gray-50 flex font-sans">
             <Sidebar userRole="super_admin" />
-            <div className="flex-1 flex flex-col transition-all duration-300">
+            <div className={`flex-1 flex flex-col min-h-screen transition-all duration-300 ${isSidebarCollapsed ? 'lg:ml-28' : 'lg:ml-80'}`}>
                 <Header userName="Admin" userEmail="admin@system.com" />
 
-                <main className={`transition-all duration-300 ${isSidebarCollapsed ? 'ml-28' : 'ml-80'} mt-16 p-8`}>
+                <main className="flex-1 pt-28 lg:pt-24 pb-12 px-4 sm:px-8">
                     <div className="max-w-6xl mx-auto">
-                        <div className="flex justify-between items-center mb-8">
+                        <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4 mb-8">
                             <div>
-                                <h1 className="text-3xl font-bold text-slate-900">Institution Manager</h1>
-                                <p className="text-slate-500 mt-1">Review registrations and manage ecosystem partners.</p>
+                                <h1 className="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight">Institution Manager</h1>
+                                <p className="text-sm sm:text-base text-slate-500 mt-1 font-medium">Review registrations and manage ecosystem partners.</p>
                             </div>
                             <button
                                 onClick={() => setIsModalOpen(true)}
-                                className="flex items-center gap-2 px-6 py-3 bg-indigo-600 text-white rounded-xl font-bold hover:bg-indigo-700 transition-colors shadow-lg shadow-indigo-200"
+                                className="flex items-center justify-center gap-2 px-6 py-3 bg-indigo-600 text-white rounded-xl font-bold hover:bg-slate-900 transition-all shadow-lg shadow-indigo-100 active:scale-95"
                             >
                                 <Plus className="w-5 h-5" />
-                                Create New
+                                <span className="text-sm">Create New</span>
                             </button>
                         </div>
 
                         {/* Tabs */}
-                        <div className="flex gap-2 mb-8 p-1.5 bg-gray-200/50 rounded-2xl w-fit">
+                        <div className="flex gap-2 mb-8 p-1.5 bg-gray-200/50 rounded-2xl w-full sm:w-fit overflow-x-auto no-scrollbar">
                             {(['approved', 'pending', 'rejected', 'blocked'] as const).map(tab => (
                                 <button
                                     key={tab}
                                     onClick={() => setActiveTab(tab)}
-                                    className={`px-6 py-2.5 rounded-xl font-bold text-sm transition-all flex items-center gap-2 ${activeTab === tab ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
+                                    className={`px-4 sm:px-6 py-2.5 rounded-xl font-bold text-xs sm:text-sm transition-all flex items-center gap-2 whitespace-nowrap ${activeTab === tab ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
                                 >
                                     {tab.charAt(0).toUpperCase() + tab.slice(1)}
                                     {tab === 'pending' && pendingCount > 0 && (
@@ -311,14 +311,14 @@ export default function InstitutionsPage() {
                                 </button>
                             </div>
 
-                            <form onSubmit={handleSave} className="p-8 space-y-6">
-                                <div className="grid grid-cols-2 gap-6">
-                                    <div className="col-span-2">
+                            <form onSubmit={handleSave} className="p-6 sm:p-8 space-y-4 sm:space-y-6">
+                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6">
+                                    <div className="sm:col-span-2">
                                         <label className="block text-sm font-bold text-slate-700 mb-2 tracking-tight">Institution Name</label>
                                         <input
                                             required
                                             type="text"
-                                            className="w-full p-4 bg-gray-50 border border-gray-100 rounded-2xl outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all font-medium"
+                                            className="w-full p-4 bg-gray-50 border border-gray-100 rounded-2xl outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all font-medium text-sm sm:text-base"
                                             placeholder="Official name..."
                                             value={formData.name}
                                             onChange={e => setFormData({ ...formData, name: e.target.value })}

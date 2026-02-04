@@ -29,12 +29,12 @@ export default function LandingPage() {
       {/* Navigation */}
       <nav className="fixed top-0 inset-x-0 z-50 bg-white/80 backdrop-blur-md border-b border-gray-100">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
-          <div className="flex items-center gap-2">
+          <Link href="/dashboard" className="flex items-center gap-2 hover:opacity-80 transition-opacity">
             <div className="w-8 h-8 bg-teal-700 rounded-lg flex items-center justify-center text-white font-bold">
               <GraduationCap className="w-5 h-5" />
             </div>
             <span className="text-xl font-bold text-slate-900">Aptivo</span>
-          </div>
+          </Link>
 
           <div className="hidden md:flex items-center gap-8 text-sm font-medium text-slate-600">
             <Link href="/courses" className="hover:text-teal-600 transition-colors">Courses</Link>
@@ -203,12 +203,12 @@ export default function LandingPage() {
       {/* Footer */}
       <footer className="bg-slate-50 py-12 border-t border-gray-200">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col md:flex-row justify-between items-center gap-6">
-          <div className="flex items-center gap-2">
+          <Link href="/dashboard" className="flex items-center gap-2 hover:opacity-80 transition-opacity">
             <div className="w-6 h-6 bg-teal-700 rounded flex items-center justify-center text-white">
               <BookOpen className="w-3 h-3" />
             </div>
             <span className="font-bold text-slate-900">Aptivo</span>
-          </div>
+          </Link>
           <p className="text-slate-500 text-sm">© 2026 Aptivo. All rights reserved.</p>
           <div className="flex gap-6 text-sm text-slate-500">
             <Link href="#" className="hover:text-teal-700">Privacy Policy</Link>

@@ -63,16 +63,16 @@ export default function AdminFeedbacksPage() {
     };
 
     return (
-        <div className="min-h-screen bg-white font-sans">
+        <div className="min-h-screen bg-gray-50 flex font-sans">
             <Sidebar userRole="super_admin" />
-            <div className={`flex-1 flex flex-col transition-all duration-300 ${isSidebarCollapsed ? 'ml-28' : 'ml-80'}`}>
+            <div className={`flex-1 flex flex-col min-h-screen transition-all duration-300 ${isSidebarCollapsed ? 'lg:ml-28' : 'lg:ml-80'}`}>
                 <Header userName={user?.full_name || 'Admin'} userEmail={user?.email || 'aptivo.education@gmail.com'} />
 
-                <main className="p-4 lg:p-8 pt-20 lg:pt-24">
+                <main className="flex-1 pt-28 lg:pt-24 pb-12 px-4 sm:px-8">
                     <div className="max-w-5xl mx-auto">
-                        <div className="mb-8">
-                            <h1 className="text-2xl font-bold text-slate-900">User Testimonials</h1>
-                            <p className="text-slate-500 text-sm">Review student feedback and select features for the home page.</p>
+                        <div className="mb-10">
+                            <h1 className="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight">User Testimonials</h1>
+                            <p className="text-sm sm:text-base text-slate-500 mt-1 font-medium">Review student feedback and select features for the home page.</p>
                         </div>
 
                         {loading ? (
@@ -82,38 +82,40 @@ export default function AdminFeedbacksPage() {
                         ) : (
                             <div className="grid gap-4">
                                 {feedbacks.map((f) => (
-                                    <div key={f.id} className="bg-white border border-gray-100 rounded-xl p-6 hover:shadow-md transition-shadow">
-                                        <div className="flex items-start justify-between gap-6">
+                                    <div key={f.id} className="bg-white border border-gray-100 rounded-2xl p-5 sm:p-6 hover:shadow-xl hover:shadow-slate-200/50 transition-all group active:scale-[0.99]">
+                                        <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-5">
                                             <div className="flex-1">
-                                                <div className="flex items-center gap-3 mb-2">
+                                                <div className="flex flex-wrap items-center gap-2 sm:gap-3 mb-3">
                                                     <div className="flex gap-0.5">
                                                         {[1, 2, 3, 4, 5].map((s) => (
                                                             <Star
                                                                 key={s}
-                                                                className={`w-3.5 h-3.5 ${s <= f.rating ? 'text-amber-400 fill-amber-400' : 'text-gray-200'}`}
+                                                                className={`w-3.5 h-3.5 ${s <= f.rating ? 'text-amber-400 fill-amber-400' : 'text-slate-200'}`}
                                                             />
                                                         ))}
                                                     </div>
                                                     <span className="text-sm font-bold text-slate-900">{f.user?.full_name || 'Anonymous Student'}</span>
-                                                    <span className="text-xs text-slate-400 italic"> - {f.user?.email || 'No email provided'}</span>
+                                                    <span className="text-xs text-slate-400 font-medium truncate max-w-[150px] sm:max-w-none"> {f.user?.email || ''}</span>
                                                 </div>
 
-                                                <p className="text-slate-600 text-sm mb-4 leading-relaxed">"{f.feedback_text}"</p>
+                                                <p className="text-slate-600 text-sm mb-4 leading-relaxed font-medium">"{f.feedback_text}"</p>
 
-                                                <div className="text-[10px] font-bold text-slate-300 uppercase tracking-widest">
-                                                    {new Date(f.created_at).toLocaleDateString()} • {f.user?.role?.replace('_', ' ') || 'Student'}
+                                                <div className="text-[10px] font-black text-slate-300 uppercase tracking-widest flex items-center gap-2">
+                                                    {new Date(f.created_at).toLocaleDateString()}
+                                                    <span className="w-1 h-1 rounded-full bg-slate-200"></span>
+                                                    {f.user?.role?.replace('_', ' ') || 'Student'}
                                                 </div>
                                             </div>
 
                                             <button
                                                 onClick={() => togglePublish(f.id, f.is_published)}
-                                                className={`px-4 py-2 rounded-lg text-xs font-bold transition-all flex items-center gap-2 ${f.is_published
-                                                    ? 'bg-teal-600 text-white'
-                                                    : 'bg-gray-100 text-slate-500 hover:bg-gray-200'
+                                                className={`w-full sm:w-auto px-6 py-2.5 rounded-xl text-[11px] font-black uppercase tracking-wider transition-all flex items-center justify-center gap-2 shadow-sm ${f.is_published
+                                                    ? 'bg-emerald-600 text-white shadow-emerald-100 active:bg-slate-900'
+                                                    : 'bg-slate-50 text-slate-500 hover:bg-slate-100 active:bg-slate-200'
                                                     }`}
                                             >
-                                                {f.is_published && <Check className="w-3 h-3" />}
-                                                {f.is_published ? 'On Home Page' : 'Feature on Home'}
+                                                {f.is_published && <Check className="w-3.5 h-3.5" />}
+                                                {f.is_published ? 'Featured' : 'Feature'}
                                             </button>
                                         </div>
                                     </div>

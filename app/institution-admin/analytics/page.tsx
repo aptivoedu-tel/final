@@ -152,114 +152,112 @@ export default function PerformanceAnalyticsPage() {
 
     return (
         <div className="max-w-7xl mx-auto pb-20" id="institution-report">
-            <div className="flex justify-between items-end mb-8">
+            <div className="flex flex-col lg:flex-row lg:justify-between lg:items-end gap-6 mb-8">
                 <div>
-                    <h1 className="text-4xl font-black text-slate-900 tracking-tight">Institutional Intelligence</h1>
-                    <p className="text-slate-500 text-lg">Performance metrics across all campuses and students.</p>
+                    <h1 className="text-2xl lg:text-4xl font-black text-slate-900 tracking-tight">Institutional Intelligence</h1>
+                    <p className="text-slate-500 text-base lg:text-lg">Performance metrics across all campuses and students.</p>
                 </div>
-                <div className="flex gap-3">
-                    <button onClick={loadAnalytics} className="p-2.5 border border-gray-200 rounded-xl hover:bg-gray-50 transition-colors">
+                <div className="flex flex-wrap items-center gap-2 lg:gap-3 w-full lg:w-auto">
+                    <button onClick={loadAnalytics} className="flex-none flex items-center justify-center p-2.5 bg-white border border-gray-200 rounded-xl hover:bg-gray-50 transition-colors shadow-sm">
                         <RefreshCw className={`w-5 h-5 text-slate-500 ${loading ? 'animate-spin' : ''}`} />
                     </button>
                     <button
                         onClick={handleExport}
                         disabled={exporting}
-                        className="flex items-center gap-2 px-6 py-2.5 bg-slate-900 text-white rounded-xl hover:bg-slate-800 font-bold transition-all shadow-lg active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed"
+                        className="flex-1 lg:flex-none flex items-center justify-center gap-2 px-6 py-2.5 bg-slate-900 text-white rounded-xl hover:bg-slate-800 font-bold transition-all shadow-lg active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed text-xs lg:text-sm"
                     >
                         {exporting ? (
                             <RefreshCw className="w-4 h-4 animate-spin" />
                         ) : (
                             <Download className="w-4 h-4" />
                         )}
-                        {exporting ? 'Generating PDF...' : 'Export PDF Intelligence'}
+                        <span className="whitespace-nowrap">{exporting ? 'Generating...' : 'Export PDF Intelligence'}</span>
                     </button>
                 </div>
             </div>
 
             {/* View Switcher */}
-            <div className="flex gap-2 p-1.5 bg-gray-100 rounded-2xl w-fit mb-10">
-                <button
-                    onClick={() => setActiveTab('overview')}
-                    className={`px-8 py-2.5 rounded-xl font-black text-xs uppercase tracking-widest transition-all ${activeTab === 'overview' ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-500 hover:text-slate-900'}`}
-                >
-                    Overview
-                </button>
-                <button
-                    onClick={() => setActiveTab('universities')}
-                    className={`px-8 py-2.5 rounded-xl font-black text-xs uppercase tracking-widest transition-all ${activeTab === 'universities' ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-500 hover:text-slate-900'}`}
-                >
-                    By University
-                </button>
-                <button
-                    onClick={() => setActiveTab('students')}
-                    className={`px-8 py-2.5 rounded-xl font-black text-xs uppercase tracking-widest transition-all ${activeTab === 'students' ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-500 hover:text-slate-900'}`}
-                >
-                    By Student
-                </button>
-                <button
-                    onClick={() => setActiveTab('drilldown')}
-                    className={`px-8 py-2.5 rounded-xl font-black text-xs uppercase tracking-widest transition-all ${activeTab === 'drilldown' ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-500 hover:text-slate-900'}`}
-                >
-                    Deep Intelligence
-                </button>
+            <div className="flex gap-1.5 p-1.5 bg-gray-100 rounded-2xl w-full lg:w-fit mb-10 overflow-x-auto no-scrollbar scroll-smooth">
+                {[
+                    { id: 'overview', label: 'Overview' },
+                    { id: 'universities', label: 'By University' },
+                    { id: 'students', label: 'By Student' },
+                    { id: 'drilldown', label: 'Deep Intelligence' }
+                ].map((tab) => (
+                    <button
+                        key={tab.id}
+                        onClick={() => setActiveTab(tab.id as any)}
+                        className={`
+                            flex-1 lg:flex-none whitespace-nowrap px-4 lg:px-8 py-2.5 rounded-xl font-black text-[10px] lg:text-xs uppercase tracking-widest transition-all
+                            ${activeTab === tab.id ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-500 hover:text-slate-900'}
+                        `}
+                    >
+                        {tab.label}
+                    </button>
+                ))}
             </div>
 
             {/* Tab: Overview */}
             {activeTab === 'overview' && (
                 <div className="space-y-8 animate-in fade-in duration-500">
-                    <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-                        <div className="bg-white p-8 rounded-3xl border border-gray-100 shadow-sm relative overflow-hidden group">
-                            <div className="absolute right-0 top-0 p-4 opacity-5 group-hover:scale-110 transition-transform">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 lg:gap-6">
+                        <div className="bg-white p-6 lg:p-8 rounded-3xl border border-gray-100 shadow-sm relative overflow-hidden group">
+                            <div className="absolute right-0 top-0 p-4 opacity-5 lg:group-hover:scale-110 transition-transform hidden lg:block">
                                 <Users className="w-24 h-24 text-indigo-600" />
                             </div>
-                            <h3 className="text-slate-400 text-[10px] font-black uppercase tracking-widest mb-4">Total Students</h3>
-                            <div className="text-5xl font-black text-slate-900">{stats?.overall.totalStudents}</div>
-                            <div className="text-indigo-600 text-xs font-bold mt-2">Across {stats?.overall.totalUniversities} Universities</div>
+                            <h3 className="text-slate-400 text-[10px] font-black uppercase tracking-widest mb-3 lg:mb-4">Total Students</h3>
+                            <div className="text-3xl lg:text-5xl font-black text-slate-900">{stats?.overall.totalStudents}</div>
+                            <div className="text-indigo-600 text-[10px] lg:text-xs font-bold mt-2">Across {stats?.overall.totalUniversities} Universities</div>
                         </div>
-                        <div className="bg-white p-8 rounded-3xl border border-gray-100 shadow-sm group">
-                            <h3 className="text-slate-400 text-[10px] font-black uppercase tracking-widest mb-4">Avg Performance</h3>
-                            <div className="text-5xl font-black text-slate-900">{stats?.overall.averageScore}%</div>
-                            <div className="flex items-center gap-1 mt-2">
+                        <div className="bg-white p-6 lg:p-8 rounded-3xl border border-gray-100 shadow-sm group">
+                            <h3 className="text-slate-400 text-[10px] font-black uppercase tracking-widest mb-3 lg:mb-4">Avg Performance</h3>
+                            <div className="text-3xl lg:text-5xl font-black text-slate-900">{stats?.overall.averageScore}%</div>
+                            <div className="flex items-center gap-1 mt-3 lg:mt-4">
                                 <div className="h-1.5 flex-1 bg-gray-100 rounded-full overflow-hidden">
-                                    <div className="h-full bg-indigo-500 rounded-full" style={{ width: `${stats?.overall.averageScore}%` }} />
+                                    <div className="h-full bg-indigo-500 rounded-full transition-all duration-1000" style={{ width: `${stats?.overall.averageScore}%` }} />
                                 </div>
                             </div>
                         </div>
-                        <div className="bg-white p-8 rounded-3xl border border-gray-100 shadow-sm">
-                            <h3 className="text-slate-400 text-[10px] font-black uppercase tracking-widest mb-4">Total Sessions</h3>
-                            <div className="text-5xl font-black text-slate-900">{stats?.overall.totalSessions.toLocaleString()}</div>
-                            <p className="text-slate-400 text-xs font-bold mt-2 italic">Completed attempts</p>
+                        <div className="bg-white p-6 lg:p-8 rounded-3xl border border-gray-100 shadow-sm">
+                            <h3 className="text-slate-400 text-[10px] font-black uppercase tracking-widest mb-3 lg:mb-4">Total Sessions</h3>
+                            <div className="text-3xl lg:text-5xl font-black text-slate-900">{stats?.overall.totalSessions.toLocaleString()}</div>
+                            <p className="text-slate-400 text-[10px] lg:text-xs font-bold mt-2 italic">Completed attempts</p>
                         </div>
-                        <div className="bg-indigo-600 p-8 rounded-3xl shadow-xl shadow-indigo-100 text-white">
-                            <h3 className="text-indigo-200 text-[10px] font-black uppercase tracking-widest mb-4">Risk Level</h3>
-                            <div className="text-lg font-bold mb-1">
+                        <div className="bg-indigo-600 p-6 lg:p-8 rounded-3xl shadow-xl shadow-indigo-100 text-white">
+                            <h3 className="text-indigo-200 text-[10px] font-black uppercase tracking-widest mb-3 lg:mb-4">Risk Level</h3>
+                            <div className="text-base lg:text-lg font-bold mb-1">
                                 {stats?.studentStats.filter((s: any) => s.status === 'At Risk').length} Students
                             </div>
-                            <p className="text-indigo-100 text-xs opacity-80 leading-relaxed font-medium">Scoring below 60% average. Priority support recommended.</p>
+                            <p className="text-indigo-100 text-[10px] lg:text-xs opacity-80 leading-relaxed font-medium">Scoring below 60% average. Priority support recommended.</p>
                         </div>
                     </div>
 
                     {/* Top Universities Section */}
                     <div className="bg-white rounded-[2rem] p-10 border border-gray-100 shadow-sm">
-                        <div className="flex justify-between items-center mb-8">
-                            <h2 className="text-2xl font-black text-slate-900">Campus Leaderboard</h2>
-                            <button onClick={() => setActiveTab('universities')} className="text-indigo-600 font-bold text-sm flex items-center gap-1 hover:gap-2 transition-all">
+                        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-8">
+                            <h2 className="text-xl lg:text-2xl font-black text-slate-900">Campus Leaderboard</h2>
+                            <button onClick={() => setActiveTab('universities')} className="text-indigo-600 font-bold text-xs lg:text-sm flex items-center gap-1 hover:gap-2 transition-all">
                                 Detailed Campus Report <ChevronRight className="w-4 h-4" />
                             </button>
                         </div>
-                        <div className="space-y-6">
+                        <div className="space-y-4 lg:space-y-6">
                             {stats?.universityStats.sort((a: any, b: any) => b.averageScore - a.averageScore).slice(0, 3).map((uni: any, idx: number) => (
-                                <div key={uni.id} className="flex items-center gap-6 p-6 bg-gray-50 rounded-2xl hover:bg-white hover:shadow-xl hover:scale-[1.01] transition-all border border-transparent hover:border-indigo-100">
-                                    <div className="w-12 h-12 bg-white rounded-xl shadow-sm flex items-center justify-center font-black text-slate-400">
-                                        #{idx + 1}
+                                <div key={uni.id} className="flex flex-col sm:flex-row sm:items-center gap-4 lg:gap-6 p-4 lg:p-6 bg-gray-50 rounded-2xl hover:bg-white hover:shadow-xl lg:hover:scale-[1.01] transition-all border border-transparent hover:border-indigo-100">
+                                    <div className="flex items-center gap-4 lg:gap-6 flex-1">
+                                        <div className="w-10 h-10 lg:w-12 lg:h-12 bg-white rounded-xl shadow-sm flex items-center justify-center font-black text-slate-400 shrink-0">
+                                            #{idx + 1}
+                                        </div>
+                                        <div className="min-w-0">
+                                            <h4 className="font-bold text-slate-900 text-base lg:text-lg truncate">{uni.name}</h4>
+                                            <p className="text-slate-500 text-[10px] font-bold uppercase tracking-widest">{uni.studentCount} active students</p>
+                                        </div>
                                     </div>
-                                    <div className="flex-1">
-                                        <h4 className="font-bold text-slate-900 text-lg">{uni.name}</h4>
-                                        <p className="text-slate-500 text-xs font-bold uppercase tracking-widest">{uni.studentCount} active students</p>
-                                    </div>
-                                    <div className="text-right">
-                                        <div className="text-2xl font-black text-indigo-600">{uni.averageScore}%</div>
-                                        <div className="text-[10px] font-black text-slate-400 uppercase">Avg Score</div>
+                                    <div className="flex items-center justify-between sm:justify-end sm:text-right border-t sm:border-t-0 pt-3 sm:pt-0 mt-3 sm:mt-0">
+                                        <div className="sm:hidden text-[10px] font-black text-slate-400 uppercase">Avg Score</div>
+                                        <div>
+                                            <div className="text-xl lg:text-2xl font-black text-indigo-600">{uni.averageScore}%</div>
+                                            <div className="hidden sm:block text-[10px] font-black text-slate-400 uppercase">Avg Score</div>
+                                        </div>
                                     </div>
                                 </div>
                             ))}
@@ -319,12 +317,12 @@ export default function PerformanceAnalyticsPage() {
                     <div className="bg-white p-8 rounded-[2rem] border border-gray-100 shadow-sm">
                         <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 mb-10">
                             <div>
-                                <h2 className="text-2xl font-black text-slate-900">Student Deep Intelligence</h2>
-                                <p className="text-slate-500 text-sm font-medium">Select a student to analyze granular progress maps.</p>
+                                <h2 className="text-xl sm:text-2xl font-black text-slate-900">Student Deep Intelligence</h2>
+                                <p className="text-slate-500 text-xs sm:text-sm font-medium">Select a student to analyze granular progress maps.</p>
                             </div>
-                            <div className="min-w-[300px]">
+                            <div className="w-full md:min-w-[300px] md:w-auto">
                                 <select
-                                    className="w-full bg-gray-50 border border-gray-100 rounded-2xl px-6 py-4 font-bold text-slate-900 focus:ring-2 focus:ring-indigo-500 transition-all outline-none"
+                                    className="w-full bg-gray-50 border border-gray-100 rounded-2xl px-5 py-3.5 sm:px-6 sm:py-4 font-bold text-slate-900 focus:ring-2 focus:ring-indigo-500 transition-all outline-none text-sm sm:text-base"
                                     value={selectedStudentId}
                                     onChange={(e) => setSelectedStudentId(e.target.value)}
                                 >

@@ -100,7 +100,7 @@ export default function StudentDashboard() {
             <div className={`flex flex-col transition-all duration-300 ${isSidebarCollapsed ? 'lg:ml-24' : 'lg:ml-72'}`}>
                 <Header userName={user?.full_name || 'Student'} userEmail={user?.email} />
 
-                <main className="p-4 lg:p-8 mt-20">
+                <main className="p-4 lg:p-8 mt-28 lg:mt-24">
                     <div className="max-w-7xl mx-auto space-y-6 lg:space-y-8 bg-white p-4 md:p-8 rounded-2xl border border-slate-200/80 shadow-sm">
                         {/* Welcome Header */}
                         <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
@@ -109,46 +109,46 @@ export default function StudentDashboard() {
                                     🚀
                                 </div>
                                 <div>
-                                    <h1 className="text-4xl font-black text-slate-900 mb-2 tracking-tight">
+                                    <h1 className="text-xl lg:text-4xl font-black text-slate-900 mb-1 lg:mb-2 tracking-tight">
                                         Good Morning, {user?.full_name?.split(' ')[0] || 'Student'}! 👋
                                     </h1>
-                                    <p className="text-slate-600 font-bold text-lg">
-                                        You're on a <span className="text-teal-600 font-extrabold underline decoration-teal-100 underline-offset-4">{stats.currentStreak}-day streak!</span> Keep up the amazing work.
+                                    <p className="text-slate-600 font-bold text-sm lg:text-lg">
+                                        You're on a <span className="text-teal-600 font-extrabold underline decoration-teal-100 underline-offset-4 tracking-tight">{stats.currentStreak}-day streak!</span> Keep it up.
                                     </p>
                                 </div>
                             </div>
                         </div>
 
                         {/* Top Stats Row */}
-                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                        <div className="grid grid-cols-2 md:grid-cols-2 lg:grid-cols-4 gap-4 lg:gap-6">
                             {[
                                 { label: 'Topics Enrolled', value: stats.enrolledTopics, icon: BookOpen, color: 'bg-teal-50 text-teal-600' },
                                 { label: 'Modules Completed', value: stats.questionsSolved, icon: Trophy, color: 'bg-indigo-50 text-indigo-600' },
                                 { label: 'Current Streak', value: `${stats.currentStreak} days`, icon: Flame, color: 'bg-orange-50 text-orange-600' },
                                 { label: 'Accuracy', value: `${stats.overallAccuracy}%`, icon: TrendingUp, color: 'bg-rose-50 text-rose-600' }
                             ].map((stat, i) => (
-                                <div key={i} className="bg-white p-8 rounded-[2rem] border border-slate-100 shadow-sm flex flex-col gap-4 transform transition-all hover:scale-[1.02] hover:shadow-lg">
-                                    <div className={`w-12 h-12 rounded-2xl ${stat.color} flex items-center justify-center`}>
-                                        <stat.icon className="w-6 h-6" />
+                                <div key={i} className="bg-white p-5 lg:p-8 rounded-2xl lg:rounded-[2rem] border border-slate-100 shadow-sm flex flex-col gap-3 lg:gap-4 transform transition-all hover:scale-[1.02] hover:shadow-lg">
+                                    <div className={`w-10 h-10 lg:w-12 lg:h-12 rounded-xl lg:rounded-2xl ${stat.color} flex items-center justify-center`}>
+                                        <stat.icon className="w-5 h-5 lg:w-6 lg:h-6" />
                                     </div>
                                     <div>
-                                        <h3 className="text-3xl font-black text-slate-900 leading-none mb-1">{dataLoading ? '...' : stat.value}</h3>
-                                        <p className="text-slate-500 font-black uppercase tracking-widest text-[10px]">{stat.label}</p>
+                                        <h3 className="text-xl lg:text-3xl font-black text-slate-900 leading-none mb-1">{dataLoading ? '...' : stat.value}</h3>
+                                        <p className="text-slate-500 font-black uppercase tracking-widest text-[8px] lg:text-[10px]">{stat.label}</p>
                                     </div>
                                 </div>
                             ))}
                         </div>
 
                         {/* Main Grid Content */}
-                        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
+                        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 lg:gap-8">
 
                             {/* Today's Plan Column */}
                             <div className="lg:col-span-6 space-y-6">
                                 <div className="bg-white p-8 rounded-[2.5rem] border border-slate-100 shadow-sm">
                                     <div className="flex items-center justify-between mb-8">
-                                        <div>
-                                            <h2 className="text-xl font-black text-slate-900">Continue Learning</h2>
-                                            <p className="text-xs font-black text-slate-500 tracking-wider">Your recently accessed topics</p>
+                                        <div className="pr-4">
+                                            <h2 className="text-lg lg:text-xl font-black text-slate-900">Continue Learning</h2>
+                                            <p className="text-[10px] lg:text-xs font-black text-slate-500 tracking-wider">Your recently accessed topics</p>
                                         </div>
                                         <div className="w-10 h-10 rounded-xl bg-teal-50 flex items-center justify-center">
                                             <Play className="w-5 h-5 text-teal-600" />
@@ -198,9 +198,9 @@ export default function StudentDashboard() {
                             <div className="lg:col-span-6 space-y-8">
                                 <div className="bg-white p-8 rounded-[2.5rem] border border-slate-100 shadow-sm">
                                     <div className="flex items-center justify-between mb-8">
-                                        <div>
-                                            <h2 className="text-xl font-black text-slate-900">Performance Status</h2>
-                                            <p className="text-xs font-black text-slate-500 tracking-wider">Overall accuracy by subject</p>
+                                        <div className="pr-4">
+                                            <h2 className="text-lg lg:text-xl font-black text-slate-900">Performance Status</h2>
+                                            <p className="text-[10px] lg:text-xs font-black text-slate-500 tracking-wider">Overall accuracy by subject</p>
                                         </div>
                                         <div className="w-10 h-10 bg-blue-50 rounded-xl flex items-center justify-center">
                                             <TrendingUp className="w-5 h-5 text-blue-600" />

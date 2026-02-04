@@ -201,162 +201,162 @@ export default function SuperAdminContentLibraryPage() {
     const { isSidebarCollapsed } = useUI();
 
     return (
-        <div className="min-h-screen bg-background font-sans text-foreground">
+        <div className="min-h-screen bg-gray-50 flex font-sans">
             <Sidebar userRole="super_admin" />
-            <Header userName={user?.full_name || 'Super Admin'} userEmail={user?.email} />
+            <div className={`flex-1 flex flex-col min-h-screen transition-all duration-300 ${isSidebarCollapsed ? 'lg:ml-28' : 'lg:ml-80'}`}>
+                <Header userName={user?.full_name || 'Super Admin'} userEmail={user?.email} />
 
-            <main className={`${isSidebarCollapsed ? 'ml-28' : 'ml-80'} mt-16 p-8 h-[calc(100vh-64px)] flex flex-col transition-all duration-300 relative z-10`}>
-                <div className="flex justify-between items-end mb-8">
-                    <div>
-                        <h1 className="text-3xl font-black text-slate-900 dark:text-primary tracking-tight">Global Content Library</h1>
-                        <p className="text-slate-500 dark:text-primary-dark/70 font-medium">Platform-wide overview of educational material and structure.</p>
-                    </div>
-                    <div className="flex gap-4">
+                <main className="flex-1 pt-28 lg:pt-24 pb-12 px-4 sm:px-8 flex flex-col min-h-0">
+                    <div className="flex flex-col sm:flex-row sm:justify-between sm:items-end gap-4 mb-8">
+                        <div>
+                            <h1 className="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight">Global Content Library</h1>
+                            <p className="text-sm sm:text-base text-slate-500 font-medium">Platform-wide overview of educational material and structure.</p>
+                        </div>
                         <Link
                             href="/admin/hierarchy-manager"
-                            className="flex items-center gap-2 px-6 py-2.5 bg-white dark:bg-surface text-slate-700 dark:text-primary font-bold rounded-xl hover:bg-slate-50 dark:hover:bg-surface-hover transition-all border border-slate-200 dark:border-border"
+                            className="w-full sm:w-auto flex items-center justify-center gap-2 px-6 py-2.5 bg-white text-slate-700 font-black uppercase tracking-wider text-[11px] rounded-xl hover:bg-slate-50 transition-all border border-slate-200 shadow-sm active:scale-95"
                         >
                             <Plus className="w-4 h-4" />
-                            Manage Hierarchy
+                            Structure
                         </Link>
                     </div>
-                </div>
 
-                <div className="flex-1 flex gap-8 min-h-0">
-                    {/* Left: Global Hierarchy Sidebar */}
-                    <div className="w-80 flex flex-col bg-white dark:bg-surface rounded-3xl border border-slate-200 dark:border-border shadow-xl overflow-hidden">
-                        <div className="p-4 border-b border-slate-100 dark:border-border bg-slate-50/50 dark:bg-surface-hover/30">
-                            <div className="relative">
-                                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500" />
-                                <input
-                                    type="text"
-                                    placeholder="Filter global tree..."
-                                    value={searchQuery}
-                                    onChange={(e) => setSearchQuery(e.target.value)}
-                                    className="w-full pl-9 pr-4 py-2 bg-slate-50 dark:bg-surface border border-slate-100 dark:border-border rounded-xl text-xs text-slate-900 dark:text-primary focus:ring-2 focus:ring-primary/20 outline-none transition-all"
-                                />
+                    <div className="flex-1 flex flex-col lg:flex-row gap-8 min-h-0">
+                        {/* Left: Global Hierarchy Sidebar */}
+                        <div className="w-full lg:w-80 flex flex-col bg-white rounded-3xl border border-slate-200 shadow-sm overflow-hidden min-h-[300px] lg:min-h-0">
+                            <div className="p-4 border-b border-slate-100 bg-slate-50/50">
+                                <div className="relative">
+                                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                                    <input
+                                        type="text"
+                                        placeholder="Filter global tree..."
+                                        value={searchQuery}
+                                        onChange={(e) => setSearchQuery(e.target.value)}
+                                        className="w-full pl-9 pr-4 py-2 bg-white border border-slate-200 rounded-xl text-xs font-bold text-slate-700 focus:ring-2 focus:ring-indigo-500/20 outline-none transition-all placeholder:text-slate-300"
+                                    />
+                                </div>
+                            </div>
+
+                            <div className="flex-1 overflow-y-auto custom-scrollbar">
+                                {loading ? (
+                                    <div className="p-8 text-center text-slate-400">
+                                        <RefreshCw className="w-6 h-6 animate-spin mx-auto mb-2 text-indigo-200" />
+                                        <p className="text-[10px] font-black uppercase tracking-widest text-indigo-400">Loading ecosystem...</p>
+                                    </div>
+                                ) : data.length > 0 ? (
+                                    renderTree(data)
+                                ) : (
+                                    <div className="p-8 text-center text-slate-400">
+                                        <BookOpen className="w-8 h-8 mx-auto mb-2 opacity-10" />
+                                        <p className="text-xs font-bold uppercase tracking-widest">Repository Empty</p>
+                                    </div>
+                                )}
                             </div>
                         </div>
 
-                        <div className="flex-1 overflow-y-auto custom-scrollbar">
-                            {loading ? (
-                                <div className="p-8 text-center text-slate-500">
-                                    <RefreshCw className="w-6 h-6 animate-spin mx-auto mb-2 opacity-20" />
-                                    <p className="text-[10px] font-black uppercase tracking-widest text-indigo-400">Loading Ecosystem Tree...</p>
-                                </div>
-                            ) : data.length > 0 ? (
-                                renderTree(data)
+                        {/* Right: Content Viewer */}
+                        <div className="flex-1 bg-white rounded-3xl border border-gray-200 shadow-sm overflow-hidden flex flex-col min-h-[500px] lg:min-h-0">
+                            {selectedSubtopic ? (
+                                <>
+                                    <div className="p-6 border-b border-gray-100 bg-white flex justify-between items-center shadow-sm">
+                                        <div>
+                                            <div className="flex items-center gap-2 mb-1">
+                                                <span className="text-[10px] font-black uppercase tracking-widest text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-full">
+                                                    Master Content Entry
+                                                </span>
+                                            </div>
+                                            <h2 className="text-xl font-black text-slate-900">{selectedSubtopic.title}</h2>
+                                        </div>
+                                        <button
+                                            onClick={handleOpenEditor}
+                                            className="flex items-center gap-2 px-4 py-2 bg-indigo-50 text-indigo-600 font-bold rounded-lg hover:bg-indigo-100 transition-colors text-xs"
+                                        >
+                                            <Edit3 className="w-3.5 h-3.5" />
+                                            Edit Content
+                                        </button>
+                                    </div>
+                                    <div className="flex-1 overflow-y-auto p-12 bg-white prose prose-slate max-w-none prose-headings:font-black prose-p:text-slate-600 prose-p:leading-relaxed prose-pre:bg-slate-900 prose-pre:rounded-2xl custom-scrollbar">
+                                        {selectedSubtopic.content ? (
+                                            <ReactMarkdown>{selectedSubtopic.content}</ReactMarkdown>
+                                        ) : (
+                                            <div className="h-full flex flex-col items-center justify-center text-center opacity-40">
+                                                <FileText className="w-16 h-16 text-slate-200 mb-4" />
+                                                <p className="text-slate-400 font-medium italic">Empty content node.</p>
+                                            </div>
+                                        )}
+                                    </div>
+                                </>
                             ) : (
-                                <div className="p-8 text-center text-slate-500">
-                                    <BookOpen className="w-8 h-8 mx-auto mb-2 opacity-10" />
-                                    <p className="text-xs font-bold uppercase tracking-widest">No Content Found</p>
+                                <div className="flex-1 flex flex-col items-center justify-center text-center p-12 bg-white">
+                                    <div className="w-32 h-32 bg-indigo-50 rounded-full flex items-center justify-center mb-10">
+                                        <BookOpen className="w-16 h-16 text-indigo-600 opacity-20" />
+                                    </div>
+                                    <h3 className="text-3xl font-black text-slate-900 mb-4 tracking-tight">Audit Global Content</h3>
+                                    <p className="text-slate-500 max-w-sm font-medium leading-relaxed">
+                                        Browse the platform hierarchy to view published material across all subjects and topics. Use the 'Launch Editor' to make direct modifications as needed.
+                                    </p>
                                 </div>
                             )}
                         </div>
                     </div>
 
-                    {/* Right: Content Viewer */}
-                    <div className="flex-1 bg-white rounded-3xl border border-gray-200 shadow-sm overflow-hidden flex flex-col">
-                        {selectedSubtopic ? (
-                            <>
-                                <div className="p-6 border-b border-gray-100 bg-white flex justify-between items-center shadow-sm">
+                    {/* Content Editor Modal */}
+                    {isEditModalOpen && (
+                        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-slate-900/60 backdrop-blur-sm p-4">
+                            <div className="bg-white rounded-3xl shadow-2xl w-full max-w-5xl h-[85vh] overflow-hidden flex flex-col animate-in fade-in zoom-in duration-200">
+                                <div className="p-6 border-b border-gray-100 flex justify-between items-center bg-white">
                                     <div>
-                                        <div className="flex items-center gap-2 mb-1">
-                                            <span className="text-[10px] font-black uppercase tracking-widest text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-full">
-                                                Master Content Entry
-                                            </span>
-                                        </div>
-                                        <h2 className="text-xl font-black text-slate-900">{selectedSubtopic.title}</h2>
+                                        <h3 className="text-xl font-black text-slate-900">Edit Course Material</h3>
+                                        <p className="text-xs font-bold text-slate-400 uppercase tracking-widest">{selectedSubtopic?.title}</p>
                                     </div>
-                                    <button
-                                        onClick={handleOpenEditor}
-                                        className="flex items-center gap-2 px-4 py-2 bg-indigo-50 text-indigo-600 font-bold rounded-lg hover:bg-indigo-100 transition-colors text-xs"
-                                    >
-                                        <Edit3 className="w-3.5 h-3.5" />
-                                        Edit Content
+                                    <button onClick={() => setIsEditModalOpen(false)} className="p-2 hover:bg-slate-100 rounded-full text-slate-400 transition-colors">
+                                        <X className="w-5 h-5" />
                                     </button>
                                 </div>
-                                <div className="flex-1 overflow-y-auto p-12 bg-white prose prose-slate max-w-none prose-headings:font-black prose-p:text-slate-600 prose-p:leading-relaxed prose-pre:bg-slate-900 prose-pre:rounded-2xl custom-scrollbar">
-                                    {selectedSubtopic.content ? (
-                                        <ReactMarkdown>{selectedSubtopic.content}</ReactMarkdown>
-                                    ) : (
-                                        <div className="h-full flex flex-col items-center justify-center text-center opacity-40">
-                                            <FileText className="w-16 h-16 text-slate-200 mb-4" />
-                                            <p className="text-slate-400 font-medium italic">Empty content node.</p>
+
+                                <div className="flex-1 overflow-hidden flex bg-slate-50">
+                                    {/* Editor */}
+                                    <div className="flex-1 flex flex-col border-r border-gray-100">
+                                        <div className="px-4 py-2 bg-white border-b border-gray-100 text-[10px] font-black uppercase text-slate-400">Markdown Source</div>
+                                        <textarea
+                                            value={editContent}
+                                            onChange={(e) => setEditContent(e.target.value)}
+                                            className="flex-1 p-8 bg-transparent text-slate-800 font-mono text-sm outline-none resize-none custom-scrollbar leading-relaxed"
+                                            placeholder="Enter educational content in markdown format..."
+                                            spellCheck={false}
+                                        />
+                                    </div>
+
+                                    {/* Preview */}
+                                    <div className="flex-1 flex flex-col bg-white">
+                                        <div className="px-4 py-2 bg-slate-50 border-b border-gray-100 text-[10px] font-black uppercase text-slate-400">Live Preview</div>
+                                        <div className="flex-1 p-8 overflow-y-auto prose prose-slate max-w-none custom-scrollbar">
+                                            <ReactMarkdown>{editContent || '*No content to preview*'}</ReactMarkdown>
                                         </div>
-                                    )}
-                                </div>
-                            </>
-                        ) : (
-                            <div className="flex-1 flex flex-col items-center justify-center text-center p-12 bg-white">
-                                <div className="w-32 h-32 bg-indigo-50 rounded-full flex items-center justify-center mb-10">
-                                    <BookOpen className="w-16 h-16 text-indigo-600 opacity-20" />
-                                </div>
-                                <h3 className="text-3xl font-black text-slate-900 mb-4 tracking-tight">Audit Global Content</h3>
-                                <p className="text-slate-500 max-w-sm font-medium leading-relaxed">
-                                    Browse the platform hierarchy to view published material across all subjects and topics. Use the 'Launch Editor' to make direct modifications as needed.
-                                </p>
-                            </div>
-                        )}
-                    </div>
-                </div>
-
-                {/* Content Editor Modal */}
-                {isEditModalOpen && (
-                    <div className="fixed inset-0 z-[60] flex items-center justify-center bg-slate-900/60 backdrop-blur-sm p-4">
-                        <div className="bg-white rounded-3xl shadow-2xl w-full max-w-5xl h-[85vh] overflow-hidden flex flex-col animate-in fade-in zoom-in duration-200">
-                            <div className="p-6 border-b border-gray-100 flex justify-between items-center bg-white">
-                                <div>
-                                    <h3 className="text-xl font-black text-slate-900">Edit Course Material</h3>
-                                    <p className="text-xs font-bold text-slate-400 uppercase tracking-widest">{selectedSubtopic?.title}</p>
-                                </div>
-                                <button onClick={() => setIsEditModalOpen(false)} className="p-2 hover:bg-slate-100 rounded-full text-slate-400 transition-colors">
-                                    <X className="w-5 h-5" />
-                                </button>
-                            </div>
-
-                            <div className="flex-1 overflow-hidden flex bg-slate-50">
-                                {/* Editor */}
-                                <div className="flex-1 flex flex-col border-r border-gray-100">
-                                    <div className="px-4 py-2 bg-white border-b border-gray-100 text-[10px] font-black uppercase text-slate-400">Markdown Source</div>
-                                    <textarea
-                                        value={editContent}
-                                        onChange={(e) => setEditContent(e.target.value)}
-                                        className="flex-1 p-8 bg-transparent text-slate-800 font-mono text-sm outline-none resize-none custom-scrollbar leading-relaxed"
-                                        placeholder="Enter educational content in markdown format..."
-                                        spellCheck={false}
-                                    />
-                                </div>
-
-                                {/* Preview */}
-                                <div className="flex-1 flex flex-col bg-white">
-                                    <div className="px-4 py-2 bg-slate-50 border-b border-gray-100 text-[10px] font-black uppercase text-slate-400">Live Preview</div>
-                                    <div className="flex-1 p-8 overflow-y-auto prose prose-slate max-w-none custom-scrollbar">
-                                        <ReactMarkdown>{editContent || '*No content to preview*'}</ReactMarkdown>
                                     </div>
                                 </div>
-                            </div>
 
-                            <div className="p-6 bg-white border-t border-gray-100 flex justify-end gap-4">
-                                <button
-                                    onClick={() => setIsEditModalOpen(false)}
-                                    className="px-6 py-2.5 text-slate-500 font-bold hover:bg-slate-100 rounded-xl transition-colors"
-                                >
-                                    Cancel
-                                </button>
-                                <button
-                                    onClick={handleSaveContent}
-                                    disabled={isSaving}
-                                    className="flex items-center gap-2 px-8 py-2.5 bg-indigo-600 text-white font-black rounded-xl hover:bg-indigo-700 transition-all shadow-lg shadow-indigo-600/20 text-sm disabled:opacity-50"
-                                >
-                                    {isSaving ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
-                                    {isSaving ? 'Processing...' : 'Sync Content'}
-                                </button>
+                                <div className="p-6 bg-white border-t border-gray-100 flex justify-end gap-4">
+                                    <button
+                                        onClick={() => setIsEditModalOpen(false)}
+                                        className="px-6 py-2.5 text-slate-500 font-bold hover:bg-slate-100 rounded-xl transition-colors"
+                                    >
+                                        Cancel
+                                    </button>
+                                    <button
+                                        onClick={handleSaveContent}
+                                        disabled={isSaving}
+                                        className="flex items-center gap-2 px-8 py-2.5 bg-indigo-600 text-white font-black rounded-xl hover:bg-indigo-700 transition-all shadow-lg shadow-indigo-600/20 text-sm disabled:opacity-50"
+                                    >
+                                        {isSaving ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
+                                        {isSaving ? 'Processing...' : 'Sync Content'}
+                                    </button>
+                                </div>
                             </div>
                         </div>
-                    </div>
-                )}
-            </main>
+                    )}
+                </main>
+            </div>
         </div>
     );
 }
