@@ -363,8 +363,8 @@ export default function UniversityPortalPage() {
             <div className="flex-1 flex flex-col">
                 <Header userName={user?.full_name} userEmail={user?.email} />
 
-                <main className={`${isSidebarCollapsed ? 'lg:ml-20' : 'lg:ml-72'} mt-20 p-4 lg:p-8 transition-all duration-300`}>
-                    <div className="max-w-7xl mx-auto space-y-8 bg-white/60 backdrop-blur-sm p-8 rounded-[3rem] border border-slate-100 shadow-[0_8px_30px_rgb(0,0,0,0.02)]">
+                <main className={`${isSidebarCollapsed ? 'lg:ml-24' : 'lg:ml-72'} mt-20 p-4 lg:p-8 transition-all duration-300`}>
+                    <div className="max-w-7xl mx-auto space-y-8 bg-white/60 backdrop-blur-sm p-4 lg:p-8 rounded-[2rem] lg:rounded-[3rem] border border-slate-100 shadow-[0_8px_30px_rgb(0,0,0,0.02)]">
                         {enrollments.length > 0 && showRegistration && (
                             <button
                                 onClick={() => setShowRegistration(false)}
@@ -379,7 +379,7 @@ export default function UniversityPortalPage() {
                             // Registration View
                             <div className="max-w-2xl mx-auto">
                                 <h1 className="text-3xl font-bold text-slate-900 mb-6 font-black tracking-tight">Expand Your Academic Horizon</h1>
-                                <div className="bg-white p-8 rounded-[2rem] shadow-xl border border-gray-100">
+                                <div className="bg-white p-6 lg:p-8 rounded-[2rem] shadow-xl border border-gray-100">
                                     <p className="text-slate-500 mb-6 text-sm font-medium">Search for your institution to gain access to curriculum-aligned learning paths.</p>
                                     <div className="relative mb-6">
                                         <input
@@ -449,7 +449,7 @@ export default function UniversityPortalPage() {
                                                         loadExams(en.university_id);
                                                     }
                                                 }}
-                                                className={`group relative bg-white p-8 rounded-[2.5rem] border-2 transition-all cursor-pointer ${en.status === 'approved' ? 'hover:border-indigo-600 border-gray-100 shadow-xl hover:shadow-indigo-100/50' : 'opacity-80 border-gray-50 grayscale select-none'}`}
+                                                className={`group relative bg-white p-6 lg:p-8 rounded-[2.5rem] border-2 transition-all cursor-pointer ${en.status === 'approved' ? 'hover:border-indigo-600 border-gray-100 shadow-xl hover:shadow-indigo-100/50' : 'opacity-80 border-gray-50 grayscale select-none'}`}
                                             >
                                                 <div className="flex justify-between items-start mb-8">
                                                     <div className={`w-16 h-16 rounded-2xl flex items-center justify-center text-2xl font-black shadow-lg overflow-hidden border-2 ${en.status === 'approved' ? 'bg-indigo-600 text-white border-indigo-500' : 'bg-slate-200 text-slate-400 border-slate-100'}`}>
@@ -556,29 +556,29 @@ export default function UniversityPortalPage() {
                                         </div>
                                     </div>
 
-                                    <div className="flex items-center gap-4">
-                                        <div className="flex bg-white p-1 rounded-2xl border border-gray-200 shadow-sm">
+                                    <div className="flex items-center gap-4 overflow-x-auto pb-2 md:pb-0 w-full md:w-auto">
+                                        <div className="flex bg-white p-1 rounded-2xl border border-gray-200 shadow-sm whitespace-nowrap">
                                             <button
                                                 onClick={() => setActiveTab('library')}
-                                                className={`px-8 py-3 rounded-xl text-[10px] font-black tracking-widest uppercase transition-all ${activeTab === 'library' ? 'bg-slate-900 text-white shadow-lg' : 'text-slate-400 hover:text-slate-600'}`}
+                                                className={`px-6 lg:px-8 py-3 rounded-xl text-[10px] font-black tracking-widest uppercase transition-all ${activeTab === 'library' ? 'bg-slate-900 text-white shadow-lg' : 'text-slate-400 hover:text-slate-600'}`}
                                             >
                                                 Library
                                             </button>
                                             <button
                                                 onClick={() => setActiveTab('exams')}
-                                                className={`px-8 py-3 rounded-xl text-[10px] font-black tracking-widest uppercase transition-all ${activeTab === 'exams' ? 'bg-slate-900 text-white shadow-lg' : 'text-slate-400 hover:text-slate-600'}`}
+                                                className={`px-6 lg:px-8 py-3 rounded-xl text-[10px] font-black tracking-widest uppercase transition-all ${activeTab === 'exams' ? 'bg-slate-900 text-white shadow-lg' : 'text-slate-400 hover:text-slate-600'}`}
                                             >
                                                 Exams
                                             </button>
                                             <button
                                                 onClick={() => setActiveTab('pattern')}
-                                                className={`px-8 py-3 rounded-xl text-[10px] font-black tracking-widest uppercase transition-all ${activeTab === 'pattern' ? 'bg-slate-900 text-white shadow-lg' : 'text-slate-400 hover:text-slate-600'}`}
+                                                className={`px-6 lg:px-8 py-3 rounded-xl text-[10px] font-black tracking-widest uppercase transition-all ${activeTab === 'pattern' ? 'bg-slate-900 text-white shadow-lg' : 'text-slate-400 hover:text-slate-600'}`}
                                             >
                                                 Test Pattern
                                             </button>
                                             <button
                                                 onClick={() => setActiveTab('insights')}
-                                                className={`px-8 py-3 rounded-xl text-[10px] font-black tracking-widest uppercase transition-all ${activeTab === 'insights' ? 'bg-slate-900 text-white shadow-lg' : 'text-slate-400 hover:text-slate-600'}`}
+                                                className={`px-6 lg:px-8 py-3 rounded-xl text-[10px] font-black tracking-widest uppercase transition-all ${activeTab === 'insights' ? 'bg-slate-900 text-white shadow-lg' : 'text-slate-400 hover:text-slate-600'}`}
                                             >
                                                 Insights
                                             </button>
@@ -753,7 +753,7 @@ export default function UniversityPortalPage() {
                                     </div>
                                 ) : activeTab === 'pattern' ? (
                                     // Test Pattern View
-                                    <div className="bg-white rounded-[3rem] p-12 border border-gray-100 shadow-sm relative overflow-hidden">
+                                    <div className="bg-white rounded-[2rem] lg:rounded-[3rem] p-6 lg:p-12 border border-gray-100 shadow-sm relative overflow-hidden">
                                         <div className="absolute top-0 right-0 w-64 h-64 bg-indigo-50 rounded-full -translate-y-1/2 translate-x-1/2 opacity-50" />
 
                                         <div className="relative z-10">

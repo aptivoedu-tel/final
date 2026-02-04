@@ -141,26 +141,26 @@ export default function ProgressPage() {
     if (loading) return null;
 
     return (
-        <div className="min-h-screen bg-slate-50 font-sans">
+        <div className="min-h-screen bg-slate-50 dark:bg-[#ACC8A2] font-sans">
             <Sidebar userRole="student" />
             <Header userName={user?.full_name || 'Student'} userEmail={user?.email} />
 
-            <main className={`${isSidebarCollapsed ? 'ml-24' : 'ml-72'} mt-20 p-8 transition-all duration-300`} id="report-content">
+            <main className={`${isSidebarCollapsed ? 'lg:ml-24' : 'lg:ml-72'} mt-20 p-4 lg:p-8 transition-all duration-300`} id="report-content">
                 {/* Hero Header */}
                 <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">
                     <div>
                         <h1 className="text-3xl font-bold text-slate-900 tracking-tight">Your Learning Journey</h1>
                         <p className="text-slate-500 mt-1">Track your performance and master your subjects.</p>
                     </div>
-                    <div className="flex items-center gap-3">
+                    <div className="flex flex-wrap items-center gap-3">
                         <div className="bg-white px-4 py-2 rounded-xl border border-gray-100 shadow-sm flex items-center gap-2">
                             <Clock className="w-4 h-4 text-primary-dark" />
-                            <span className="text-sm font-semibold text-slate-700">Total Study: {formatStudyTime(stats?.totalStudyTime || 0)}</span>
+                            <span className="text-sm font-semibold text-slate-700 whitespace-nowrap">Total Study: {formatStudyTime(stats?.totalStudyTime || 0)}</span>
                         </div>
                         <button
                             onClick={handleDownloadReport}
                             disabled={exporting}
-                            className="bg-primary text-white px-4 py-2 rounded-xl text-sm font-bold shadow-lg shadow-primary/20 hover:bg-primary-dark transition-all active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+                            className="bg-primary text-white px-4 py-2 rounded-xl text-sm font-bold shadow-lg shadow-primary/20 hover:bg-primary-dark transition-all active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 whitespace-nowrap"
                         >
                             {exporting ? 'Generating...' : 'Download PDF Report'}
                         </button>
@@ -284,7 +284,7 @@ export default function ProgressPage() {
                 </div>
 
                 {/* Milestones / Recent Completion */}
-                <div className="bg-white p-8 rounded-3xl border border-gray-100 shadow-sm">
+                <div className="bg-white p-4 md:p-8 rounded-3xl border border-gray-100 shadow-sm">
                     <h3 className="font-bold text-slate-800 mb-6 flex items-center gap-2">
                         <Award className="w-6 h-6 text-primary" />
                         Recent Milestones

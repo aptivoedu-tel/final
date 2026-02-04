@@ -101,7 +101,7 @@ export default function StudentDashboard() {
                 <Header userName={user?.full_name || 'Student'} userEmail={user?.email} />
 
                 <main className="p-4 lg:p-8 mt-20">
-                    <div className="max-w-7xl mx-auto space-y-8 bg-white p-8 rounded-2xl border border-slate-200/80 shadow-sm">
+                    <div className="max-w-7xl mx-auto space-y-6 lg:space-y-8 bg-white p-4 md:p-8 rounded-2xl border border-slate-200/80 shadow-sm">
                         {/* Welcome Header */}
                         <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
                             <div className="flex items-center gap-4">
@@ -122,10 +122,10 @@ export default function StudentDashboard() {
                         {/* Top Stats Row */}
                         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
                             {[
-                                { label: 'Topics Enrolled', value: stats.enrolledTopics, icon: BookOpen, color: 'bg-[#e0f2f1] text-teal-700' },
-                                { label: 'Modules Completed', value: stats.questionsSolved, icon: Trophy, color: 'bg-[#f0f9ff] text-[#0ea5e9]' },
-                                { label: 'Current Streak', value: `${stats.currentStreak} days`, icon: Flame, color: 'bg-[#fff7ed] text-[#f97316]' },
-                                { label: 'Accuracy', value: `${stats.overallAccuracy}%`, icon: TrendingUp, color: 'bg-[#fdf2f8] text-[#ec4899]' }
+                                { label: 'Topics Enrolled', value: stats.enrolledTopics, icon: BookOpen, color: 'bg-teal-50 text-teal-600' },
+                                { label: 'Modules Completed', value: stats.questionsSolved, icon: Trophy, color: 'bg-indigo-50 text-indigo-600' },
+                                { label: 'Current Streak', value: `${stats.currentStreak} days`, icon: Flame, color: 'bg-orange-50 text-orange-600' },
+                                { label: 'Accuracy', value: `${stats.overallAccuracy}%`, icon: TrendingUp, color: 'bg-rose-50 text-rose-600' }
                             ].map((stat, i) => (
                                 <div key={i} className="bg-white p-8 rounded-[2rem] border border-slate-100 shadow-sm flex flex-col gap-4 transform transition-all hover:scale-[1.02] hover:shadow-lg">
                                     <div className={`w-12 h-12 rounded-2xl ${stat.color} flex items-center justify-center`}>

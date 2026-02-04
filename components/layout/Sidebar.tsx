@@ -19,7 +19,10 @@ import {
     Building2,
     X,
     GraduationCap,
-    Search
+    Search,
+    Sun,
+    Moon,
+    MessageSquare
 } from 'lucide-react';
 import { useUI } from '@/lib/context/UIContext';
 import { AuthService } from '@/lib/services/authService';
@@ -77,6 +80,10 @@ const Sidebar: React.FC<SidebarProps> = ({ userRole }) => {
             { icon: BookOpen, label: 'Content Library', href: '/admin/content-library', section: 'Hierarchy' },
             { icon: Target, label: 'Question Bank', href: '/admin/question-bank', section: 'Hierarchy' },
             { icon: FolderTree, label: 'Uni. Content Mapper', href: '/admin/university-mapper', section: 'Hierarchy' },
+
+            { header: 'ACCOUNT' },
+            { icon: Users, label: 'Profile', href: '/admin/profile', section: 'Account' },
+            { icon: MessageSquare, label: 'Feedback', href: '/admin/feedbacks', section: 'Account' },
         ];
 
         const institutionItems = [
@@ -94,6 +101,10 @@ const Sidebar: React.FC<SidebarProps> = ({ userRole }) => {
     };
 
     const navItems = getNavItems();
+
+    // Color Palette Constants
+    const deepOlive = '#1A2517';
+    const softSage = '#ACC8A2';
 
     return (
         <>
@@ -115,10 +126,10 @@ const Sidebar: React.FC<SidebarProps> = ({ userRole }) => {
                 rounded-[1.5rem] shadow-2xl border
             `}>
                 {/* Logo */}
-                <div className={`p-4 h-20 border-b border-slate-100 flex items-center ${isSidebarCollapsed ? 'justify-center' : 'gap-3'}`}>
+                <div className={`p-4 h-20 border-b flex items-center ${isSidebarCollapsed ? 'justify-center' : 'gap-3'} border-slate-100`}>
                     <Link href={isAdmin ? "/admin/dashboard" : "/dashboard"} className="flex items-center gap-3" onClick={closeSidebar}>
-                        <div className="w-10 h-10 min-w-[40px] rounded-xl flex items-center justify-center bg-teal-600">
-                            <GraduationCap className="text-white w-5 h-5" />
+                        <div className="w-10 h-10 min-w-[40px] rounded-xl flex items-center justify-center bg-teal-600 text-white">
+                            <GraduationCap className="w-5 h-5 text-white" />
                         </div>
                         {!isSidebarCollapsed && (
                             <div className="animate-in fade-in slide-in-from-left-2 duration-200">
@@ -143,11 +154,11 @@ const Sidebar: React.FC<SidebarProps> = ({ userRole }) => {
 
                 {/* Navigation */}
                 <nav className="flex-1 overflow-y-auto p-3 custom-scrollbar">
-                    <div className="space-y-1">
+                    <div className="space-y-3">
                         {navItems.map((item: any, i) => {
                             if (item.header) {
                                 return !isSidebarCollapsed && (
-                                    <div key={i} className="px-3 mt-6 mb-2 text-[10px] font-bold uppercase tracking-widest text-slate-400">
+                                    <div key={i} className="px-4 mt-8 mb-2 text-[10px] font-black uppercase tracking-[0.2em] text-slate-400">
                                         {item.header}
                                     </div>
                                 );
@@ -155,6 +166,7 @@ const Sidebar: React.FC<SidebarProps> = ({ userRole }) => {
 
                             const Icon = item.icon;
                             const active = isActive(item.href);
+                            const isSearch = item.label === 'Search...';
 
                             return (
                                 <Link
@@ -163,20 +175,21 @@ const Sidebar: React.FC<SidebarProps> = ({ userRole }) => {
                                     title={isSidebarCollapsed ? item.label : ''}
                                     onClick={() => closeSidebar()}
                                     className={`
-                                        flex items-center transition-all duration-200 group
-                                        ${isSidebarCollapsed
-                                            ? 'justify-center p-3 rounded-xl mx-auto'
-                                            : 'gap-3 px-3 py-2.5 rounded-xl'
-                                        }
+                                        flex items-center transition-all duration-300 group
+                                        ${isSidebarCollapsed ? 'px-1' : 'px-3'}
+                                        py-3 rounded-2xl
                                         ${active
-                                            ? 'bg-teal-600 text-white'
-                                            : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'
+                                            ? 'bg-teal-600 text-white shadow-xl shadow-teal-100'
+                                            : 'text-slate-500 hover:bg-slate-50 hover:text-teal-600'
                                         }
+                                        ${isSearch ? 'mb-8 bg-slate-50 border border-slate-100 font-bold' : ''}
                                     `}
                                 >
-                                    <Icon className={`w-5 h-5 flex-shrink-0 ${active ? 'stroke-[2]' : 'stroke-[1.5]'}`} />
+                                    <div className="w-10 flex-shrink-0 flex items-center justify-center">
+                                        <Icon className={`w-5 h-5 ${active ? 'stroke-[2.5]' : 'stroke-[1.5]'}`} />
+                                    </div>
                                     {!isSidebarCollapsed && (
-                                        <span className="text-sm font-medium whitespace-nowrap">
+                                        <span className="ml-2 text-sm font-bold whitespace-nowrap animate-in fade-in slide-in-from-left-2 duration-300">
                                             {item.label}
                                         </span>
                                     )}
@@ -186,22 +199,22 @@ const Sidebar: React.FC<SidebarProps> = ({ userRole }) => {
                     </div>
                 </nav>
 
-                {/* Logout Section */}
                 <div className="p-3 border-t border-slate-100">
                     <button
                         onClick={handleLogout}
-                        title={isSidebarCollapsed ? 'Logout' : ''}
-                        className={`flex items-center transition-all duration-200 w-full
-                            ${isSidebarCollapsed
-                                ? 'justify-center p-3 rounded-xl'
-                                : 'gap-3 px-3 py-2.5 rounded-xl'
-                            }
-                            text-slate-600 hover:bg-slate-100 hover:text-slate-900
-
+                        title={isSidebarCollapsed ? "Logout" : ""}
+                        className={`
+                            flex items-center transition-all duration-300 w-full group py-3 rounded-2xl
+                            ${isSidebarCollapsed ? 'px-1' : 'px-3'}
+                            text-slate-500 hover:bg-red-50 hover:text-red-600
                         `}
                     >
-                        <LogOut className="w-5 h-5 flex-shrink-0 stroke-[1.5]" />
-                        {!isSidebarCollapsed && <span className="text-sm font-medium">Logout</span>}
+                        <div className="w-10 flex-shrink-0 flex items-center justify-center">
+                            <LogOut className="w-5 h-5 stroke-[1.5]" />
+                        </div>
+                        {!isSidebarCollapsed && (
+                            <span className="ml-2 text-sm font-bold whitespace-nowrap">Logout</span>
+                        )}
                     </button>
                 </div>
             </aside>

@@ -127,7 +127,7 @@ export default function NotificationsPage() {
             <Sidebar userRole="student" />
             <Header userName={user?.full_name} userEmail={user?.email} userAvatar={user?.avatar_url} />
 
-            <main className={`${isSidebarCollapsed ? 'ml-20' : 'ml-72'} mt-16 p-8 transition-all duration-300`}>
+            <main className={`${isSidebarCollapsed ? 'lg:ml-24' : 'lg:ml-72'} mt-20 p-4 lg:p-8 transition-all duration-300`}>
                 <div className="max-w-4xl mx-auto">
                     {/* Header */}
                     <div className="flex flex-col md:flex-row md:items-center justify-between mb-8 gap-4">
@@ -142,7 +142,7 @@ export default function NotificationsPage() {
                             </h1>
                             <p className="text-slate-500 mt-1">Stay updated with your courses and announcements</p>
                         </div>
-                        <div className="flex items-center gap-3">
+                        <div className="flex flex-wrap items-center gap-3">
                             <div className="bg-white rounded-lg border border-gray-200 p-1 flex">
                                 <button
                                     onClick={() => setFilter('all')}

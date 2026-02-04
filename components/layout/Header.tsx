@@ -175,11 +175,14 @@ const Header: React.FC<HeaderProps> = ({ userName, userEmail, userAvatar, avatar
     };
 
     return (
-        <header className={`fixed top-4 right-4 h-14 bg-white rounded-2xl border border-slate-200/80 z-30 transition-all duration-300 shadow-lg ${isSidebarCollapsed ? 'left-24' : 'left-[17.5rem]'}`}>
+        <header className={`fixed top-4 right-4 h-14 rounded-2xl border z-30 transition-all duration-300 shadow-lg
+            bg-white border-slate-200/80
+            ${isSidebarCollapsed ? 'lg:left-24 left-4' : 'lg:left-[17.5rem] left-4'}
+        `}>
             <div className="h-full px-4 lg:px-5 flex items-center justify-between gap-4">
                 <button
                     onClick={toggleSidebar}
-                    className="p-2 -ml-2 text-slate-600 hover:bg-slate-100 rounded-lg lg:hidden transition-colors"
+                    className="p-2 -ml-2 rounded-lg lg:hidden transition-colors text-slate-600 hover:bg-slate-100"
                 >
                     <Menu className="w-5 h-5" />
                 </button>
@@ -194,13 +197,13 @@ const Header: React.FC<HeaderProps> = ({ userName, userEmail, userAvatar, avatar
                             value={searchQuery}
                             onChange={(e) => setSearchQuery(e.target.value)}
                             onFocus={() => searchQuery.trim() && setShowSearchDropdown(true)}
-                            className="w-full pl-10 pr-10 py-2 rounded-xl border border-slate-200 bg-slate-50 text-sm text-slate-700 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500 transition-all"
+                            className="w-full pl-10 pr-10 py-2 rounded-xl border text-sm transition-all focus:outline-none focus:ring-2 bg-slate-50 border-slate-200 text-slate-700 placeholder:text-slate-400 focus:ring-teal-500/20 focus:border-teal-500"
                         />
                         {searchQuery && (
                             <button
                                 type="button"
                                 onClick={() => { setSearchQuery(''); setShowSearchDropdown(false); }}
-                                className="absolute right-4 top-1/2 -translate-y-1/2 hover:bg-slate-200 p-1 rounded-full transition-colors"
+                                className="absolute right-4 top-1/2 -translate-y-1/2 p-1 rounded-full transition-colors hover:bg-slate-200"
                             >
                                 <X className="w-4 h-4 text-slate-500" />
                             </button>
@@ -262,11 +265,11 @@ const Header: React.FC<HeaderProps> = ({ userName, userEmail, userAvatar, avatar
                     <div className="relative">
                         <button
                             onClick={() => setShowNotifications(!showNotifications)}
-                            className="relative p-2.5 rounded-xl hover:bg-slate-100 transition-all active:scale-95"
+                            className="relative p-2.5 rounded-xl transition-all active:scale-95 hover:bg-slate-100"
                         >
-                            <Bell className="w-5 h-5 text-slate-800 stroke-[2.5]" />
+                            <Bell className="w-5 h-5 stroke-[2.5] text-slate-800" />
                             {unreadCount > 0 && (
-                                <span className="absolute -top-1 -right-1 min-w-[18px] h-[18px] bg-red-600 text-white text-[10px] font-black rounded-full flex items-center justify-center px-1 border-2 border-white shadow-sm scale-110">
+                                <span className="absolute -top-1 -right-1 min-w-[18px] h-[18px] bg-red-600 text-white text-[10px] font-black rounded-full flex items-center justify-center px-1 border-2 shadow-sm scale-110 border-white">
                                     {unreadCount > 9 ? '9+' : unreadCount}
                                 </span>
                             )}
@@ -274,8 +277,8 @@ const Header: React.FC<HeaderProps> = ({ userName, userEmail, userAvatar, avatar
 
                         {/* Notifications Dropdown */}
                         {showNotifications && (
-                            <div className="absolute right-0 mt-2 w-80 bg-white rounded-2xl shadow-xl border border-gray-200 overflow-hidden animate-scale-in z-50">
-                                <div className="p-4 border-b border-gray-100 flex justify-between items-center">
+                            <div className="absolute right-0 mt-2 w-80 rounded-2xl shadow-xl border overflow-hidden animate-scale-in z-50 bg-white border-gray-200">
+                                <div className="p-4 border-b flex justify-between items-center border-gray-100">
                                     <span className="font-semibold text-gray-900">Notifications</span>
                                     {unreadCount > 0 && (
                                         <span className="text-xs bg-red-100 text-red-600 px-2 py-0.5 rounded-full font-bold">
@@ -353,7 +356,7 @@ const Header: React.FC<HeaderProps> = ({ userName, userEmail, userAvatar, avatar
                     <div className="relative">
                         <button
                             onClick={() => setShowUserMenu(!showUserMenu)}
-                            className="flex items-center gap-3 px-3 py-2 rounded-full hover:bg-gray-100 transition-colors"
+                            className="flex items-center gap-3 px-3 py-2 rounded-full transition-colors hover:bg-gray-100"
                         >
                             {displayAvatar ? (
                                 <img
@@ -369,23 +372,23 @@ const Header: React.FC<HeaderProps> = ({ userName, userEmail, userAvatar, avatar
                                 </div>
                             )}
                             <div className="text-right hidden md:block">
-                                <p className="text-sm font-black text-slate-900 leading-tight">{userName || 'Student User'}</p>
-                                <p className="text-[10px] font-bold text-slate-600 truncate max-w-[120px]">{userEmail || 'student@stanford.edu'}</p>
+                                <p className="text-sm font-black leading-tight text-slate-900">{userName || 'Student User'}</p>
+                                <p className="text-[10px] font-bold truncate max-w-[120px] text-slate-600">{userEmail || 'student@stanford.edu'}</p>
                                 {isPremium && (
                                     <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-gradient-to-r from-yellow-400 to-orange-500 text-white">
                                         Premium
                                     </span>
                                 )}
                             </div>
-                            <ChevronDown className="w-4 h-4 text-gray-600 hidden md:block" />
+                            <ChevronDown className="w-4 h-4 hidden md:block text-gray-600" />
                         </button>
 
                         {/* User Dropdown */}
                         {showUserMenu && (
-                            <div className="absolute right-0 mt-2 w-64 bg-white rounded-2xl shadow-xl border border-gray-200 overflow-hidden animate-scale-in">
+                            <div className="absolute right-0 mt-2 w-64 rounded-2xl shadow-xl border overflow-hidden animate-scale-in bg-white border-gray-200">
                                 <div className="p-4 border-b border-gray-100">
                                     <p className="font-semibold text-gray-900">{userName}</p>
-                                    <p className="text-sm text-gray-500 mt-0.5">{userEmail}</p>
+                                    <p className="text-sm mt-0.5 text-gray-500">{userEmail}</p>
                                 </div>
                                 <div className="p-2">
                                     <a

@@ -742,7 +742,9 @@ function QuestionManager({ section, onClose, onBulkUpload }: { section: Section,
         difficulty: 'medium',
         explanation: '',
         order_index: 0,
-        passage_id: null
+        passage_id: null,
+        passage_content: '',
+        child_questions: []
     });
 
     useEffect(() => {
@@ -769,27 +771,92 @@ function QuestionManager({ section, onClose, onBulkUpload }: { section: Section,
     const handleSave = async (e: React.FormEvent) => {
         e.preventDefault();
         try {
-            // Fix for Essay/Passage types where correct_answer/options might be null or default
-            const payload = {
-                ...form,
-                section_id: section.id,
-                // Ensure correct_answer is never null if DB requires it
-                correct_answer: form.correct_answer || (form.question_type === 'essay' || form.question_type === 'passage' ? 'N/A' : 'a')
-            };
+            if (form.question_type === 'passage') {
+                if (!form.passage_content) {
+                    toast.error("Passage content is required");
+                    return;
+                }
 
-            // Convert Drive Link if needed
-            if (payload.image_type === 'drive' && payload.image_url) {
-                payload.image_url = convertDriveLink(payload.image_url);
-            }
+                // 1. Manage Passage Entity
+                let pId = form.passage_id;
+                if (!pId) {
+                    const { data, error } = await supabase.from('passages').insert([{ title: 'Passage Bunch', content: form.passage_content }]).select().single();
+                    if (error) throw error;
+                    pId = data.id;
+                } else {
+                    await supabase.from('passages').update({ content: form.passage_content }).eq('id', pId);
+                }
 
-            if (editingQuestion?.id) {
-                const { error } = await supabase.from('exam_questions').update(payload).eq('id', editingQuestion.id);
-                if (error) throw error;
-                toast.success('Question updated');
+                // 2. Manage Child Questions
+                if (form.child_questions && form.child_questions.length > 0) {
+                    for (const child of form.child_questions) {
+                        const childPayload = {
+                            section_id: section.id,
+                            passage_id: pId,
+                            question_text: child.question_text || 'Untitled Question',
+                            question_type: child.question_type || 'mcq_single',
+                            marks: child.marks || 1,
+                            difficulty: 'medium',
+                            correct_answer: child.correct_answer || 'a',
+                            options: child.options,
+                            order_index: child.order_index || 0
+                        };
+
+                        // Check if it's a temp ID (timestamp) or real ID
+                        const isTemp = child.id > 1000000000;
+
+                        if (!isTemp) {
+                            await supabase.from('exam_questions').update(childPayload).eq('id', child.id);
+                        } else {
+                            await supabase.from('exam_questions').insert([childPayload]);
+                        }
+                    }
+                }
+
+                // 3. Manage Master Question (Placeholder for List)
+                const masterPayload = {
+                    section_id: section.id,
+                    question_text: form.passage_content.substring(0, 100) + '...',
+                    passage_id: pId,
+                    question_type: 'passage',
+                    marks: 0,
+                    correct_answer: 'N/A',
+                    options: []
+                };
+
+                if (editingQuestion && editingQuestion.id) {
+                    await supabase.from('exam_questions').update(masterPayload).eq('id', editingQuestion.id);
+                } else {
+                    await supabase.from('exam_questions').insert([masterPayload]);
+                }
+
+                toast.success('Passage Bunch Saved');
+
             } else {
-                const { error } = await supabase.from('exam_questions').insert([payload]);
-                if (error) throw error;
-                toast.success('Question added');
+                // Standard Single Question Logic
+                const payload = {
+                    ...form,
+                    section_id: section.id,
+                    correct_answer: form.correct_answer || (form.question_type === 'essay' || form.question_type === 'passage' ? 'N/A' : 'a')
+                };
+
+                // Remove bundle-specific fields to avoid DB errors
+                delete payload.passage_content;
+                delete payload.child_questions;
+
+                if (payload.image_type === 'drive' && payload.image_url) {
+                    payload.image_url = convertDriveLink(payload.image_url);
+                }
+
+                if (editingQuestion?.id) {
+                    const { error } = await supabase.from('exam_questions').update(payload).eq('id', editingQuestion.id);
+                    if (error) throw error;
+                    toast.success('Question updated');
+                } else {
+                    const { error } = await supabase.from('exam_questions').insert([payload]);
+                    if (error) throw error;
+                    toast.success('Question added');
+                }
             }
             setIsFormOpen(false);
             fetchQuestions();
@@ -797,6 +864,35 @@ function QuestionManager({ section, onClose, onBulkUpload }: { section: Section,
             console.error('Save Question Error:', error);
             toast.error(error.message);
         }
+    };
+
+    const handleEditClick = async (q: Question) => {
+        setEditingQuestion(q);
+        if (q.question_type === 'passage' && q.passage_id) {
+            const toastId = toast.loading("Loading Passage Bundle...");
+            try {
+                // Fetch Passage Content
+                const { data: pData } = await supabase.from('passages').select('*').eq('id', q.passage_id).single();
+                // Fetch Children (exclude self)
+                const { data: cData } = await supabase.from('exam_questions')
+                    .select('*')
+                    .eq('passage_id', q.passage_id)
+                    .neq('id', q.id || -1)
+                    .order('order_index');
+
+                setForm({
+                    ...q,
+                    passage_content: pData?.content || '',
+                    child_questions: cData || []
+                });
+                toast.dismiss(toastId);
+            } catch (err) {
+                toast.error("Failed to load bundle details");
+            }
+        } else {
+            setForm({ ...q, passage_content: '', child_questions: [] });
+        }
+        setIsFormOpen(true);
     };
 
     const handleCreatePassage = async () => {
@@ -875,193 +971,253 @@ function QuestionManager({ section, onClose, onBulkUpload }: { section: Section,
                     {isFormOpen ? (
                         <div className="max-w-3xl mx-auto bg-white p-10 rounded-[2.5rem] border border-slate-100 shadow-xl animate-in zoom-in-95 duration-200">
                             <form onSubmit={handleSave} className="space-y-6">
-                                <div>
-                                    <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-3">Principal Question Text</label>
-                                    <textarea
-                                        required
-                                        className="w-full p-5 bg-slate-50 border border-slate-100 rounded-3xl outline-none focus:ring-2 focus:ring-indigo-500/20 font-bold text-slate-700 min-h-[120px] resize-none"
-                                        placeholder="Enter the question statement here..."
-                                        value={form.question_text}
-                                        onChange={e => setForm({ ...form, question_text: e.target.value })}
-                                    />
+                                <div className="mb-6">
+                                    <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">Question Type</label>
+                                    <select
+                                        className="w-full p-4 bg-slate-50 border border-slate-100 rounded-2xl outline-none focus:ring-2 focus:ring-indigo-500/20 font-bold text-slate-700 appearance-none transition-all"
+                                        value={form.question_type}
+                                        onChange={e => setForm({ ...form, question_type: e.target.value })}
+                                    >
+                                        <option value="mcq_single">MCQ (Single Choice)</option>
+                                        <option value="mcq_multiple">MCQ (Multiple Choice)</option>
+                                        <option value="true_false">True / False</option>
+                                        <option value="numerical">Numerical</option>
+                                        <option value="essay">Essay / Long Answer</option>
+                                        <option value="passage">Passage / Comprehension Bunch</option>
+                                    </select>
                                 </div>
 
-
-                                <div className="grid grid-cols-2 gap-6">
-                                    <div>
-                                        <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">Image Integration (Opt)</label>
-                                        <div className="flex bg-slate-50 p-1 rounded-2xl border border-slate-100 mb-2">
-                                            <button
-                                                type="button"
-                                                onClick={() => setForm({ ...form, image_type: 'direct' })}
-                                                className={`flex-1 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${form.image_type === 'direct' ? 'bg-white shadow-sm text-indigo-600' : 'text-slate-400'}`}
-                                            >
-                                                Direct Link
-                                            </button>
-                                            <button
-                                                type="button"
-                                                onClick={() => setForm({ ...form, image_type: 'drive' })}
-                                                className={`flex-1 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${form.image_type === 'drive' ? 'bg-white shadow-sm text-indigo-600' : 'text-slate-400'}`}
-                                            >
-                                                Google Drive
-                                            </button>
-                                        </div>
-                                        <div className="relative">
-                                            <input
-                                                type="text"
-                                                placeholder={form.image_type === 'drive' ? 'Paste Drive sharing link...' : 'https://example.com/image.jpg'}
-                                                className="w-full p-4 pl-10 bg-slate-50 border border-slate-100 rounded-2xl outline-none focus:ring-2 focus:ring-indigo-500/20 font-bold text-xs"
-                                                value={form.image_url}
-                                                onChange={e => setForm({ ...form, image_url: e.target.value })}
-                                            />
-                                            <ImageIcon className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-                                        </div>
-                                    </div>
-                                    <div>
-                                        <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">Question Type</label>
-                                        <select
-                                            className="w-full p-4 bg-slate-50 border border-slate-100 rounded-2xl outline-none focus:ring-2 focus:ring-indigo-500/20 font-bold text-slate-700 appearance-none"
-                                            value={form.question_type}
-                                            onChange={e => setForm({ ...form, question_type: e.target.value })}
-                                        >
-                                            <option value="mcq_single">MCQ (Single Choice)</option>
-                                            <option value="mcq_multiple">MCQ (Multiple Choice)</option>
-                                            <option value="true_false">True / False</option>
-                                            <option value="numerical">Numerical</option>
-                                            <option value="essay">Essay / Long Answer</option>
-                                            <option value="passage">Passage Header</option>
-                                        </select>
-                                    </div>
-                                </div>
-
-                                {/* Passage Selection */}
-                                {form.question_type !== 'passage' && (
-                                    <div className="p-6 bg-slate-50 rounded-3xl border border-slate-100">
-                                        <div className="flex justify-between items-center mb-4">
-                                            <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Link to Passage (Optional)</label>
-                                            <button
-                                                type="button"
-                                                onClick={() => setIsPassageModalOpen(true)}
-                                                className="text-[10px] font-black text-indigo-600 uppercase tracking-widest flex items-center gap-1 hover:text-indigo-700"
-                                            >
-                                                <Plus className="w-3 h-3" /> Create New Passage
-                                            </button>
-                                        </div>
-                                        <select
-                                            className="w-full p-4 bg-white border border-slate-200 rounded-2xl outline-none focus:ring-2 focus:ring-indigo-500/20 font-bold text-slate-700"
-                                            value={form.passage_id || ''}
-                                            onChange={e => setForm({ ...form, passage_id: e.target.value ? parseInt(e.target.value) : null })}
-                                        >
-                                            <option value="">No Passage Linked</option>
-                                            {passages.map(p => (
-                                                <option key={p.id} value={p.id}>{p.title || p.content.substring(0, 50)}...</option>
-                                            ))}
-                                        </select>
-                                        <p className="mt-2 text-[9px] font-medium text-slate-400">Linking questions to a passage keeps them grouped together during the exam.</p>
-                                    </div>
-                                )}
-
-                                {form.image_url && (
-                                    <div className="mt-2 p-4 bg-slate-50 rounded-2xl border border-slate-100 flex items-center gap-4">
-                                        <div className="w-20 h-20 bg-white rounded-xl overflow-hidden border border-slate-200 shadow-sm flex-shrink-0">
-                                            <img
-                                                src={form.image_type === 'drive' ? convertDriveLink(form.image_url) : form.image_url}
-                                                alt="Preview"
-                                                className="w-full h-full object-cover"
-                                                onError={(e) => (e.currentTarget.src = 'https://placehold.co/100x100?text=Invalid+Link')}
-                                            />
-                                        </div>
+                                {form.question_type === 'passage' ? (
+                                    <div className="space-y-6 animate-in fade-in slide-in-from-bottom-2 duration-300">
                                         <div>
-                                            <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Image Preview</p>
-                                            <p className="text-[10px] text-slate-500 mt-1 truncate max-w-[400px]">{form.image_url}</p>
+                                            <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-3">Passage Content</label>
+                                            <textarea
+                                                required
+                                                className="w-full p-6 bg-slate-50 border border-slate-100 rounded-3xl outline-none focus:ring-2 focus:ring-indigo-500/20 font-medium text-slate-700 min-h-[200px] leading-relaxed custom-scrollbar text-base"
+                                                placeholder="Paste or type the comprehension passage here..."
+                                                value={form.passage_content}
+                                                onChange={e => setForm({ ...form, passage_content: e.target.value })}
+                                            />
+                                        </div>
+
+                                        <div className="p-8 bg-indigo-50/50 rounded-[2.5rem] border border-indigo-100/50">
+                                            <div className="flex justify-between items-center mb-6">
+                                                <div>
+                                                    <h4 className="text-sm font-black text-indigo-900">Question Bunch</h4>
+                                                    <p className="text-[10px] text-indigo-600 font-bold mt-1">Questions linked to this passage</p>
+                                                </div>
+                                                <button
+                                                    type="button"
+                                                    onClick={() => {
+                                                        const newQ = {
+                                                            id: Date.now(),
+                                                            question_text: '',
+                                                            question_type: 'mcq_single',
+                                                            options: [{ id: 'a', text: '' }, { id: 'b', text: '' }, { id: 'c', text: '' }, { id: 'd', text: '' }],
+                                                            correct_answer: 'a',
+                                                            marks: 1,
+                                                            order_index: (form.child_questions?.length || 0)
+                                                        };
+                                                        setForm({ ...form, child_questions: [...(form.child_questions || []), newQ] });
+                                                    }}
+                                                    className="flex items-center gap-2 px-5 py-2.5 bg-indigo-600 text-white rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-indigo-700 transition-all shadow-lg shadow-indigo-200"
+                                                >
+                                                    <Plus className="w-3.5 h-3.5" /> Add Question
+                                                </button>
+                                            </div>
+
+                                            <div className="space-y-4">
+                                                {(!form.child_questions || form.child_questions.length === 0) ? (
+                                                    <div className="text-center py-10 bg-white rounded-3xl border border-dashed border-indigo-200 text-indigo-300">
+                                                        <span className="text-xs font-bold">No questions added yet</span>
+                                                    </div>
+                                                ) : (
+                                                    form.child_questions.map((q: any, i: number) => (
+                                                        <div key={q.id || i} className="bg-white p-6 rounded-3xl border border-indigo-100 shadow-sm relative group">
+                                                            <span className="absolute left-0 top-0 bottom-0 w-1.5 bg-indigo-500 rounded-l-3xl"></span>
+                                                            <div className="ml-4">
+                                                                <div className="flex gap-4 mb-4">
+                                                                    <input
+                                                                        placeholder="Question..."
+                                                                        className="flex-1 bg-transparent font-bold text-slate-700 outline-none border-b border-dashed border-slate-200 focus:border-indigo-500 pb-1"
+                                                                        value={q.question_text}
+                                                                        onChange={(e) => {
+                                                                            const updated = [...form.child_questions];
+                                                                            updated[i].question_text = e.target.value;
+                                                                            setForm({ ...form, child_questions: updated });
+                                                                        }}
+                                                                    />
+                                                                    <button type="button" onClick={() => {
+                                                                        const updated = form.child_questions.filter((_: any, idx: number) => idx !== i);
+                                                                        setForm({ ...form, child_questions: updated });
+                                                                    }} className="text-rose-400 hover:text-rose-600"><Trash2 className="w-4 h-4" /></button>
+                                                                </div>
+                                                                <div className="grid grid-cols-2 gap-3">
+                                                                    {q.options && q.options.map((opt: any, optIdx: number) => (
+                                                                        <div key={opt.id} className="flex items-center gap-2">
+                                                                            <button type="button"
+                                                                                onClick={() => {
+                                                                                    const updated = [...form.child_questions];
+                                                                                    updated[i].correct_answer = opt.id;
+                                                                                    setForm({ ...form, child_questions: updated });
+                                                                                }}
+                                                                                className={`w-6 h-6 rounded-full text-[10px] font-black border ${q.correct_answer === opt.id ? 'bg-indigo-600 border-indigo-600 text-white' : 'bg-slate-50 text-slate-400'}`}
+                                                                            >{opt.id.toUpperCase()}</button>
+                                                                            <input
+                                                                                className="bg-slate-50 rounded-lg px-3 py-1.5 text-xs font-bold w-full outline-none focus:ring-1 focus:ring-indigo-200"
+                                                                                placeholder={`Option ${opt.id.toUpperCase()}`}
+                                                                                value={opt.text}
+                                                                                onChange={(e) => {
+                                                                                    const updated = [...form.child_questions];
+                                                                                    updated[i].options[optIdx].text = e.target.value;
+                                                                                    setForm({ ...form, child_questions: updated });
+                                                                                }}
+                                                                            />
+                                                                        </div>
+                                                                    ))}
+                                                                </div>
+                                                            </div>
+                                                        </div>
+                                                    ))
+                                                )}
+                                            </div>
                                         </div>
                                     </div>
-                                )}
+                                ) : (
+                                    <div className="space-y-6 animate-in fade-in duration-300">
+                                        <div>
+                                            <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-3">Principal Question Text</label>
+                                            <textarea
+                                                required
+                                                className="w-full p-5 bg-slate-50 border border-slate-100 rounded-3xl outline-none focus:ring-2 focus:ring-indigo-500/20 font-bold text-slate-700 min-h-[120px] resize-none"
+                                                placeholder="Enter the question statement here..."
+                                                value={form.question_text}
+                                                onChange={e => setForm({ ...form, question_text: e.target.value })}
+                                            />
+                                        </div>
 
-                                {/* Options for MCQs */}
-                                {(form.question_type === 'mcq_single' || form.question_type === 'mcq_multiple') && (
-                                    <div className="space-y-4">
-                                        <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest">Distractor Options</label>
-                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                            {form.options.map((opt: any, idx: number) => (
-                                                <div key={idx} className={`flex items-center gap-3 p-4 rounded-2xl border transition-all ${form.correct_answer.includes(opt.id) ? 'bg-indigo-50 border-indigo-200' : 'bg-slate-50 border-slate-100'}`}>
-                                                    <button
-                                                        type="button"
-                                                        onClick={() => {
-                                                            if (form.question_type === 'mcq_single') {
-                                                                setForm({ ...form, correct_answer: opt.id });
-                                                            } else {
-                                                                const current = Array.isArray(form.correct_answer) ? form.correct_answer : [form.correct_answer];
-                                                                const next = current.includes(opt.id)
-                                                                    ? current.filter((id: any) => id !== opt.id)
-                                                                    : [...current, opt.id];
-                                                                setForm({ ...form, correct_answer: next });
-                                                            }
-                                                        }}
-                                                        className={`w-6 h-6 rounded-full flex items-center justify-center font-black text-[10px] border-2 transition-all ${form.correct_answer.includes(opt.id) ? 'bg-indigo-600 border-indigo-600 text-white' : 'bg-white border-slate-200 text-slate-400'}`}
-                                                    >
-                                                        {opt.id.toUpperCase()}
-                                                    </button>
+                                        <div className="grid grid-cols-1 gap-6">
+                                            <div>
+                                                <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">Image Integration (Opt)</label>
+                                                <div className="flex bg-slate-50 p-1 rounded-2xl border border-slate-100 mb-2">
+                                                    <button type="button" onClick={() => setForm({ ...form, image_type: 'direct' })} className={`flex-1 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${form.image_type === 'direct' ? 'bg-white shadow-sm text-indigo-600' : 'text-slate-400'}`}>Direct Link</button>
+                                                    <button type="button" onClick={() => setForm({ ...form, image_type: 'drive' })} className={`flex-1 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${form.image_type === 'drive' ? 'bg-white shadow-sm text-indigo-600' : 'text-slate-400'}`}>Google Drive</button>
+                                                </div>
+                                                <div className="relative">
                                                     <input
-                                                        required
                                                         type="text"
-                                                        className="flex-1 bg-transparent outline-none font-bold text-slate-700 text-sm"
-                                                        placeholder={`Option ${opt.id.toUpperCase()} text...`}
-                                                        value={opt.text}
-                                                        onChange={e => {
-                                                            const newOpts = [...form.options];
-                                                            newOpts[idx] = { ...opt, text: e.target.value };
-                                                            setForm({ ...form, options: newOpts });
-                                                        }}
+                                                        placeholder={form.image_type === 'drive' ? 'Paste Drive sharing link...' : 'https://example.com/image.jpg'}
+                                                        className="w-full p-4 pl-10 bg-slate-50 border border-slate-100 rounded-2xl outline-none focus:ring-2 focus:ring-indigo-500/20 font-bold text-xs"
+                                                        value={form.image_url}
+                                                        onChange={e => setForm({ ...form, image_url: e.target.value })}
+                                                    />
+                                                    <ImageIcon className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        {form.image_url && (
+                                            <div className="mt-2 p-4 bg-slate-50 rounded-2xl border border-slate-100 flex items-center gap-4">
+                                                <div className="w-20 h-20 bg-white rounded-xl overflow-hidden border border-slate-200 shadow-sm flex-shrink-0">
+                                                    <img
+                                                        src={form.image_type === 'drive' ? convertDriveLink(form.image_url) : form.image_url}
+                                                        alt="Preview"
+                                                        className="w-full h-full object-cover"
+                                                        onError={(e) => (e.currentTarget.src = 'https://placehold.co/100x100?text=Invalid+Link')}
                                                     />
                                                 </div>
-                                            ))}
+                                                <div>
+                                                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Image Preview</p>
+                                                    <p className="text-[10px] text-slate-500 mt-1 truncate max-w-[400px]">{form.image_url}</p>
+                                                </div>
+                                            </div>
+                                        )}
+
+                                        {(form.question_type === 'mcq_single' || form.question_type === 'mcq_multiple') && (
+                                            <div className="space-y-4">
+                                                <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest">Distractor Options</label>
+                                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                                    {form.options.map((opt: any, idx: number) => (
+                                                        <div key={idx} className={`flex items-center gap-3 p-4 rounded-2xl border transition-all ${form.correct_answer.includes(opt.id) ? 'bg-indigo-50 border-indigo-200' : 'bg-slate-50 border-slate-100'}`}>
+                                                            <button
+                                                                type="button"
+                                                                onClick={() => {
+                                                                    if (form.question_type === 'mcq_single') {
+                                                                        setForm({ ...form, correct_answer: opt.id });
+                                                                    } else {
+                                                                        const current = Array.isArray(form.correct_answer) ? form.correct_answer : [form.correct_answer];
+                                                                        const next = current.includes(opt.id)
+                                                                            ? current.filter((id: any) => id !== opt.id)
+                                                                            : [...current, opt.id];
+                                                                        setForm({ ...form, correct_answer: next });
+                                                                    }
+                                                                }}
+                                                                className={`w-6 h-6 rounded-full flex items-center justify-center font-black text-[10px] border-2 transition-all ${form.correct_answer.includes(opt.id) ? 'bg-indigo-600 border-indigo-600 text-white' : 'bg-white border-slate-200 text-slate-400'}`}
+                                                            >
+                                                                {opt.id.toUpperCase()}
+                                                            </button>
+                                                            <input
+                                                                required
+                                                                type="text"
+                                                                className="flex-1 bg-transparent outline-none font-bold text-slate-700 text-sm"
+                                                                placeholder={`Option ${opt.id.toUpperCase()} text...`}
+                                                                value={opt.text}
+                                                                onChange={e => {
+                                                                    const newOpts = [...form.options];
+                                                                    newOpts[idx] = { ...opt, text: e.target.value };
+                                                                    setForm({ ...form, options: newOpts });
+                                                                }}
+                                                            />
+                                                        </div>
+                                                    ))}
+                                                </div>
+                                            </div>
+                                        )}
+
+                                        {form.question_type === 'true_false' && (
+                                            <div className="flex gap-4">
+                                                <button
+                                                    type="button"
+                                                    onClick={() => setForm({ ...form, correct_answer: 'true' })}
+                                                    className={`flex-1 py-4 rounded-2xl border font-black text-sm uppercase tracking-widest transition-all ${form.correct_answer === 'true' ? 'bg-indigo-600 border-indigo-600 text-white shadow-lg' : 'bg-slate-50 border-slate-100 text-slate-400'}`}
+                                                >
+                                                    True
+                                                </button>
+                                                <button
+                                                    type="button"
+                                                    onClick={() => setForm({ ...form, correct_answer: 'false' })}
+                                                    className={`flex-1 py-4 rounded-2xl border font-black text-sm uppercase tracking-widest transition-all ${form.correct_answer === 'false' ? 'bg-indigo-600 border-indigo-600 text-white shadow-lg' : 'bg-slate-50 border-slate-100 text-slate-400'}`}
+                                                >
+                                                    False
+                                                </button>
+                                            </div>
+                                        )}
+
+                                        {form.question_type === 'numerical' && (
+                                            <div>
+                                                <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">Numerical Answer</label>
+                                                <input
+                                                    required
+                                                    type="text"
+                                                    className="w-full p-4 bg-slate-50 border border-slate-100 rounded-2xl outline-none focus:ring-2 focus:ring-indigo-500/20 font-bold text-slate-700"
+                                                    placeholder="Enter exact numerical value..."
+                                                    value={form.correct_answer}
+                                                    onChange={e => setForm({ ...form, correct_answer: e.target.value })}
+                                                />
+                                            </div>
+                                        )}
+
+                                        <div>
+                                            <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-3">Conceptual Explanation (Shown after exam)</label>
+                                            <textarea
+                                                className="w-full p-5 bg-slate-50 border border-slate-100 rounded-3xl outline-none focus:ring-2 focus:ring-indigo-500/20 font-bold text-slate-700 min-h-[100px] resize-none"
+                                                placeholder="Explain why the correct answer is right..."
+                                                value={form.explanation}
+                                                onChange={e => setForm({ ...form, explanation: e.target.value })}
+                                            />
                                         </div>
                                     </div>
                                 )}
-
-                                {form.question_type === 'true_false' && (
-                                    <div className="flex gap-4">
-                                        <button
-                                            type="button"
-                                            onClick={() => setForm({ ...form, correct_answer: 'true' })}
-                                            className={`flex-1 py-4 rounded-2xl border font-black text-sm uppercase tracking-widest transition-all ${form.correct_answer === 'true' ? 'bg-indigo-600 border-indigo-600 text-white shadow-lg' : 'bg-slate-50 border-slate-100 text-slate-400'}`}
-                                        >
-                                            True
-                                        </button>
-                                        <button
-                                            type="button"
-                                            onClick={() => setForm({ ...form, correct_answer: 'false' })}
-                                            className={`flex-1 py-4 rounded-2xl border font-black text-sm uppercase tracking-widest transition-all ${form.correct_answer === 'false' ? 'bg-indigo-600 border-indigo-600 text-white shadow-lg' : 'bg-slate-50 border-slate-100 text-slate-400'}`}
-                                        >
-                                            False
-                                        </button>
-                                    </div>
-                                )}
-
-                                {form.question_type === 'numerical' && (
-                                    <div>
-                                        <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">Numerical Answer</label>
-                                        <input
-                                            required
-                                            type="text"
-                                            className="w-full p-4 bg-slate-50 border border-slate-100 rounded-2xl outline-none focus:ring-2 focus:ring-indigo-500/20 font-bold text-slate-700"
-                                            placeholder="Enter exact numerical value..."
-                                            value={form.correct_answer}
-                                            onChange={e => setForm({ ...form, correct_answer: e.target.value })}
-                                        />
-                                    </div>
-                                )}
-
-                                <div>
-                                    <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-3">Conceptual Explanation (Shown after exam)</label>
-                                    <textarea
-                                        className="w-full p-5 bg-slate-50 border border-slate-100 rounded-3xl outline-none focus:ring-2 focus:ring-indigo-500/20 font-bold text-slate-700 min-h-[100px] resize-none"
-                                        placeholder="Explain why the correct answer is right..."
-                                        value={form.explanation}
-                                        onChange={e => setForm({ ...form, explanation: e.target.value })}
-                                    />
-                                </div>
 
                                 <div className="flex items-center gap-4 pt-6">
                                     <button
@@ -1109,11 +1265,7 @@ function QuestionManager({ section, onClose, onBulkUpload }: { section: Section,
                                         </div>
                                         <div className="flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
                                             <button
-                                                onClick={() => {
-                                                    setEditingQuestion(q);
-                                                    setForm(q);
-                                                    setIsFormOpen(true);
-                                                }}
+                                                onClick={() => handleEditClick(q)}
                                                 className="p-2 text-slate-400 hover:text-indigo-600 bg-slate-50 rounded-xl transition-all"
                                             >
                                                 <Edit2 className="w-4 h-4" />

@@ -179,7 +179,7 @@ export default function ProfilePage() {
             <Sidebar userRole={user?.role || 'student'} />
             <Header userName={user?.full_name} userEmail={user?.email} userAvatar={user?.avatar_url} />
 
-            <main className="lg:ml-64 mt-16 p-4 lg:p-8 transition-all duration-300">
+            <main className={`transition-all duration-300 mt-20 p-4 lg:p-8 ${isSidebarCollapsed ? 'lg:ml-24' : 'lg:ml-72'}`}>
                 <div className="max-w-6xl mx-auto">
                     {/* Header */}
                     <div className="mb-8">
@@ -200,7 +200,7 @@ export default function ProfilePage() {
                         <div className="lg:col-span-2 space-y-8">
 
                             {/* Profile Card */}
-                            <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-8">
+                            <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-4 md:p-8">
                                 <form onSubmit={handleUpdateProfile}>
                                     <div className="flex flex-col sm:flex-row items-center sm:items-start gap-8 mb-8">
                                         {/* Avatar Section */}
@@ -282,7 +282,7 @@ export default function ProfilePage() {
                             </div>
 
                             {/* Security Section */}
-                            <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-8">
+                            <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-4 md:p-8">
                                 <h3 className="text-lg font-bold text-slate-800 mb-6 flex items-center gap-2">
                                     <Lock className="w-5 h-5 text-slate-400" />
                                     Security
@@ -323,7 +323,7 @@ export default function ProfilePage() {
                             </div>
 
                             {/* Feedback Section */}
-                            <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-8">
+                            <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-4 md:p-8">
                                 <h3 className="text-lg font-bold text-slate-800 mb-2 flex items-center gap-2">
                                     <Star className="w-5 h-5 text-teal-600 fill-teal-600" />
                                     Feedback
