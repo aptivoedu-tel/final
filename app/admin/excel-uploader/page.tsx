@@ -131,7 +131,11 @@ export default function ExcelUploaderPage() {
             alert('User session not found. Please log in again.');
             return;
         }
-        if (!subtopic) {
+        if (!topic) {
+            alert('Please select a topic first.');
+            return;
+        }
+        if (!subtopic && subtopic !== 'no_subtopic') {
             alert('Please select a Subtopic first.');
             return;
         }
@@ -142,11 +146,36 @@ export default function ExcelUploaderPage() {
 
         setSaving(true);
         try {
+            let targetSubtopicId = subtopic;
+
+            // Handle "No Subtopic" case
+            if (subtopic === 'no_subtopic') {
+                const { data: existing } = await supabase
+                    .from('subtopics')
+                    .select('id')
+                    .eq('topic_id', topic)
+                    .eq('name', 'General')
+                    .single();
+
+                if (existing) {
+                    targetSubtopicId = existing.id.toString();
+                } else {
+                    const { data: created, error: createErr } = await supabase
+                        .from('subtopics')
+                        .insert({ topic_id: parseInt(topic), name: 'General' })
+                        .select('id')
+                        .single();
+
+                    if (createErr) throw createErr;
+                    targetSubtopicId = created.id.toString();
+                }
+            }
+
             // 1. Create upload record
             const { data: uploadRec, error: uploadErr } = await supabase.from('uploads').insert({
                 upload_type: 'mcq_excel',
                 file_name: selectedFile?.name,
-                subtopic_id: parseInt(subtopic),
+                subtopic_id: parseInt(targetSubtopicId),
                 status: 'processing',
                 total_rows: previewData.length,
                 created_by: user.id
@@ -167,7 +196,7 @@ export default function ExcelUploaderPage() {
                 const b = getVal(['option b', 'b', 'option_b']);
                 const c = getVal(['option c', 'c', 'option_c']);
                 const d = getVal(['option d', 'd', 'option_d']);
-                const correct = (getVal(['correct', 'answer']) || 'A')?.toString().toUpperCase();
+                const correct = (getVal(['correct', 'answer']) || 'A')?.toString().toUpperCase().trim();
                 const explanation = getVal(['explanation', 'reason', 'justify']) || '';
                 const rawDifficulty = (getVal(['difficulty', 'level']) || 'medium').toString().toLowerCase();
 
@@ -183,7 +212,7 @@ export default function ExcelUploaderPage() {
                 const difficulty = ['easy', 'medium', 'hard'].includes(rawDifficulty) ? rawDifficulty : 'medium';
 
                 return {
-                    subtopic_id: parseInt(subtopic),
+                    subtopic_id: parseInt(targetSubtopicId),
                     question: q,
                     option_a: a,
                     option_b: b,
@@ -315,6 +344,7 @@ export default function ExcelUploaderPage() {
                                             onChange={(e) => setSubtopic(e.target.value)}
                                         >
                                             <option value="">Select Subtopic</option>
+                                            <option value="no_subtopic" className="text-primary font-bold">-- NO SUBTOPIC (Topic Level) --</option>
                                             {subtopicsList.map(st => <option key={st.id} value={st.id}>{st.name}</option>)}
                                         </select>
                                     </div>
@@ -363,7 +393,7 @@ export default function ExcelUploaderPage() {
                                         {previewData.length > 0 && (
                                             <button
                                                 onClick={handleSaveToDatabase}
-                                                disabled={saving || !subtopic}
+                                                disabled={saving || (!subtopic && subtopic !== 'no_subtopic')}
                                                 className="w-full mt-4 py-3 bg-green-600 text-white font-bold rounded-xl hover:bg-green-700 transition-all flex items-center justify-center gap-2 shadow-lg shadow-green-200 disabled:opacity-50"
                                             >
                                                 {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}

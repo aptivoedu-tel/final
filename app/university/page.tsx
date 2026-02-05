@@ -746,7 +746,7 @@ export default function UniversityPortalPage() {
                                                                                         </div>
                                                                                     )}
                                                                                     <span className={`text-[13px] font-black tracking-tight ${status.isRead ? 'text-slate-900' : 'text-slate-500'}`}>
-                                                                                        {subtopic.name}
+                                                                                        {subtopic.name === 'General' ? 'Main Topic Content' : subtopic.name}
                                                                                     </span>
                                                                                 </div>
                                                                                 <div className="flex items-center gap-3">

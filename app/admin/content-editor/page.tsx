@@ -67,42 +67,94 @@ export default function ContentEditorPage() {
 
     const loadSubtopics = async (topicId: number) => {
         const { data } = await supabase.from('subtopics').select('id, name').eq('topic_id', topicId).order('name');
-        if (data) setSubtopics(data);
+        if (data) {
+            setSubtopics(data);
+        } else {
+            setSubtopics([]);
+        }
     };
 
     React.useEffect(() => {
         if (selectedSubtopic) {
-            loadContent(parseInt(selectedSubtopic));
+            loadContent(selectedSubtopic);
         } else {
             setContent('');
         }
     }, [selectedSubtopic]);
 
-    const loadContent = async (subtopicId: number) => {
+    const loadContent = async (subId: string) => {
         setLoading(true);
-        const { data, error } = await supabase
-            .from('subtopics')
-            .select('content_markdown')
-            .eq('id', subtopicId)
-            .single();
+        if (subId === 'no_subtopic') {
+            const { data } = await supabase
+                .from('subtopics')
+                .select('content_markdown')
+                .eq('topic_id', selectedTopic)
+                .eq('name', 'General')
+                .single();
 
-        if (data) {
-            setContent(data.content_markdown || '');
+            setContent(data?.content_markdown || '');
+        } else {
+            const { data } = await supabase
+                .from('subtopics')
+                .select('content_markdown')
+                .eq('id', parseInt(subId))
+                .single();
+
+            setContent(data?.content_markdown || '');
         }
         setLoading(false);
     };
 
     const handleSave = async () => {
-        if (!selectedSubtopic) {
-            alert('Please select a subtopic first.');
+        if (!selectedTopic) {
+            alert('Please select a topic first.');
             return;
         }
 
         setSaving(true);
+        let targetSubtopicId = selectedSubtopic;
+
+        // If "No Subtopic" selected, handle "General" subtopic
+        if (selectedSubtopic === 'no_subtopic') {
+            // Check if "General" already exists
+            const { data: existing } = await supabase
+                .from('subtopics')
+                .select('id')
+                .eq('topic_id', selectedTopic)
+                .eq('name', 'General')
+                .single();
+
+            if (existing) {
+                targetSubtopicId = existing.id.toString();
+            } else {
+                // Create "General" subtopic
+                const { data: created, error: createErr } = await supabase
+                    .from('subtopics')
+                    .insert({ topic_id: parseInt(selectedTopic), name: 'General' })
+                    .select('id')
+                    .single();
+
+                if (createErr) {
+                    alert('Failed to create general subtopic: ' + createErr.message);
+                    setSaving(false);
+                    return;
+                }
+                targetSubtopicId = created.id.toString();
+                // Refresh list
+                loadSubtopics(parseInt(selectedTopic));
+            }
+        }
+
+        if (!targetSubtopicId) {
+            alert('Target subtopic not found.');
+            setSaving(false);
+            return;
+        }
+
         const { error } = await supabase
             .from('subtopics')
             .update({ content_markdown: content })
-            .eq('id', parseInt(selectedSubtopic));
+            .eq('id', parseInt(targetSubtopicId));
 
         if (error) {
             alert('Failed to save: ' + error.message);
@@ -150,7 +202,7 @@ export default function ContentEditorPage() {
 
                             <button
                                 onClick={handleSave}
-                                disabled={saving || !selectedSubtopic}
+                                disabled={saving || !selectedTopic || (!selectedSubtopic && selectedSubtopic !== 'no_subtopic')}
                                 className="w-full sm:w-auto flex items-center justify-center gap-2 px-6 py-2.5 bg-indigo-600 text-white font-black uppercase tracking-wider text-[11px] rounded-xl hover:bg-slate-900 transition-all shadow-lg shadow-indigo-100 active:scale-95 disabled:opacity-50"
                             >
                                 <Save className={`${saving ? 'animate-spin' : 'w-4 h-4'}`} />
@@ -201,6 +253,7 @@ export default function ContentEditorPage() {
                                     className="w-full px-4 py-3 bg-white border border-slate-200 rounded-xl appearance-none text-slate-800 font-bold text-xs focus:outline-none focus:ring-2 focus:ring-indigo-500/20 shadow-sm disabled:opacity-50"
                                 >
                                     <option value="">Select Subtopic</option>
+                                    <option value="no_subtopic" className="text-indigo-600 font-black italic">-- NO SUBTOPIC (Topic Level) --</option>
                                     {subtopics.map(st => <option key={st.id} value={st.id}>{st.name}</option>)}
                                 </select>
                                 <ChevronDown className="absolute right-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" />
@@ -218,7 +271,7 @@ export default function ContentEditorPage() {
 
                         {!selectedSubtopic && !loading && (
                             <div className="absolute inset-0 z-10 flex items-center justify-center bg-gray-50/10">
-                                <p className="text-slate-400 font-medium">Please select a subtopic above to start editing content</p>
+                                <p className="text-slate-400 font-medium">Please select a topic or subtopic above to start editing content</p>
                             </div>
                         )}
 
@@ -234,7 +287,7 @@ export default function ContentEditorPage() {
                                 <textarea
                                     value={content}
                                     onChange={(e) => setContent(e.target.value)}
-                                    disabled={!selectedSubtopic}
+                                    disabled={!selectedTopic && !selectedSubtopic}
                                     className="flex-1 w-full p-6 resize-none focus:outline-none font-mono text-sm text-slate-800 leading-relaxed custom-scrollbar disabled:bg-gray-50/30"
                                     spellCheck={false}
                                     placeholder="Start typing your content here..."
