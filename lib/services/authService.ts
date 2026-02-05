@@ -250,4 +250,72 @@ export class AuthService {
             localStorage.removeItem('aptivo_session');
         }
     }
+
+    /**
+     * Send password reset email
+     */
+    static async resetPassword(email: string): Promise<{ error: string | null }> {
+        const { error } = await supabase.auth.resetPasswordForEmail(email, {
+            redirectTo: typeof window !== 'undefined' ? `${window.location.origin}/update-password` : undefined,
+        });
+        return { error: error ? error.message : null };
+    }
+
+    /**
+     * Update user password (used after reset link login)
+     */
+    static async updatePassword(password: string): Promise<{ error: string | null }> {
+        const { error } = await supabase.auth.updateUser({ password });
+        return { error: error ? error.message : null };
+    }
+
+    /**
+     * Login with OAuth Provider
+     */
+    static async loginWithProvider(provider: 'google' | 'azure' | 'apple'): Promise<{ error: string | null }> {
+        const { error } = await supabase.auth.signInWithOAuth({
+            provider: provider,
+            options: {
+                redirectTo: typeof window !== 'undefined' ? `${window.location.origin}/auth/callback` : undefined,
+            }
+        });
+        return { error: error ? error.message : null };
+    }
+
+    /**
+     * Sync session from Supabase to LocalStorage (for OAuth flows)
+     */
+    static async syncSession(): Promise<User | null> {
+        const { data: { session } } = await supabase.auth.getSession();
+        if (!session) return null;
+
+        const stored = this.getCurrentUser();
+        if (stored && stored.id === session.user.id) return stored;
+
+        let { data: user } = await supabase
+            .from('users')
+            .select('*')
+            .eq('id', session.user.id)
+            .single();
+
+        if (!user) {
+            const { data: newUser } = await supabase.from('users').insert({
+                id: session.user.id,
+                email: session.user.email!,
+                full_name: session.user.user_metadata.full_name || 'User',
+                role: 'student',
+                status: 'active',
+                email_verified: true,
+                is_solo: true
+            }).select().single();
+            user = newUser;
+        }
+
+        if (user && typeof window !== 'undefined') {
+            localStorage.setItem('aptivo_user', JSON.stringify(user));
+            localStorage.setItem('aptivo_session', JSON.stringify(session));
+        }
+
+        return user;
+    }
 }

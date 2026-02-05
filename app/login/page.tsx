@@ -251,7 +251,7 @@ export default function LoginPage() {
                                                 <input type="checkbox" className="w-4 h-4 rounded-md border-slate-200 text-[#4CAF50] focus:ring-[#4CAF50] transition-all cursor-pointer shadow-sm" />
                                                 <span className="text-[11px] text-slate-500 font-bold group-hover:text-slate-900 transition-colors">Remember me</span>
                                             </label>
-                                            <Link href="#" className="text-[11px] text-[#4CAF50] hover:underline font-black">
+                                            <Link href="/forgot-password" className="text-[11px] text-[#4CAF50] hover:underline font-black">
                                                 Forgot Password?
                                             </Link>
                                         </div>
@@ -282,11 +282,27 @@ export default function LoginPage() {
                                             </div>
                                         </div>
                                         <div className="flex items-center justify-center gap-3">
-                                            {[Chrome, Apple, Shield].map((Icon, i) => (
-                                                <button key={i} className="w-11 h-11 rounded-xl border border-slate-100 flex items-center justify-center hover:bg-slate-50 transition-all active:scale-95 shadow-sm group">
-                                                    <Icon className="w-4.5 h-4.5 text-slate-400 group-hover:text-[#4CAF50] transition-colors" />
-                                                </button>
-                                            ))}
+                                            {/* Google Login */}
+                                            <button
+                                                type="button"
+                                                onClick={() => AuthService.loginWithProvider('google')}
+                                                className="w-11 h-11 rounded-xl border border-slate-100 flex items-center justify-center hover:bg-slate-50 transition-all active:scale-95 shadow-sm group"
+                                                title="Sign in with Google"
+                                            >
+                                                <Chrome className="w-4.5 h-4.5 text-slate-400 group-hover:text-[#EA4335] transition-colors" />
+                                            </button>
+
+                                            {/* Microsoft Login */}
+                                            <button
+                                                type="button"
+                                                onClick={() => AuthService.loginWithProvider('azure')}
+                                                className="w-11 h-11 rounded-xl border border-slate-100 flex items-center justify-center hover:bg-slate-50 transition-all active:scale-95 shadow-sm group"
+                                                title="Sign in with Microsoft"
+                                            >
+                                                <div className="flex items-center justify-center w-4.5 h-4.5">
+                                                    <svg className="w-4 h-4 group-hover:opacity-80 transition-opacity opacity-40 grayscale group-hover:grayscale-0" viewBox="0 0 23 23" xmlns="http://www.w3.org/2000/svg"><path fill="#f35325" d="M1 1h10v10H1z" /><path fill="#81bc06" d="M12 1h10v10H12z" /><path fill="#05a6f0" d="M1 12h10v10H1z" /><path fill="#ffba08" d="M12 12h10v10H12z" /></svg>
+                                                </div>
+                                            </button>
                                         </div>
                                     </div>
                                 </div>

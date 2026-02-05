@@ -1,6 +1,7 @@
 'use client';
 
 import React, { createContext, useContext, useState, ReactNode, useEffect } from 'react';
+import { AuthService } from '../services/authService';
 
 interface UIContextType {
     isSidebarOpen: boolean;
@@ -44,6 +45,11 @@ export const UIProvider = ({ children }: { children: ReactNode }) => {
             document.documentElement.classList.remove('dark');
         }
     }, [isDarkMode]);
+
+    // Sync Auth Session on Load
+    useEffect(() => {
+        AuthService.syncSession();
+    }, []);
 
     return (
         <UIContext.Provider value={{
