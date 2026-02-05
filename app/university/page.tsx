@@ -1,5 +1,8 @@
 'use client';
 
+// Force this page to use SSR (required for useSearchParams)
+export const runtime = 'edge';
+
 import React, { useState, useEffect } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { supabase } from '@/lib/supabase/client';
