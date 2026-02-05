@@ -9,6 +9,9 @@ import { AuthService } from '@/lib/services/authService';
 import { BookOpen, ChevronLeft, Play, GraduationCap, Clock, CheckCircle, BarChart, MoveRight } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
+import remarkMath from 'remark-math';
+import rehypeKatex from 'rehype-katex';
+import 'katex/dist/katex.min.css';
 import Link from 'next/link';
 import { useUI } from '@/lib/context/UIContext';
 
@@ -172,9 +175,21 @@ export default function LessonReaderPage() {
                         {/* Main Content */}
                         <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
                             <div className="lg:col-span-3">
-                                <div className="bg-white p-10 rounded-[2rem] shadow-sm border border-gray-100 prose prose-slate max-w-none prose-headings:font-black prose-headings:text-slate-900 prose-p:text-slate-600 prose-p:leading-relaxed prose-strong:text-indigo-600 prose-li:text-slate-600 prose-code:text-indigo-600 prose-code:bg-indigo-50 prose-code:px-1 prose-code:rounded prose-img:rounded-2xl prose-img:shadow-lg">
+                                <div className="bg-white p-10 rounded-[2rem] shadow-sm border border-gray-100 prose prose-slate max-w-none 
+                                    prose-headings:font-black prose-headings:text-slate-900 prose-headings:mt-10 prose-headings:mb-6
+                                    prose-p:text-slate-600 prose-p:leading-[2.2] prose-p:mb-8 
+                                    prose-li:text-slate-600 prose-li:leading-loose prose-li:my-3
+                                    prose-strong:text-indigo-600 
+                                    prose-code:text-indigo-600 prose-code:bg-indigo-50 prose-code:px-1 prose-code:rounded 
+                                    prose-img:rounded-2xl prose-img:shadow-lg
+                                    prose-blockquote:border-l-4 prose-blockquote:border-indigo-500 prose-blockquote:bg-indigo-50 prose-blockquote:p-6 prose-blockquote:rounded-r-2xl prose-blockquote:my-10
+                                    [&_.katex-display]:flex [&_.katex-display]:justify-center [&_.katex-display]:my-10 [&_.katex-display]:overflow-x-auto [&_.katex-display]:py-4
+                                ">
                                     {subtopic?.content_markdown ? (
-                                        <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                                        <ReactMarkdown
+                                            remarkPlugins={[remarkMath, remarkGfm]}
+                                            rehypePlugins={[rehypeKatex]}
+                                        >
                                             {subtopic?.content_markdown}
                                         </ReactMarkdown>
                                     ) : (

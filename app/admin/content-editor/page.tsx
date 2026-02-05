@@ -1,9 +1,17 @@
 'use client';
 
 import React from 'react';
-import { Save, FileText, Eye, ChevronDown } from 'lucide-react';
+import {
+    Save, FileText, Eye, ChevronDown,
+    Bold, Italic, List, Heading1, Heading2, Quote, Code, Link as LinkIcon,
+    Table as TableIcon, Image as ImageIcon, Minus, Braces
+} from 'lucide-react';
 import { useUI } from '@/lib/context/UIContext';
 import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
+import remarkMath from 'remark-math';
+import rehypeKatex from 'rehype-katex';
+import 'katex/dist/katex.min.css';
 import Sidebar from '@/components/layout/Sidebar';
 import Header from '@/components/layout/Header';
 import { AuthService } from '@/lib/services/authService';
@@ -25,6 +33,59 @@ export default function ContentEditorPage() {
     const [selectedSubject, setSelectedSubject] = React.useState<string>('');
     const [selectedTopic, setSelectedTopic] = React.useState<string>('');
     const [selectedSubtopic, setSelectedSubtopic] = React.useState<string>('');
+
+    // Editor Ref
+    const textareaRef = React.useRef<HTMLTextAreaElement>(null);
+
+    // Text Insertion Helper
+    const insertFormat = (type: string) => {
+        if (!textareaRef.current) return;
+        const textarea = textareaRef.current;
+        const start = textarea.selectionStart;
+        const end = textarea.selectionEnd;
+        const text = textarea.value;
+        const beforeSelection = text.substring(0, start);
+        const selection = text.substring(start, end);
+        const afterSelection = text.substring(end);
+
+        let newText = text;
+        let newCursorPos = start;
+
+        let before = '', after = '';
+
+        switch (type) {
+            case 'bold': before = '**'; after = '**'; break;
+            case 'italic': before = '_'; after = '_'; break;
+            case 'h1': before = '# '; after = ''; break;
+            case 'h2': before = '## '; after = ''; break;
+            case 'ul': before = '- '; after = ''; break;
+            case 'ol': before = '1. '; after = ''; break;
+            case 'quote': before = '> '; after = ''; break;
+            case 'code': before = '`'; after = '`'; break;
+            case 'codeblock': before = '```\n'; after = '\n```'; break;
+            case 'link': before = '['; after = '](url)'; break;
+            case 'image': before = '!['; after = '](url)'; break;
+            case 'table':
+                before = '\n| Header 1 | Header 2 |\n| -------- | -------- |\n| Cell 1   | Cell 2   |\n';
+                after = '';
+                break;
+            case 'math': before = '$'; after = '$'; break;
+            case 'mathblock': before = '\n$$\n'; after = '\n$$\n'; break;
+        }
+
+        newText = beforeSelection + before + selection + after + afterSelection;
+        setContent(newText);
+
+        // Restore focus and cursor
+        setTimeout(() => {
+            textarea.focus();
+            if (selection.length > 0) {
+                textarea.setSelectionRange(start + before.length, end + before.length);
+            } else {
+                textarea.setSelectionRange(start + before.length, start + before.length);
+            }
+        }, 0);
+    };
 
     React.useEffect(() => {
         const currentUser = AuthService.getCurrentUser();
@@ -278,19 +339,60 @@ export default function ContentEditorPage() {
                         {/* Markdown Input */}
                         {(viewMode === 'edit' || viewMode === 'split') && (
                             <div className={`flex flex-col border-r border-gray-200 ${viewMode === 'split' ? 'w-1/2' : 'w-full'}`}>
-                                <div className="px-5 py-3 border-b border-gray-100 bg-gray-50/50 flex items-center justify-between">
-                                    <div className="flex items-center gap-2 text-slate-500">
-                                        <FileText className="w-4 h-4" />
-                                        <span className="text-xs font-bold uppercase tracking-wider">Markdown Editor</span>
-                                    </div>
+                                <div className="px-4 py-2 border-b border-gray-100 bg-white flex items-center gap-1 overflow-x-auto no-scrollbar">
+                                    <button onClick={() => insertFormat('bold')} className="p-1.5 hover:bg-slate-100 rounded text-slate-500 hover:text-indigo-600" title="Bold">
+                                        <Bold className="w-4 h-4" />
+                                    </button>
+                                    <button onClick={() => insertFormat('italic')} className="p-1.5 hover:bg-slate-100 rounded text-slate-500 hover:text-indigo-600" title="Italic">
+                                        <Italic className="w-4 h-4" />
+                                    </button>
+                                    <div className="w-px h-4 bg-slate-200 mx-1"></div>
+                                    <button onClick={() => insertFormat('h1')} className="p-1.5 hover:bg-slate-100 rounded text-slate-500 hover:text-indigo-600" title="Heading 1">
+                                        <Heading1 className="w-4 h-4" />
+                                    </button>
+                                    <button onClick={() => insertFormat('h2')} className="p-1.5 hover:bg-slate-100 rounded text-slate-500 hover:text-indigo-600" title="Heading 2">
+                                        <Heading2 className="w-4 h-4" />
+                                    </button>
+                                    <div className="w-px h-4 bg-slate-200 mx-1"></div>
+                                    <button onClick={() => insertFormat('ul')} className="p-1.5 hover:bg-slate-100 rounded text-slate-500 hover:text-indigo-600" title="Bullet List">
+                                        <List className="w-4 h-4" />
+                                    </button>
+                                    <button onClick={() => insertFormat('quote')} className="p-1.5 hover:bg-slate-100 rounded text-slate-500 hover:text-indigo-600" title="Quote">
+                                        <Quote className="w-4 h-4" />
+                                    </button>
+                                    <div className="w-px h-4 bg-slate-200 mx-1"></div>
+                                    <button onClick={() => insertFormat('code')} className="p-1.5 hover:bg-slate-100 rounded text-slate-500 hover:text-indigo-600" title="Inline Code">
+                                        <Code className="w-4 h-4" />
+                                    </button>
+                                    <button onClick={() => insertFormat('link')} className="p-1.5 hover:bg-slate-100 rounded text-slate-500 hover:text-indigo-600" title="Link">
+                                        <LinkIcon className="w-4 h-4" />
+                                    </button>
+                                    <button onClick={() => insertFormat('table')} className="p-1.5 hover:bg-slate-100 rounded text-slate-500 hover:text-indigo-600" title="Table">
+                                        <TableIcon className="w-4 h-4" />
+                                    </button>
+                                    <div className="w-px h-4 bg-slate-200 mx-1"></div>
+                                    <button onClick={() => insertFormat('math')} className="p-1.5 hover:bg-slate-100 rounded text-slate-500 hover:text-indigo-600 font-serif italic font-bold" title="Math Formula">
+                                        Σ
+                                    </button>
+                                    <button onClick={() => insertFormat('mathblock')} className="p-1.5 hover:bg-slate-100 rounded text-slate-500 hover:text-indigo-600 font-bold" title="Math Block">
+                                        <div className="flex text-[10px] font-bold">$$</div>
+                                    </button>
                                 </div>
                                 <textarea
+                                    ref={textareaRef}
                                     value={content}
                                     onChange={(e) => setContent(e.target.value)}
                                     disabled={!selectedTopic && !selectedSubtopic}
                                     className="flex-1 w-full p-6 resize-none focus:outline-none font-mono text-sm text-slate-800 leading-relaxed custom-scrollbar disabled:bg-gray-50/30"
                                     spellCheck={false}
-                                    placeholder="Start typing your content here..."
+                                    placeholder={`Start typing your content here...
+
+Tips:
+- Use # for headers
+- **bold**, _italic_
+- - bullet list
+- $E=mc^2$ for inline math
+- $$ x^2 $$ for block math`}
                                 />
                             </div>
                         )}
@@ -304,9 +406,24 @@ export default function ContentEditorPage() {
                                         <span className="text-xs font-bold uppercase tracking-wider">Live Preview</span>
                                     </div>
                                 </div>
-                                <div className="flex-1 p-8 overflow-y-auto custom-scrollbar prose prose-slate max-w-none">
+                                <div className="flex-1 p-8 overflow-y-auto custom-scrollbar prose prose-slate max-w-none 
+                                    prose-headings:font-black prose-headings:text-slate-900 prose-headings:tracking-tight prose-headings:mt-10 prose-headings:mb-6
+                                    prose-h1:text-3xl prose-h2:text-2xl prose-h3:text-xl 
+                                    prose-p:text-slate-700 prose-p:leading-[2.2] prose-p:mb-8
+                                    prose-ul:my-8 prose-li:text-slate-700 prose-li:my-3 prose-li:leading-loose
+                                    prose-strong:text-slate-900 prose-strong:font-bold
+                                    prose-code:bg-slate-100 prose-code:px-2 prose-code:py-1 prose-code:rounded prose-code:text-sm prose-code:font-mono prose-code:text-indigo-600
+                                    prose-pre:bg-slate-900 prose-pre:text-slate-100 prose-pre:rounded-2xl prose-pre:p-8
+                                    prose-blockquote:border-l-4 prose-blockquote:border-indigo-500 prose-blockquote:bg-indigo-50 prose-blockquote:p-6 prose-blockquote:rounded-r-2xl prose-blockquote:my-10
+                                    [&_.katex-display]:flex [&_.katex-display]:justify-center [&_.katex-display]:my-10 [&_.katex-display]:overflow-x-auto [&_.katex-display]:py-4
+                                ">
                                     {content ? (
-                                        <ReactMarkdown>{content}</ReactMarkdown>
+                                        <ReactMarkdown
+                                            remarkPlugins={[remarkMath, remarkGfm]}
+                                            rehypePlugins={[rehypeKatex]}
+                                        >
+                                            {content}
+                                        </ReactMarkdown>
                                     ) : (
                                         <p className="text-slate-300 italic">Preview will appear here</p>
                                     )}

@@ -14,6 +14,9 @@ import { toast } from 'sonner';
 import Link from 'next/link';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
+import remarkMath from 'remark-math';
+import rehypeKatex from 'rehype-katex';
+import 'katex/dist/katex.min.css';
 import { useUI } from '@/lib/context/UIContext';
 
 type University = {
@@ -799,9 +802,15 @@ export default function UniversityPortalPage() {
                                             </div>
 
                                             {enrollments.find(e => e.university_id === activeUniversityId)?.university.test_pattern_markdown ? (
-                                                <div className="prose prose-indigo max-w-none">
+                                                <div className="prose prose-indigo max-w-none 
+                                                    prose-headings:font-black prose-headings:mt-10 prose-headings:mb-6 
+                                                    prose-p:leading-[2.2] prose-p:mb-8 
+                                                    prose-li:leading-loose prose-li:my-3
+                                                    [&_.katex-display]:flex [&_.katex-display]:justify-center [&_.katex-display]:my-10 [&_.katex-display]:overflow-x-auto [&_.katex-display]:py-4
+                                                ">
                                                     <ReactMarkdown
-                                                        remarkPlugins={[remarkGfm]}
+                                                        remarkPlugins={[remarkMath, remarkGfm]}
+                                                        rehypePlugins={[rehypeKatex]}
                                                         components={{
                                                             table: ({ node, ...props }) => (
                                                                 <div className="overflow-x-auto my-8 rounded-2xl border border-gray-100 shadow-sm">
@@ -909,9 +918,13 @@ export default function UniversityPortalPage() {
 
                         <div className="flex-1 overflow-y-auto p-5 sm:p-10 custom-scrollbar">
                             {enrollments.find(e => e.university_id === activeUniversityId)?.university.test_pattern_markdown ? (
-                                <div className="prose prose-indigo max-w-none prose-sm">
+                                <div className="prose prose-indigo max-w-none prose-sm 
+                                    prose-p:leading-relaxed prose-p:mb-6
+                                    [&_.katex-display]:flex [&_.katex-display]:justify-center [&_.katex-display]:my-6
+                                ">
                                     <ReactMarkdown
-                                        remarkPlugins={[remarkGfm]}
+                                        remarkPlugins={[remarkMath, remarkGfm]}
+                                        rehypePlugins={[rehypeKatex]}
                                         components={{
                                             table: ({ node, ...props }) => (
                                                 <div className="overflow-x-auto my-6 rounded-2xl border border-gray-100 shadow-sm">

@@ -356,6 +356,20 @@ export default function LoginPage() {
                                 </button>
                             </p>
                         </div>
+
+                        {/* Footer Links */}
+                        <div className="text-center pt-4 border-t border-slate-100">
+                            <p className="text-[10px] text-slate-400 font-medium">
+                                By continuing, you agree to our{' '}
+                                <Link href="/terms" className="text-[#4CAF50] hover:underline font-bold">
+                                    Terms
+                                </Link>
+                                {' '}and{' '}
+                                <Link href="/privacy" className="text-[#4CAF50] hover:underline font-bold">
+                                    Privacy Policy
+                                </Link>
+                            </p>
+                        </div>
                     </div>
                 </div>
 

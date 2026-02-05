@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useEffect, useState } from 'react';
-import { Users, Search, MoreVertical, Shield, UserCheck, UserX, Mail, Trash2, Building2, ExternalLink } from 'lucide-react';
+import { Users, Search, MoreVertical, Shield, UserCheck, UserX, Mail, Trash2, Building2, ExternalLink, X, Save } from 'lucide-react';
 import Link from 'next/link';
 import Sidebar from '@/components/layout/Sidebar';
 import Header from '@/components/layout/Header';
@@ -16,6 +16,39 @@ export default function UserManagementPage() {
     const [searchQuery, setSearchQuery] = useState('');
     const [filterRole, setFilterRole] = useState<'all' | 'student' | 'admin'>('all');
     const { isSidebarCollapsed } = useUI();
+
+    // Edit User State
+    const [editingUser, setEditingUser] = useState<any>(null);
+    const [editFormData, setEditFormData] = useState({ full_name: '', role: 'student' });
+
+    const openEditModal = (user: any) => {
+        setEditingUser(user);
+        setEditFormData({
+            full_name: user.full_name || '',
+            role: user.role || 'student'
+        });
+    };
+
+    const handleUpdateUser = async () => {
+        if (!editingUser) return;
+
+        try {
+            const { error } = await supabase
+                .from('users')
+                .update({
+                    full_name: editFormData.full_name,
+                    role: editFormData.role
+                })
+                .eq('id', editingUser.id);
+
+            if (error) throw error;
+
+            loadUsers();
+            setEditingUser(null);
+        } catch (error: any) {
+            alert(`Error updating user: ${error.message}`);
+        }
+    };
 
     useEffect(() => {
         const user = AuthService.getCurrentUser();
@@ -303,9 +336,11 @@ export default function UserManagementPage() {
                                             <td className="px-6 py-4 whitespace-nowrap">
                                                 <span className={`inline-flex items-center px-2.5 py-1 rounded-lg text-[10px] font-black uppercase tracking-wider ${user.status === 'active'
                                                     ? 'bg-emerald-50 text-emerald-600 border border-emerald-100'
-                                                    : 'bg-rose-50 text-rose-600 border border-rose-100'
+                                                    : user.status === 'suspended'
+                                                        ? 'bg-rose-50 text-rose-600 border border-rose-100'
+                                                        : 'bg-slate-100 text-slate-500 border border-slate-200'
                                                     }`}>
-                                                    {user.status === 'active' ? 'Active' : 'Suspended'}
+                                                    {user.status === 'active' ? 'Active' : user.status === 'suspended' ? 'Suspended' : user.status || 'Pending'}
                                                 </span>
                                             </td>
                                             <td className="px-6 py-4 whitespace-nowrap text-xs font-bold text-slate-500">
@@ -313,7 +348,11 @@ export default function UserManagementPage() {
                                             </td>
                                             <td className="px-6 py-4 whitespace-nowrap text-right">
                                                 <div className="flex justify-end gap-2">
-                                                    <button className="p-2 hover:bg-slate-100 rounded-lg text-slate-400 hover:text-indigo-600 transition-all active:scale-90" title="Edit">
+                                                    <button
+                                                        onClick={() => openEditModal(user)}
+                                                        className="p-2 hover:bg-slate-100 rounded-lg text-slate-400 hover:text-indigo-600 transition-all active:scale-90"
+                                                        title="Edit"
+                                                    >
                                                         <UserCheck className="w-4 h-4" />
                                                     </button>
                                                     <button
@@ -385,6 +424,64 @@ export default function UserManagementPage() {
                                     className="flex-1 py-4 bg-indigo-600 text-white font-bold rounded-2xl hover:bg-indigo-700 transition-all shadow-lg shadow-indigo-100 disabled:opacity-50"
                                 >
                                     Confirm Link
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* EDIT USER MODAL */}
+            {editingUser && (
+                <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4 animate-in fade-in duration-200">
+                    <div className="bg-white rounded-3xl shadow-2xl w-full max-w-lg overflow-hidden flex flex-col">
+                        <div className="p-6 border-b border-gray-100 flex justify-between items-center bg-gray-50/50">
+                            <div>
+                                <h3 className="text-lg font-black text-slate-900">Edit User Details</h3>
+                                <p className="text-xs font-bold text-slate-400 uppercase tracking-widest">{editingUser.email}</p>
+                            </div>
+                            <button onClick={() => setEditingUser(null)} className="p-2 hover:bg-slate-200 rounded-full transition-colors text-slate-400">
+                                <X className="w-5 h-5" />
+                            </button>
+                        </div>
+
+                        <div className="p-8 space-y-6">
+                            <div className="space-y-2">
+                                <label className="text-xs font-black text-slate-400 uppercase tracking-widest">Full Name</label>
+                                <input
+                                    type="text"
+                                    value={editFormData.full_name}
+                                    onChange={(e) => setEditFormData({ ...editFormData, full_name: e.target.value })}
+                                    className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl font-bold text-slate-700 focus:ring-2 focus:ring-indigo-500 focus:bg-white transition-all outline-none"
+                                />
+                            </div>
+
+                            <div className="space-y-2">
+                                <label className="text-xs font-black text-slate-400 uppercase tracking-widest">Role</label>
+                                <select
+                                    value={editFormData.role}
+                                    onChange={(e) => setEditFormData({ ...editFormData, role: e.target.value })}
+                                    className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl font-bold text-slate-700 focus:ring-2 focus:ring-indigo-500 focus:bg-white transition-all outline-none appearance-none"
+                                >
+                                    <option value="student">Student</option>
+                                    <option value="institution_admin">Institution Admin</option>
+                                    <option value="super_admin">Super Admin</option>
+                                </select>
+                            </div>
+
+                            <div className="pt-4 flex gap-3">
+                                <button
+                                    onClick={() => setEditingUser(null)}
+                                    className="flex-1 py-3.5 bg-slate-100 text-slate-600 font-bold rounded-xl hover:bg-slate-200 transition-colors"
+                                >
+                                    Cancel
+                                </button>
+                                <button
+                                    onClick={handleUpdateUser}
+                                    className="flex-1 py-3.5 bg-indigo-600 text-white font-bold rounded-xl hover:bg-indigo-700 shadow-lg shadow-indigo-200 transition-all flex items-center justify-center gap-2"
+                                >
+                                    <Save className="w-4 h-4" />
+                                    Save Changes
                                 </button>
                             </div>
                         </div>

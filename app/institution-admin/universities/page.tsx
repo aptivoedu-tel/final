@@ -104,7 +104,7 @@ export default function UniversitySelectorPage() {
                 {loading ? (
                     <div className="p-8 text-center text-gray-400">Loading catalog...</div>
                 ) : filteredUnis.map(uni => {
-                    const isLocked = lockedStates[uni.id] || false;
+                    const isLocked = lockedStates[uni.id] ?? true;
                     return (
                         <div key={uni.id} className="bg-white border border-gray-200 rounded-2xl p-4 lg:p-6 flex flex-col sm:flex-row sm:items-center justify-between shadow-sm hover:shadow-xl lg:hover:scale-[1.01] transition-all gap-4">
                             <div className="flex items-center gap-4">

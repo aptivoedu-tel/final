@@ -5,13 +5,19 @@ import {
     Plus, ChevronRight, ChevronDown,
     Layers, Hash, FileText,
     Search, RefreshCw, BookOpen,
-    Eye, Edit3
+    Eye, Edit3, Type, Bold, Italic,
+    List, ListOrdered, Code, Terminal,
+    Sigma, Heading2, Quote
 } from 'lucide-react';
 import Sidebar from '@/components/layout/Sidebar';
 import Header from '@/components/layout/Header';
 import { AuthService } from '@/lib/services/authService';
 import { supabase } from '@/lib/supabase/client';
 import ReactMarkdown from 'react-markdown';
+import remarkMath from 'remark-math';
+import rehypeKatex from 'rehype-katex';
+import remarkGfm from 'remark-gfm';
+import 'katex/dist/katex.min.css';
 import Link from 'next/link';
 import { toast } from 'sonner';
 import { X, Save } from 'lucide-react';
@@ -39,6 +45,50 @@ export default function SuperAdminContentLibraryPage() {
     const [isEditModalOpen, setIsEditModalOpen] = useState(false);
     const [editContent, setEditContent] = useState('');
     const [isSaving, setIsSaving] = useState(false);
+
+
+    // Editor Ref
+    const textareaRef = React.useRef<HTMLTextAreaElement>(null);
+
+    // Text Insertion Helper
+    const insertFormat = (type: string) => {
+        if (!textareaRef.current) return;
+        const textarea = textareaRef.current;
+        const start = textarea.selectionStart;
+        const end = textarea.selectionEnd;
+        const text = textarea.value;
+        const selected = text.substring(start, end);
+
+        let before = '';
+        let after = '';
+
+        switch (type) {
+            case 'bold': before = '**'; after = '**'; break;
+            case 'italic': before = '*'; after = '*'; break;
+            case 'h2': before = '\n## '; after = ''; break;
+            case 'quote': before = '\n> '; after = ''; break;
+            case 'bullet': before = '\n- '; after = ''; break;
+            case 'number': before = '\n1. '; after = ''; break;
+            case 'code': before = '`'; after = '`'; break;
+            case 'codeblock': before = '\n```\n'; after = '\n```\n'; break;
+            case 'math': before = '$'; after = '$'; break;
+            case 'mathblock': before = '\n$$\n'; after = '\n$$\n'; break;
+        }
+
+        // If something was selected, wrap it. If not, insert placeholder if needed? 
+        // For simplicity, just wrap/insert.
+        const newText = text.substring(0, start) + before + selected + after + text.substring(end);
+        setEditContent(newText);
+
+        setTimeout(() => {
+            textarea.focus();
+            const newCursorPos = start + before.length + selected.length + after.length;
+            // Or ideally put cursor inside?
+            // textarea.setSelectionRange(start + before.length, start + before.length + selected.length);
+        }, 0);
+    };
+
+
 
     const loadHierarchy = async () => {
         setLoading(true);
@@ -90,7 +140,8 @@ export default function SuperAdminContentLibraryPage() {
 
     const handleOpenEditor = () => {
         if (!selectedSubtopic) return;
-        setEditContent(selectedSubtopic.content || '');
+        const content = selectedSubtopic.content || '';
+        setEditContent(content);
         setIsEditModalOpen(true);
     };
 
@@ -275,15 +326,32 @@ export default function SuperAdminContentLibraryPage() {
                                             Edit Content
                                         </button>
                                     </div>
-                                    <div className="flex-1 overflow-y-auto p-12 bg-white prose prose-slate max-w-none prose-headings:font-black prose-p:text-slate-600 prose-p:leading-relaxed prose-pre:bg-slate-900 prose-pre:rounded-2xl custom-scrollbar">
-                                        {selectedSubtopic.content ? (
-                                            <ReactMarkdown>{selectedSubtopic.content}</ReactMarkdown>
-                                        ) : (
-                                            <div className="h-full flex flex-col items-center justify-center text-center opacity-40">
-                                                <FileText className="w-16 h-16 text-slate-200 mb-4" />
-                                                <p className="text-slate-400 font-medium italic">Empty content node.</p>
-                                            </div>
-                                        )}
+                                    <div className="flex-1 overflow-y-auto p-12 bg-white custom-scrollbar">
+                                        <div className="prose prose-slate prose-lg max-w-none 
+                                            prose-headings:font-black prose-headings:text-slate-900 prose-headings:tracking-tight prose-headings:mt-10 prose-headings:mb-6
+                                            prose-h1:text-3xl prose-h2:text-2xl prose-h3:text-xl 
+                                            prose-p:text-slate-700 prose-p:leading-[2.2] prose-p:mb-8
+                                            prose-ul:my-8 prose-li:text-slate-700 prose-li:my-3 prose-li:leading-loose
+                                            prose-strong:text-slate-900 prose-strong:font-bold
+                                            prose-code:bg-slate-100 prose-code:px-2 prose-code:py-1 prose-code:rounded prose-code:text-sm prose-code:font-mono prose-code:text-indigo-600
+                                            prose-pre:bg-slate-900 prose-pre:text-slate-100 prose-pre:rounded-2xl prose-pre:p-8
+                                            prose-blockquote:border-l-4 prose-blockquote:border-indigo-500 prose-blockquote:bg-indigo-50 prose-blockquote:p-6 prose-blockquote:rounded-r-2xl prose-blockquote:my-10
+                                            [&_.katex-display]:flex [&_.katex-display]:justify-center [&_.katex-display]:my-10 [&_.katex-display]:overflow-x-auto [&_.katex-display]:py-4
+                                        ">
+                                            {selectedSubtopic.content ? (
+                                                <ReactMarkdown
+                                                    remarkPlugins={[remarkMath, remarkGfm]}
+                                                    rehypePlugins={[rehypeKatex]}
+                                                >
+                                                    {selectedSubtopic.content}
+                                                </ReactMarkdown>
+                                            ) : (
+                                                <div className="h-full flex flex-col items-center justify-center text-center opacity-40">
+                                                    <FileText className="w-16 h-16 text-slate-200 mb-4" />
+                                                    <p className="text-slate-400 font-medium italic">Empty content node.</p>
+                                                </div>
+                                            )}
+                                        </div>
                                     </div>
                                 </>
                             ) : (
@@ -317,21 +385,97 @@ export default function SuperAdminContentLibraryPage() {
                                 <div className="flex-1 overflow-hidden flex bg-slate-50">
                                     {/* Editor */}
                                     <div className="flex-1 flex flex-col border-r border-gray-100">
-                                        <div className="px-4 py-2 bg-white border-b border-gray-100 text-[10px] font-black uppercase text-slate-400">Markdown Source</div>
+                                        <div className="px-4 py-2 bg-white border-b border-gray-100 flex items-center justify-between">
+                                            {/* Toolbar */}
+                                            <div className="flex items-center gap-1">
+                                                <button onClick={() => insertFormat('bold')} className="p-1.5 hover:bg-slate-100 rounded text-slate-500 hover:text-indigo-600" title="Bold">
+                                                    <Bold className="w-3.5 h-3.5" />
+                                                </button>
+                                                <button onClick={() => insertFormat('italic')} className="p-1.5 hover:bg-slate-100 rounded text-slate-500 hover:text-indigo-600" title="Italic">
+                                                    <Italic className="w-3.5 h-3.5" />
+                                                </button>
+                                                <div className="w-px h-4 bg-slate-200 mx-1"></div>
+                                                <button onClick={() => insertFormat('h2')} className="p-1.5 hover:bg-slate-100 rounded text-slate-500 hover:text-indigo-600" title="Heading">
+                                                    <Heading2 className="w-3.5 h-3.5" />
+                                                </button>
+                                                <button onClick={() => insertFormat('quote')} className="p-1.5 hover:bg-slate-100 rounded text-slate-500 hover:text-indigo-600" title="Quote">
+                                                    <Quote className="w-3.5 h-3.5" />
+                                                </button>
+                                                <div className="w-px h-4 bg-slate-200 mx-1"></div>
+                                                <button onClick={() => insertFormat('bullet')} className="p-1.5 hover:bg-slate-100 rounded text-slate-500 hover:text-indigo-600" title="Bullet List">
+                                                    <List className="w-3.5 h-3.5" />
+                                                </button>
+                                                <button onClick={() => insertFormat('number')} className="p-1.5 hover:bg-slate-100 rounded text-slate-500 hover:text-indigo-600" title="Numbered List">
+                                                    <ListOrdered className="w-3.5 h-3.5" />
+                                                </button>
+                                                <div className="w-px h-4 bg-slate-200 mx-1"></div>
+                                                <button onClick={() => insertFormat('code')} className="p-1.5 hover:bg-slate-100 rounded text-slate-500 hover:text-indigo-600" title="Inline Code">
+                                                    <Terminal className="w-3.5 h-3.5" />
+                                                </button>
+                                                <button onClick={() => insertFormat('codeblock')} className="p-1.5 hover:bg-slate-100 rounded text-slate-500 hover:text-indigo-600" title="Code Block">
+                                                    <Code className="w-3.5 h-3.5" />
+                                                </button>
+                                                <div className="w-px h-4 bg-slate-200 mx-1"></div>
+                                                <button onClick={() => insertFormat('math')} className="p-1.5 hover:bg-slate-100 rounded text-slate-500 hover:text-indigo-600" title="Inline Math">
+                                                    <Sigma className="w-3.5 h-3.5" />
+                                                </button>
+                                                <button onClick={() => insertFormat('mathblock')} className="p-1.5 hover:bg-slate-100 rounded text-slate-500 hover:text-indigo-600" title="Math Block">
+                                                    <div className="flex text-[10px] font-bold">$$</div>
+                                                </button>
+                                            </div>
+
+                                            <div className="px-3 py-1 bg-slate-100 rounded text-[9px] font-black uppercase text-indigo-600">
+                                                Markdown
+                                            </div>
+                                        </div>
                                         <textarea
+                                            ref={textareaRef}
                                             value={editContent}
                                             onChange={(e) => setEditContent(e.target.value)}
-                                            className="flex-1 p-8 bg-transparent text-slate-800 font-mono text-sm outline-none resize-none custom-scrollbar leading-relaxed"
-                                            placeholder="Enter educational content in markdown format..."
+                                            className="flex-1 p-8 bg-slate-50 text-slate-900 font-mono text-[13px] outline-none resize-none custom-scrollbar leading-[1.8] tracking-wide"
+                                            style={{
+                                                lineHeight: '1.8',
+                                                fontFamily: "'JetBrains Mono', 'Fira Code', 'Consolas', monospace"
+                                            }}
+                                            placeholder="Enter educational content in markdown format...
+
+## Example Heading
+Your content here...
+
+Math: $E=mc^2$
+"
                                             spellCheck={false}
                                         />
                                     </div>
 
                                     {/* Preview */}
                                     <div className="flex-1 flex flex-col bg-white">
-                                        <div className="px-4 py-2 bg-slate-50 border-b border-gray-100 text-[10px] font-black uppercase text-slate-400">Live Preview</div>
-                                        <div className="flex-1 p-8 overflow-y-auto prose prose-slate max-w-none custom-scrollbar">
-                                            <ReactMarkdown>{editContent || '*No content to preview*'}</ReactMarkdown>
+                                        <div className="px-4 py-2 bg-slate-50 border-b border-gray-100 flex items-center justify-between">
+                                            <span className="text-[10px] font-black uppercase text-slate-400">Live Preview</span>
+                                        </div>
+                                        <div className="flex-1 p-8 overflow-y-auto custom-scrollbar bg-white">
+                                            <div className="prose prose-slate prose-lg max-w-none 
+                                                prose-headings:font-black prose-headings:text-slate-900 prose-headings:tracking-tight prose-headings:mt-10 prose-headings:mb-6
+                                                prose-h1:text-3xl prose-h2:text-2xl prose-h3:text-xl 
+                                                prose-p:text-slate-700 prose-p:leading-[2.2] prose-p:mb-8
+                                                prose-ul:my-8 prose-li:text-slate-700 prose-li:my-3 prose-li:leading-loose
+                                                prose-strong:text-slate-900 prose-strong:font-bold
+                                                prose-code:bg-slate-100 prose-code:px-2 prose-code:py-1 prose-code:rounded prose-code:text-sm prose-code:font-mono prose-code:text-indigo-600
+                                                prose-pre:bg-slate-900 prose-pre:text-slate-100 prose-pre:rounded-2xl prose-pre:p-8
+                                                prose-blockquote:border-l-4 prose-blockquote:border-indigo-500 prose-blockquote:bg-indigo-50 prose-blockquote:p-6 prose-blockquote:rounded-r-2xl prose-blockquote:my-10
+                                                [&_.katex-display]:flex [&_.katex-display]:justify-center [&_.katex-display]:my-10 [&_.katex-display]:overflow-x-auto [&_.katex-display]:py-4
+                                            ">
+                                                {editContent ? (
+                                                    <ReactMarkdown
+                                                        remarkPlugins={[remarkMath, remarkGfm]}
+                                                        rehypePlugins={[rehypeKatex]}
+                                                    >
+                                                        {editContent}
+                                                    </ReactMarkdown>
+                                                ) : (
+                                                    <p className="text-slate-400 italic">No content to preview</p>
+                                                )}
+                                            </div>
                                         </div>
                                     </div>
                                 </div>
