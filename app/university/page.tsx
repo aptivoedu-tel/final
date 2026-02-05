@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { supabase } from '@/lib/supabase/client';
 import Sidebar from '@/components/layout/Sidebar';
 import Header from '@/components/layout/Header';
@@ -43,7 +43,34 @@ export default function UniversityPortalPage() {
     const [stats, setStats] = useState<any>(null);
     const [exams, setExams] = useState<any[]>([]);
     const [progressMap, setProgressMap] = useState<Record<number, { isRead: boolean; isMastered: boolean }>>({});
+
     const [isPatternDrawerOpen, setIsPatternDrawerOpen] = useState(false);
+
+    // URL Sync
+    const searchParams = useSearchParams();
+
+    useEffect(() => {
+        const idParam = searchParams.get('id');
+        if (idParam) {
+            const id = Number(idParam);
+            if (activeUniversityId !== id) {
+                setActiveUniversityId(id);
+            }
+        } else {
+            if (activeUniversityId !== null) {
+                setActiveUniversityId(null);
+            }
+        }
+    }, [searchParams]);
+
+    // Data Fetching on ID change
+    useEffect(() => {
+        if (activeUniversityId && user) {
+            loadContent(activeUniversityId);
+            loadUniversityStats(user.id, activeUniversityId);
+            loadExams(activeUniversityId);
+        }
+    }, [activeUniversityId, user]);
 
     // For registration flow
     const [allUnis, setAllUnis] = useState<University[]>([]);
@@ -441,10 +468,7 @@ export default function UniversityPortalPage() {
                                                 key={en.id}
                                                 onClick={() => {
                                                     if (en.status === 'approved') {
-                                                        setActiveUniversityId(en.university_id);
-                                                        loadContent(en.university_id);
-                                                        loadUniversityStats(user.id, en.university_id);
-                                                        loadExams(en.university_id);
+                                                        router.push(`/university?id=${en.university_id}`);
                                                     }
                                                 }}
                                                 className={`group relative bg-white p-6 lg:p-8 rounded-[2.5rem] border-2 transition-all cursor-pointer ${en.status === 'approved' ? 'hover:border-indigo-600 border-gray-100 shadow-xl hover:shadow-indigo-100/50' : 'opacity-80 border-gray-50 grayscale select-none'}`}
