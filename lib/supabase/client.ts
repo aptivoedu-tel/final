@@ -3,11 +3,12 @@ import { createBrowserClient } from '@supabase/ssr';
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
 const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '';
 
-if (!supabaseUrl || !supabaseAnonKey) {
-  throw new Error('Missing Supabase environment variables');
-}
-
-export const supabase = createBrowserClient(supabaseUrl, supabaseAnonKey);
+// Create client with fallback placeholders to prevent crashing during build-time prerendering
+// The actual keys MUST be provided in the runtime environment (Vercel Project Settings)
+export const supabase = createBrowserClient(
+  supabaseUrl || 'https://placeholder.supabase.co',
+  supabaseAnonKey || 'placeholder'
+);
 
 // Database types (will be generated from Supa base later)
 export type Database = {
