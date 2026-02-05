@@ -12,6 +12,8 @@ import Link from 'next/link';
 // Force this page to use SSR (required for useSearchParams)
 export const runtime = 'edge';
 
+import { useUI } from '@/lib/context/UIContext';
+
 type SearchResult = {
     id: number;
     title: string;
@@ -53,9 +55,9 @@ export default function SearchPage() {
                 .limit(5);
 
             unis?.forEach(u => {
-                let link = '/university';
-                if (isSuperAdmin) link = '/admin/universities';
-                else if (isInstitutionAdmin) link = '/institution-admin/universities';
+                let link = `/university?id=${u.id}`;
+                if (isSuperAdmin) link = `/admin/universities?id=${u.id}`;
+                else if (isInstitutionAdmin) link = `/institution-admin/universities?id=${u.id}`;
 
                 searchResults.push({
                     id: u.id,
@@ -75,8 +77,8 @@ export default function SearchPage() {
                 .limit(5);
 
             subjects?.forEach(s => {
-                let link = '/university';
-                if (isSuperAdmin) link = '/admin/content-library';
+                let link = `/university?search=${encodeURIComponent(s.name)}`;
+                if (isSuperAdmin) link = `/admin/content-editor?subject=${s.id}`;
 
                 searchResults.push({
                     id: s.id,
@@ -95,8 +97,8 @@ export default function SearchPage() {
                 .limit(10);
 
             topics?.forEach(t => {
-                let link = '/university';
-                if (isSuperAdmin) link = '/admin/content-library';
+                let link = `/university?search=${encodeURIComponent(t.name)}`;
+                if (isSuperAdmin) link = `/admin/content-editor?topic=${t.id}`;
 
                 searchResults.push({
                     id: t.id,
@@ -115,8 +117,8 @@ export default function SearchPage() {
                 .limit(10);
 
             subtopics?.forEach(st => {
-                let link = '/university';
-                if (isSuperAdmin) link = '/admin/content-library';
+                let link = `/university?search=${encodeURIComponent(st.name)}`;
+                if (isSuperAdmin) link = `/admin/content-editor?subtopic=${st.id}`;
 
                 searchResults.push({
                     id: st.id,
@@ -145,13 +147,15 @@ export default function SearchPage() {
         }
     };
 
+    const { isSidebarCollapsed } = useUI();
+
     return (
         <div className="min-h-screen bg-gray-50 flex font-sans">
             <Sidebar userRole={user?.role || 'student'} />
             <div className="flex-1 flex flex-col">
                 <Header userName={user?.full_name} userEmail={user?.email} userAvatar={user?.avatar_url} />
 
-                <main className="ml-64 mt-16 p-8">
+                <main className={`${isSidebarCollapsed ? 'lg:ml-24' : 'lg:ml-72'} pt-28 lg:pt-24 p-4 lg:p-8 transition-all duration-300`}>
                     <div className="max-w-4xl mx-auto">
                         <div className="mb-12">
                             <h1 className="text-3xl font-black text-slate-900 mb-2">Search Results</h1>

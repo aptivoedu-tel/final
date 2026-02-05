@@ -8,6 +8,7 @@ import { getInitials, getAvatarColor } from '@/lib/utils';
 import { NotificationService } from '@/lib/services/notificationService';
 import { supabase } from '@/lib/supabase/client';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 
 interface HeaderProps {
     userName?: string;
@@ -94,9 +95,9 @@ const Header: React.FC<HeaderProps> = ({ userName, userEmail, userAvatar, avatar
                 // Search Unis
                 const { data: unis } = await supabase.from('universities').select('id, name').ilike('name', `%${q}%`).limit(3);
                 unis?.forEach(u => {
-                    let link = '/university';
-                    if (isSuperAdmin) link = '/admin/universities';
-                    else if (isInstitutionAdmin) link = '/institution-admin/universities';
+                    let link = `/university?id=${u.id}`;
+                    if (isSuperAdmin) link = `/admin/universities?id=${u.id}`;
+                    else if (isInstitutionAdmin) link = `/institution-admin/universities?id=${u.id}`;
 
                     results.push({
                         id: u.id,
@@ -109,9 +110,8 @@ const Header: React.FC<HeaderProps> = ({ userName, userEmail, userAvatar, avatar
                 // Search Subjects
                 const { data: subs } = await supabase.from('subjects').select('id, name').ilike('name', `%${q}%`).limit(3);
                 subs?.forEach(s => {
-                    let link = '/university';
-                    if (isSuperAdmin) link = '/admin/content-library';
-                    // We can add institution admin logic here if they have a content library page
+                    let link = `/university?search=${encodeURIComponent(s.name)}`;
+                    if (isSuperAdmin) link = `/admin/content-editor?subject=${s.id}`;
 
                     results.push({
                         id: s.id,
@@ -124,13 +124,27 @@ const Header: React.FC<HeaderProps> = ({ userName, userEmail, userAvatar, avatar
                 // Search Topics
                 const { data: topics } = await supabase.from('topics').select('id, name').ilike('name', `%${q}%`).limit(3);
                 topics?.forEach(t => {
-                    let link = '/university';
-                    if (isSuperAdmin) link = '/admin/content-library';
+                    let link = `/university?search=${encodeURIComponent(t.name)}`;
+                    if (isSuperAdmin) link = `/admin/content-editor?topic=${t.id}`;
 
                     results.push({
                         id: t.id,
                         title: t.name,
                         type: 'topic',
+                        link
+                    });
+                });
+
+                // Search Subtopics
+                const { data: subtopics } = await supabase.from('subtopics').select('id, name').ilike('name', `%${q}%`).limit(3);
+                subtopics?.forEach(st => {
+                    let link = `/university?search=${encodeURIComponent(st.name)}`;
+                    if (isSuperAdmin) link = `/admin/content-editor?subtopic=${st.id}`;
+
+                    results.push({
+                        id: st.id,
+                        title: st.name,
+                        type: 'subtopic',
                         link
                     });
                 });
@@ -147,11 +161,13 @@ const Header: React.FC<HeaderProps> = ({ userName, userEmail, userAvatar, avatar
         return () => clearTimeout(timer);
     }, [searchQuery, userRole]);
 
+    const router = useRouter();
+
     const handleSearch = (e: React.FormEvent) => {
         e.preventDefault();
         if (searchQuery.trim()) {
             setShowSearchDropdown(false);
-            window.location.href = `/search?q=${encodeURIComponent(searchQuery.trim())}`;
+            router.push(`/search?q=${encodeURIComponent(searchQuery.trim())}`);
         }
     };
 
@@ -177,7 +193,7 @@ const Header: React.FC<HeaderProps> = ({ userName, userEmail, userAvatar, avatar
     return (
         <header className={`fixed top-4 right-4 h-16 lg:h-14 rounded-2xl border z-40 transition-all duration-300 shadow-xl
             bg-white/95 backdrop-blur-md border-slate-200/80
-            ${isSidebarCollapsed ? 'lg:left-24 left-4' : 'lg:left-[17.5rem] left-4'}
+            ${isSidebarCollapsed ? 'lg:left-24 left-4' : 'lg:left-72 left-4'}
             ${isSidebarOpen ? 'max-lg:opacity-0 max-lg:pointer-events-none' : 'max-lg:opacity-100'}
         `}>
             <div className="h-full px-4 lg:px-5 flex items-center justify-between gap-4">
@@ -189,7 +205,7 @@ const Header: React.FC<HeaderProps> = ({ userName, userEmail, userAvatar, avatar
                 </button>
 
                 {/* Search Bar */}
-                <form onSubmit={handleSearch} className="flex-1 max-w-xl">
+                <form onSubmit={handleSearch} className="flex-1 max-w-2xl">
                     <div className="relative">
                         <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
                         <input
@@ -231,6 +247,7 @@ const Header: React.FC<HeaderProps> = ({ userName, userEmail, userAvatar, avatar
                                                         {res.type === 'university' && <UniIcon className="w-4 h-4 text-primary-dark" />}
                                                         {res.type === 'subject' && <Book className="w-4 h-4 text-primary-dark" />}
                                                         {res.type === 'topic' && <GraduationCap className="w-4 h-4 text-primary-dark" />}
+                                                        {res.type === 'subtopic' && <FileText className="w-4 h-4 text-primary-dark" />}
                                                     </div>
                                                     <div>
                                                         <p className="text-sm font-bold text-slate-700">{res.title}</p>
