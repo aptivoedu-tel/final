@@ -282,8 +282,9 @@ export default function AdminProfilePage() {
                                         <button
                                             type="submit"
                                             disabled={saving || !newPassword || !currentPassword}
-                                            className="px-6 py-2.5 bg-white border border-gray-200 text-slate-700 rounded-lg font-medium hover:bg-gray-50 transition-colors flex items-center gap-2"
+                                            className="px-6 py-2.5 bg-white border border-gray-200 text-slate-700 rounded-lg font-medium hover:bg-gray-50 transition-colors flex items-center gap-2 disabled:opacity-50"
                                         >
+                                            {saving && <Loader2 className="w-4 h-4 animate-spin text-indigo-600" />}
                                             Change Password
                                         </button>
                                     </div>

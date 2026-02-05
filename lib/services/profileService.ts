@@ -112,20 +112,29 @@ export class ProfileService {
         data: ChangePasswordData
     ): Promise<{ success: boolean; error?: string }> {
         try {
-            // First, verify current password
-            const { data: user, error: fetchError } = await supabase
-                .from('users')
-                .select('password_hash, email')
-                .eq('id', userId)
-                .single();
+            // 1. Get current session user
+            const { data: { user: authUser }, error: userError } = await supabase.auth.getUser();
 
-            if (fetchError) throw fetchError;
+            if (userError || !authUser) {
+                return { success: false, error: "Authentication session not found. Please log in again." };
+            }
 
-            // In a real implementation, you would verify the password hash
-            // For now, we'll use Supabase Auth if available
-            // This is a simplified version - in production, use proper password verification
+            // 2. Verify current password by attempting to sign in again (silent verify)
+            const { error: signInError } = await supabase.auth.signInWithPassword({
+                email: authUser.email!,
+                password: data.currentPassword
+            });
 
-            // Update password using Supabase Auth
+            if (signInError) {
+                return {
+                    success: false,
+                    error: signInError.message.includes("Invalid login credentials")
+                        ? "The current password you entered is incorrect."
+                        : signInError.message
+                };
+            }
+
+            // 3. Update to new password
             const { error: updateError } = await supabase.auth.updateUser({
                 password: data.newPassword
             });
@@ -135,7 +144,7 @@ export class ProfileService {
             return { success: true };
         } catch (error: any) {
             console.error('Error changing password:', error);
-            return { success: false, error: error.message };
+            return { success: false, error: error.message || "Failed to update password. Please ensure it meets security requirements." };
         }
     }
 
