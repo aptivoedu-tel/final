@@ -83,7 +83,7 @@ export default function AdminDashboard() {
     return (
         <div className="min-h-screen bg-slate-50 font-sans">
             <Sidebar userRole="super_admin" />
-            <Header userName={user?.full_name || 'Admin User'} userEmail={user?.email} />
+            <Header userName={user?.full_name || 'Admin User'} userEmail={user?.email} userAvatar={user?.avatar_url} />
 
             <main className={`flex-1 transition-all duration-300 pt-28 lg:pt-24 pb-12 px-4 sm:px-8 ${isSidebarCollapsed ? 'lg:ml-28' : 'lg:ml-80'}`}>
                 {/* Header */}

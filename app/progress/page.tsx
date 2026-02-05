@@ -141,9 +141,9 @@ export default function ProgressPage() {
     if (loading) return null;
 
     return (
-        <div className="min-h-screen bg-slate-50 dark:bg-[#ACC8A2] font-sans">
+        <div className="min-h-screen bg-slate-50 font-sans">
             <Sidebar userRole="student" />
-            <Header userName={user?.full_name || 'Student'} userEmail={user?.email} />
+            <Header userName={user?.full_name || 'Student'} userEmail={user?.email} userAvatar={user?.avatar_url} />
 
             <main className={`${isSidebarCollapsed ? 'lg:ml-24' : 'lg:ml-72'} pt-28 lg:pt-24 p-4 lg:p-8 transition-all duration-300`} id="report-content">
                 {/* Hero Header */}
@@ -160,7 +160,7 @@ export default function ProgressPage() {
                         <button
                             onClick={handleDownloadReport}
                             disabled={exporting}
-                            className="bg-primary text-black px-4 py-2 rounded-xl text-sm font-bold shadow-lg shadow-primary/20 hover:bg-primary-dark hover:text-white transition-all active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 whitespace-nowrap"
+                            className="bg-teal-600 text-white px-4 py-2 rounded-xl text-sm font-bold shadow-lg shadow-teal-500/20 hover:bg-teal-700 transition-all active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 whitespace-nowrap"
                         >
                             {exporting ? 'Generating...' : 'Download PDF Report'}
                         </button>
@@ -235,8 +235,8 @@ export default function ProgressPage() {
                                 }))}>
                                     <defs>
                                         <linearGradient id="colorHours" x1="0" y1="0" x2="0" y2="1">
-                                            <stop offset="5%" stopColor="#ACC8A2" stopOpacity={0.2} />
-                                            <stop offset="95%" stopColor="#ACC8A2" stopOpacity={0} />
+                                            <stop offset="5%" stopColor="#0D9488" stopOpacity={0.2} />
+                                            <stop offset="95%" stopColor="#0D9488" stopOpacity={0} />
                                         </linearGradient>
                                     </defs>
                                     <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
@@ -245,7 +245,7 @@ export default function ProgressPage() {
                                     <Tooltip
                                         contentStyle={{ backgroundColor: '#fff', borderRadius: '12px', border: 'none', boxShadow: '0 4px 12px rgba(0,0,0,0.05)' }}
                                     />
-                                    <Area type="monotone" dataKey="hours" stroke="#ACC8A2" strokeWidth={3} fillOpacity={1} fill="url(#colorHours)" />
+                                    <Area type="monotone" dataKey="hours" stroke="#0D9488" strokeWidth={3} fillOpacity={1} fill="url(#colorHours)" />
                                 </AreaChart>
                             </ResponsiveContainer>
                         </div>

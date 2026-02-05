@@ -62,7 +62,6 @@ const Sidebar: React.FC<SidebarProps> = ({ userRole }) => {
     // Navigation items based on user role
     const getNavItems = () => {
         const studentItems = [
-            { icon: Search, label: 'Search...', href: '/search', section: 'General' },
             { icon: LayoutDashboard, label: 'Dashboard', href: '/dashboard', section: 'General' },
             { icon: University, label: 'University Library', href: '/university', section: 'General' },
             { icon: TrendingUp, label: 'Progress', href: '/progress', section: 'General' },
@@ -71,7 +70,6 @@ const Sidebar: React.FC<SidebarProps> = ({ userRole }) => {
         ];
 
         const adminItems = [
-            { icon: Search, label: 'Search...', href: '/admin/search', section: 'Main' },
             { icon: LayoutDashboard, label: 'Dashboard', href: '/admin/dashboard', section: 'Main' },
             { icon: Bell, label: 'Notifications', href: '/admin/notifications', section: 'Main' },
             { icon: TrendingUp, label: 'Analytics', href: '/admin/analytics', section: 'Main' },
@@ -94,7 +92,6 @@ const Sidebar: React.FC<SidebarProps> = ({ userRole }) => {
         ];
 
         const institutionItems = [
-            { icon: Search, label: 'Search...', href: '/institution-admin/search', section: 'Main' },
             { icon: LayoutDashboard, label: 'Dashboard', href: '/institution-admin', section: 'Main' },
             { icon: Users, label: 'Manage Students', href: '/institution-admin/students', section: 'Main' },
             { icon: Building2, label: 'University Access', href: '/institution-admin/universities', section: 'Main' },
@@ -112,6 +109,8 @@ const Sidebar: React.FC<SidebarProps> = ({ userRole }) => {
     // Color Palette Constants
     const deepOlive = '#1A2517';
     const softSage = '#ACC8A2';
+
+
 
     return (
         <>
@@ -162,6 +161,8 @@ const Sidebar: React.FC<SidebarProps> = ({ userRole }) => {
                     )}
                 </div>
 
+
+
                 {/* Navigation */}
                 <nav className="flex-1 overflow-y-auto p-3 custom-scrollbar">
                     <div className="space-y-3">
@@ -176,7 +177,6 @@ const Sidebar: React.FC<SidebarProps> = ({ userRole }) => {
 
                             const Icon = item.icon;
                             const active = isActive(item.href);
-                            const isSearch = item.label === 'Search...';
 
                             return (
                                 <Link
@@ -192,7 +192,6 @@ const Sidebar: React.FC<SidebarProps> = ({ userRole }) => {
                                             ? 'bg-teal-600 text-white shadow-xl shadow-teal-100'
                                             : 'text-slate-500 hover:bg-slate-50 hover:text-teal-600'
                                         }
-                                        ${isSearch ? 'mb-8 bg-slate-50 border border-slate-100 font-bold' : ''}
                                     `}
                                 >
                                     <div className="w-10 flex-shrink-0 flex items-center justify-center">

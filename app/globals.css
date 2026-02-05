@@ -6,11 +6,11 @@
 
 @layer theme {
   :root {
-    /* Primary Colors - Soft Sage Theme */
-    --primary: #ACC8A2;
-    --primary-light: #C5DBC0;
-    --primary-dark: #8FB085;
-    --primary-glow: rgba(172, 200, 162, 0.15);
+    /* Primary Colors - Modern Teal Theme */
+    --primary: #0D9488;
+    --primary-light: #5EEAD4;
+    --primary-dark: #115E59;
+    --primary-glow: rgba(13, 148, 136, 0.15);
 
     /* Secondary Colors - Indigo Accents */
     --secondary: #6366F1;
@@ -94,9 +94,9 @@
   body {
     background: var(--background);
     background-image:
-      radial-gradient(at 0% 0%, rgba(172, 200, 162, 0.1) 0, transparent 50%),
-      radial-gradient(at 100% 0%, rgba(99, 102, 241, 0.08) 0, transparent 50%),
-      radial-gradient(at 100% 100%, rgba(172, 200, 162, 0.05) 0, transparent 50%);
+      radial-gradient(at 0% 0%, rgba(100, 116, 139, 0.03) 0, transparent 50%),
+      radial-gradient(at 100% 0%, rgba(99, 102, 241, 0.04) 0, transparent 50%),
+      radial-gradient(at 100% 100%, rgba(148, 163, 184, 0.02) 0, transparent 50%);
     color: var(--foreground);
     font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
     font-size: 16px;
@@ -346,6 +346,23 @@
     background: var(--text-tertiary);
   }
 
+  .custom-scrollbar::-webkit-scrollbar {
+    width: 4px;
+  }
+
+  .custom-scrollbar::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  .custom-scrollbar::-webkit-scrollbar-thumb {
+    background: var(--border);
+    border-radius: var(--radius-full);
+  }
+
+  .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+    background: var(--text-tertiary);
+  }
+
   /* =====================================================
      UTILITY CLASSES
      ===================================================== */
@@ -356,9 +373,9 @@
 
   .bg-mesh-gradient {
     background:
-      radial-gradient(at 0% 0%, rgba(172, 200, 162, 0.15) 0, transparent 50%),
-      radial-gradient(at 100% 0%, rgba(99, 102, 241, 0.1) 0, transparent 50%),
-      radial-gradient(at 100% 100%, rgba(172, 200, 162, 0.08) 0, transparent 50%);
+      radial-gradient(at 0% 0%, rgba(100, 116, 139, 0.06) 0, transparent 50%),
+      radial-gradient(at 100% 0%, rgba(99, 102, 241, 0.05) 0, transparent 50%),
+      radial-gradient(at 100% 100%, rgba(148, 163, 184, 0.04) 0, transparent 50%);
   }
 
   .gradient-text {

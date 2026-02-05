@@ -140,7 +140,7 @@ export default function SearchPage() {
             case 'university': return <UniIcon className="w-5 h-5 text-indigo-500" />;
             case 'subject': return <Book className="w-5 h-5 text-purple-500" />;
             case 'topic': return <GraduationCap className="w-5 h-5 text-blue-500" />;
-            case 'subtopic': return <FileText className="w-5 h-5 text-emerald-500" />;
+            case 'subtopic': return <FileText className="w-5 h-5 text-teal-500" />;
             default: return <Search className="w-5 h-5 text-gray-500" />;
         }
     };
@@ -149,7 +149,7 @@ export default function SearchPage() {
         <div className="min-h-screen bg-gray-50 flex font-sans">
             <Sidebar userRole={user?.role || 'student'} />
             <div className="flex-1 flex flex-col">
-                <Header userName={user?.full_name} userEmail={user?.email} />
+                <Header userName={user?.full_name} userEmail={user?.email} userAvatar={user?.avatar_url} />
 
                 <main className="ml-64 mt-16 p-8">
                     <div className="max-w-4xl mx-auto">

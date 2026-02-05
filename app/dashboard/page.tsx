@@ -98,7 +98,7 @@ export default function StudentDashboard() {
             <Sidebar userRole="student" />
 
             <div className={`flex flex-col transition-all duration-300 ${isSidebarCollapsed ? 'lg:ml-24' : 'lg:ml-72'}`}>
-                <Header userName={user?.full_name || 'Student'} userEmail={user?.email} />
+                <Header userName={user?.full_name || 'Student'} userEmail={user?.email} userAvatar={user?.avatar_url} />
 
                 <main className="p-4 lg:p-8 mt-28 lg:mt-24">
                     <div className="max-w-7xl mx-auto space-y-6 lg:space-y-8 bg-white p-4 md:p-8 rounded-2xl border border-slate-200/80 shadow-sm">
