@@ -52,13 +52,29 @@ export default function PerformanceAnalyticsPage() {
                 .eq('id', user.id)
                 .single();
 
-            if (!profile?.institution_id) {
-                toast.error("Institution link missing.");
-                setLoading(false);
-                return;
+            let instId = profile?.institution_id;
+
+            if (!instId) {
+                // FALLBACK: Try checking institution_admins table
+                const { data: adminLink } = await supabase
+                    .from('institution_admins')
+                    .select('institution_id')
+                    .eq('user_id', user.id)
+                    .maybeSingle();
+
+                if (adminLink?.institution_id) {
+                    console.log("Rescued institution link from institution_admins");
+                    instId = adminLink.institution_id;
+                    // Proactively update the users table for next time
+                    await supabase.from('users').update({ institution_id: instId }).eq('id', user.id);
+                } else {
+                    toast.error("Institution link missing. Please contact Super Admin.");
+                    setLoading(false);
+                    return;
+                }
             }
 
-            const data = await AnalyticsService.getInstitutionDetailedAnalytics(profile.institution_id);
+            const data = await AnalyticsService.getInstitutionDetailedAnalytics(instId);
             setStats(data);
         } catch (error: any) {
             console.error(error);

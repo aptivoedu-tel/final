@@ -98,29 +98,42 @@ export class AuthService {
                     return { user: null, error: 'Please verify your email before logging in. Check your inbox for the link.' };
                 }
 
-                // For Institution Admins: Check Approval Status
+                // For Institution Admins: Check Approval Status & Sync ID
                 if (user.role === 'institution_admin') {
                     const { data: adminLink } = await supabase
                         .from('institution_admins')
                         .select('institution_id, institutions(name, status)')
                         .eq('user_id', user.id)
-                        .single();
+                        .maybeSingle();
 
-                    const instStatus = (adminLink as any)?.institutions?.status;
+                    if (adminLink) {
+                        const instId = adminLink.institution_id;
+                        const instStatus = (adminLink as any)?.institutions?.status;
 
-                    if (instStatus === 'pending') {
-                        await supabase.auth.signOut();
-                        return { user: null, error: 'Your institution registration is pending approval. This usually takes up to 7 days.' };
-                    }
+                        // Auto-sync missing institution_id in users table
+                        if (!user.institution_id && instId) {
+                            console.log("Syncing missing institution_id to users table...");
+                            await supabase.from('users').update({ institution_id: instId }).eq('id', user.id);
+                            user.institution_id = instId;
+                        }
 
-                    if (instStatus === 'rejected') {
-                        await supabase.auth.signOut();
-                        return { user: null, error: 'Your institution registration request was rejected. Please contact support.' };
-                    }
+                        if (instStatus === 'pending') {
+                            await supabase.auth.signOut();
+                            return { user: null, error: 'Your institution registration is pending approval. This usually takes up to 7 days.' };
+                        }
 
-                    if (instStatus === 'blocked') {
-                        await supabase.auth.signOut();
-                        return { user: null, error: 'This institution account has been blocked. Access is denied.' };
+                        if (instStatus === 'rejected') {
+                            await supabase.auth.signOut();
+                            return { user: null, error: 'Your institution registration request was rejected. Please contact support.' };
+                        }
+
+                        if (instStatus === 'blocked') {
+                            await supabase.auth.signOut();
+                            return { user: null, error: 'This institution account has been blocked. Access is denied.' };
+                        }
+                    } else if (!user.institution_id) {
+                        // User is institution_admin but has no link?
+                        console.warn("Institution Admin has no linked institution record.");
                     }
                 }
 
@@ -205,6 +218,7 @@ export class AuthService {
                     is_solo: data.isSolo || false,
                     status: 'active',
                     email_verified: false,
+                    password_hash: 'synced-from-auth'
                 })
                 .select()
                 .single();
@@ -217,12 +231,26 @@ export class AuthService {
 
             // Link admin to institution
             if (data.role === 'institution_admin' && finalInstitutionId) {
-                await supabase
+                console.log('Attempting to link admin to institution:', { userId: authUser.user.id, instId: finalInstitutionId });
+                const { error: linkError } = await supabase
                     .from('institution_admins')
                     .upsert({
-                        user_id: newUser.id,
+                        user_id: authUser.user.id,
                         institution_id: finalInstitutionId,
                     });
+
+                if (linkError) {
+                    console.error('FAILED TO CREATE INSTITUTION ADMIN LINK:', linkError);
+                    // We return success but with a warning in logs
+                } else {
+                    console.log('Successfully created institution admin link');
+                }
+
+                // ALSO update the users table directly right now
+                await supabase
+                    .from('users')
+                    .update({ institution_id: finalInstitutionId })
+                    .eq('id', authUser.user.id);
             }
 
             return { user: newUser as User, error: null };
@@ -230,6 +258,33 @@ export class AuthService {
             console.error('Registration error:', error);
             return { user: null, error: 'An unexpected error occurred' };
         }
+    }
+
+    static async getInstitutionId(userId: string): Promise<number | null> {
+        // 1. Try primary profile
+        const { data: profile } = await supabase
+            .from('users')
+            .select('institution_id')
+            .eq('id', userId)
+            .single();
+
+        if (profile?.institution_id) return profile.institution_id;
+
+        // 2. Fallback to institution_admins table
+        const { data: adminLink } = await supabase
+            .from('institution_admins')
+            .select('institution_id')
+            .eq('user_id', userId)
+            .maybeSingle();
+
+        if (adminLink?.institution_id) {
+            const instId = adminLink.institution_id;
+            // Proactive sync (might fail if RLS is tight, but that's okay)
+            await supabase.from('users').update({ institution_id: instId }).eq('id', userId);
+            return instId;
+        }
+
+        return null;
     }
 
     static async getSession() {

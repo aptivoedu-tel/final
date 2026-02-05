@@ -31,9 +31,26 @@ const Header: React.FC<HeaderProps> = ({ userName, userEmail, userAvatar, avatar
     const [isSearching, setIsSearching] = useState(false);
     const [showSearchDropdown, setShowSearchDropdown] = useState(false);
 
-    const displayAvatar = userAvatar || avatarUrl;
-
     const [userRole, setUserRole] = useState<string | null>(null);
+    const [resolvedUser, setResolvedUser] = useState<{ full_name?: string; email?: string; avatar_url?: string | null } | null>(null);
+
+    useEffect(() => {
+        const user = AuthService.getCurrentUser();
+        if (user) {
+            setResolvedUser(user);
+        }
+    }, [userName, userEmail]);
+
+    const finalName = userName && userName !== 'Admin' && userName !== 'Student User' && userName !== 'Institution Admin'
+        ? userName
+        : (resolvedUser?.full_name || userName || 'User');
+
+    const finalEmail = userEmail && !userEmail.includes('@system.com') && !userEmail.includes('@aptivo.com') && !userEmail.includes('@stanford.edu') && !userEmail.includes('@institution.edu')
+        ? userEmail
+        : (resolvedUser?.email || userEmail || '');
+
+    const finalAvatar = userAvatar || avatarUrl || resolvedUser?.avatar_url;
+    const displayAvatar = finalAvatar;
 
     useEffect(() => {
         const fetchNotifications = async () => {
@@ -379,19 +396,19 @@ const Header: React.FC<HeaderProps> = ({ userName, userEmail, userAvatar, avatar
                             {displayAvatar ? (
                                 <img
                                     src={displayAvatar}
-                                    alt={userName}
+                                    alt={finalName}
                                     className="w-8 h-8 rounded-full object-cover"
                                 />
                             ) : (
-                                <div className={`w-8 h-8 rounded-full ${getAvatarColor(userName)} flex items-center justify-center`}>
+                                <div className={`w-8 h-8 rounded-full ${getAvatarColor(finalName)} flex items-center justify-center`}>
                                     <span className="text-white text-sm font-semibold">
-                                        {getInitials(userName)}
+                                        {getInitials(finalName)}
                                     </span>
                                 </div>
                             )}
                             <div className="text-right hidden md:block">
-                                <p className="text-sm font-black leading-tight text-slate-900">{userName || 'Student User'}</p>
-                                <p className="text-[10px] font-bold truncate max-w-[120px] text-slate-600">{userEmail || 'student@stanford.edu'}</p>
+                                <p className="text-sm font-black leading-tight text-slate-900">{finalName}</p>
+                                <p className="text-[10px] font-bold truncate max-w-[120px] text-slate-600">{finalEmail}</p>
                                 {isPremium && (
                                     <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-gradient-to-r from-yellow-400 to-orange-500 text-white">
                                         Premium
@@ -405,8 +422,8 @@ const Header: React.FC<HeaderProps> = ({ userName, userEmail, userAvatar, avatar
                         {showUserMenu && (
                             <div className="absolute right-0 mt-2 w-64 rounded-2xl shadow-xl border overflow-hidden animate-scale-in bg-white border-gray-200">
                                 <div className="p-4 border-b border-gray-100">
-                                    <p className="font-semibold text-gray-900">{userName}</p>
-                                    <p className="text-sm mt-0.5 text-gray-500">{userEmail}</p>
+                                    <p className="font-semibold text-gray-900">{finalName}</p>
+                                    <p className="text-sm mt-0.5 text-gray-500">{finalEmail}</p>
                                 </div>
                                 <div className="p-2">
                                     <a

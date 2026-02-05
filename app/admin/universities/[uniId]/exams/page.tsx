@@ -218,7 +218,7 @@ export default function UniversityExamsPage() {
         <div className="min-h-screen bg-[#f8fafc] flex font-sans">
             <Sidebar userRole="super_admin" />
             <div className="flex-1 flex flex-col">
-                <Header userName="Admin" userEmail="admin@system.com" />
+                <Header />
 
                 <main className={`${isSidebarCollapsed ? 'ml-20' : 'ml-72'} mt-16 p-8 transition-all duration-300`}>
                     <div className="max-w-7xl mx-auto">

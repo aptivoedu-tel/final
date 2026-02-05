@@ -5,6 +5,7 @@ import { supabase } from '@/lib/supabase/client';
 import { Lock, Unlock, Search, Building2, BookOpen } from 'lucide-react';
 import Link from 'next/link';
 import { toast } from 'sonner';
+import { AuthService } from '@/lib/services/authService';
 
 export default function UniversitySelectorPage() {
     const [universities, setUniversities] = useState<any[]>([]);
@@ -19,31 +20,30 @@ export default function UniversitySelectorPage() {
             const { data: { user } } = await supabase.auth.getUser();
             if (!user) return;
 
-            const { data: profile } = await supabase
-                .from('users')
-                .select('institution_id')
-                .eq('id', user.id)
-                .single();
-
-            const instId = profile?.institution_id;
+            const instId = await AuthService.getInstitutionId(user.id);
             setInstitutionId(instId);
 
-            // 1. Fetch Universities
+            if (!instId) {
+                toast.error("Institution link missing. You will not be able to manage university access.");
+            }
+
+            // 1. Fetch Universities - ALWAYS do this
             const { data: unis } = await supabase.from('universities').select('*').eq('is_active', true);
-
-            // 2. Fetch Access States filtered by institution_id
-            const { data: access } = await supabase
-                .from('institution_university_access')
-                .select('*')
-                .eq('institution_id', instId || 0);
-
-            const states: Record<number, boolean> = {};
-            access?.forEach((a: any) => {
-                states[a.university_id] = a.is_locked;
-            });
-
             setUniversities(unis || []);
-            setLockedStates(states);
+
+            // 2. Fetch Access States if instId exists
+            if (instId) {
+                const { data: access } = await supabase
+                    .from('institution_university_access')
+                    .select('*')
+                    .eq('institution_id', instId);
+
+                const states: Record<number, boolean> = {};
+                access?.forEach((a: any) => {
+                    states[a.university_id] = a.is_locked;
+                });
+                setLockedStates(states);
+            }
             setLoading(false);
         };
         loadData();

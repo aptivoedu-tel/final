@@ -16,7 +16,7 @@ export default function RegisterPage() {
         institutionId: '',
         institutionName: '',
         institutionType: 'college',
-        isNewInstitution: false
+        isNewInstitution: true
     });
 
     const [institutions, setInstitutions] = useState<any[]>([]);
@@ -264,41 +264,24 @@ export default function RegisterPage() {
                             {/* Institution Specific Logic */}
                             {formData.role === 'institution_admin' && (
                                 <div className="p-5 bg-slate-50 rounded-[2rem] border border-slate-100 space-y-4 animate-in slide-in-from-top-4 duration-500">
-                                    <div className="flex p-1 bg-white rounded-2xl border border-slate-100">
-                                        <button type="button" onClick={() => setFormData({ ...formData, isNewInstitution: false })} className={`flex-1 py-2 text-[10px] font-black rounded-xl transition-all ${!formData.isNewInstitution ? 'bg-[#244D4D] text-white shadow-sm' : 'text-slate-400 hover:text-slate-600'}`}>JOIN EXISTING</button>
-                                        <button type="button" onClick={() => setFormData({ ...formData, isNewInstitution: true })} className={`flex-1 py-2 text-[10px] font-black rounded-xl transition-all ${formData.isNewInstitution ? 'bg-[#244D4D] text-white shadow-sm' : 'text-slate-400 hover:text-slate-600'}`}>NEW REGISTRATION</button>
+                                    <div className="flex items-center gap-2 mb-2 px-1">
+                                        <Building2 className="w-4 h-4 text-[#244D4D]" />
+                                        <span className="text-[10px] font-black text-[#244D4D] uppercase tracking-wider">Institution Registration</span>
                                     </div>
 
-                                    <div className="relative">
-                                        {!formData.isNewInstitution ? (
-                                            <>
-                                                <Building2 className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-300" />
-                                                <select
-                                                    name="institutionId"
-                                                    value={formData.institutionId}
-                                                    onChange={handleChange}
-                                                    className="w-full pl-11 pr-4 py-3.5 bg-white border border-slate-200 rounded-2xl text-xs font-bold focus:border-[#4CAF50] focus:ring-4 focus:ring-green-500/5 outline-none transition-all appearance-none"
-                                                >
-                                                    <option value="">Select Institution...</option>
-                                                    {institutions.map(inst => <option key={inst.id} value={inst.id}>{inst.name}</option>)}
-                                                </select>
-                                            </>
-                                        ) : (
-                                            <div className="space-y-3">
-                                                <div className="relative">
-                                                    <Building2 className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-300" />
-                                                    <input type="text" name="institutionName" value={formData.institutionName} onChange={handleChange} placeholder="Full Institution Name" className="w-full pl-11 pr-4 py-3.5 bg-white border border-slate-200 rounded-2xl text-xs font-bold focus:border-[#4CAF50] focus:ring-4 focus:ring-green-500/5 outline-none" />
-                                                </div>
-                                                <div className="relative">
-                                                    <Globe className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-300" />
-                                                    <select name="institutionType" value={formData.institutionType} onChange={handleChange} className="w-full pl-11 pr-4 py-3.5 bg-white border border-slate-200 rounded-2xl text-xs font-bold focus:border-[#4CAF50] outline-none appearance-none">
-                                                        <option value="college">University / College</option>
-                                                        <option value="school">High School</option>
-                                                        <option value="coaching">Academy / Coaching</option>
-                                                    </select>
-                                                </div>
-                                            </div>
-                                        )}
+                                    <div className="space-y-3">
+                                        <div className="relative">
+                                            <Building2 className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-300" />
+                                            <input type="text" name="institutionName" value={formData.institutionName} onChange={handleChange} placeholder="Full Institution Name" className="w-full pl-11 pr-4 py-3.5 bg-white border border-slate-200 rounded-2xl text-xs font-bold focus:border-[#4CAF50] focus:ring-4 focus:ring-green-500/5 outline-none" />
+                                        </div>
+                                        <div className="relative">
+                                            <Globe className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-300" />
+                                            <select name="institutionType" value={formData.institutionType} onChange={handleChange} className="w-full pl-11 pr-4 py-3.5 bg-white border border-slate-200 rounded-2xl text-xs font-bold focus:border-[#4CAF50] outline-none appearance-none">
+                                                <option value="college">University / College</option>
+                                                <option value="school">High School</option>
+                                                <option value="coaching">Academy / Coaching</option>
+                                            </select>
+                                        </div>
                                     </div>
                                 </div>
                             )}

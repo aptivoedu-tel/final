@@ -4,6 +4,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { supabase } from '@/lib/supabase/client';
 import { Plus, Upload, Search, Trash2, Ban, CheckCircle, RefreshCw, Eye, EyeOff, FileSpreadsheet } from 'lucide-react';
 import { toast } from 'sonner';
+import { AuthService } from '@/lib/services/authService';
 import * as XLSX from 'xlsx';
 
 export default function StudentManagerPage() {
@@ -35,29 +36,24 @@ export default function StudentManagerPage() {
             const { data: { user } } = await supabase.auth.getUser();
             if (!user) return;
 
-            const { data: profile } = await supabase
-                .from('users')
-                .select('institution_id')
-                .eq('id', user.id)
-                .single();
+            const instId = await AuthService.getInstitutionId(user.id);
+            setAdminInstitutionId(instId);
 
-            if (!profile?.institution_id) {
-                toast.error("Institution link missing.");
-                setLoading(false);
-                return;
+            if (!instId) {
+                toast.error("Institution link missing. You cannot manage students yet.");
             }
 
-            setAdminInstitutionId(profile.institution_id);
+            if (instId) {
+                const { data, error } = await supabase
+                    .from('users')
+                    .select('*')
+                    .eq('role', 'student')
+                    .eq('institution_id', instId)
+                    .order('created_at', { ascending: false });
 
-            const { data, error } = await supabase
-                .from('users')
-                .select('*')
-                .eq('role', 'student')
-                .eq('institution_id', profile.institution_id)
-                .order('created_at', { ascending: false });
-
-            if (error) throw error;
-            setStudents(data || []);
+                if (error) throw error;
+                setStudents(data || []);
+            }
         } catch (err: any) {
             console.error(err);
             toast.error("Failed to load students: " + err.message);
@@ -68,21 +64,40 @@ export default function StudentManagerPage() {
 
     const handleCreateStudent = async (e: React.FormEvent) => {
         e.preventDefault();
+
+        let currentInstId = adminInstitutionId;
+
+        // Final fallback if state is somehow lost or not yet set
+        if (!currentInstId) {
+            const { data: { user } } = await supabase.auth.getUser();
+            if (user) {
+                currentInstId = await AuthService.getInstitutionId(user.id);
+                if (currentInstId) setAdminInstitutionId(currentInstId);
+            }
+        }
+
+        if (!currentInstId) {
+            toast.error("Institution ID missing. Please refresh the page.");
+            return;
+        }
+
         setCreating(true);
-        await createSingleStudent(newStudent.name, newStudent.studentId, newStudent.password);
+        await createSingleStudent(newStudent.name, newStudent.studentId, newStudent.password, currentInstId);
         setCreating(false);
         setShowAddModal(false);
         setNewStudent({ studentId: '', name: '', password: '' });
+        loadStudents(); // Refresh list
     };
 
-    const createSingleStudent = async (name: string, studentId: string, password?: string) => {
-        if (!adminInstitutionId) {
+    const createSingleStudent = async (name: string, studentId: string, password?: string, manualInstId?: number) => {
+        const instIdToUse = manualInstId || adminInstitutionId;
+        if (!instIdToUse) {
             toast.error("Institution ID missing");
             return false;
         }
 
         try {
-            const finalPassword = password || Math.random().toString(36).slice(-8); // Generate if missing
+            const finalPassword = password || Math.random().toString(36).slice(-8);
 
             const response = await fetch('/api/create-student', {
                 method: 'POST',
@@ -91,7 +106,7 @@ export default function StudentManagerPage() {
                     studentId: studentId.toString(),
                     name,
                     password: finalPassword,
-                    institutionId: adminInstitutionId
+                    institutionId: instIdToUse
                 })
             });
 
@@ -140,18 +155,35 @@ export default function StudentManagerPage() {
                     return;
                 }
 
+                let currentInstId = adminInstitutionId;
+                if (!currentInstId) {
+                    const { data: { user } } = await supabase.auth.getUser();
+                    if (user) {
+                        const { data: profile } = await supabase.from('users').select('institution_id').eq('id', user.id).single();
+                        currentInstId = profile?.institution_id;
+                        if (!currentInstId) {
+                            const { data: adminLink } = await supabase.from('institution_admins').select('institution_id').eq('user_id', user.id).maybeSingle();
+                            currentInstId = adminLink?.institution_id;
+                        }
+                    }
+                }
+
+                if (!currentInstId) {
+                    toast.error("Institution ID missing. Cannot process bulk upload.");
+                    setUploading(false);
+                    return;
+                }
+
                 toast.info(`Processing ${data.length} students...`);
                 let successCount = 0;
 
                 for (const row of data) {
-                    // Expect keys: Name, RollNo, Password (optional)
-                    // Be flexible with keys (case-insensitive search?)
                     const name = row['Name'] || row['name'] || row['Full Name'];
                     const rollNo = row['RollNo'] || row['rollno'] || row['Roll Number'] || row['Student ID'];
                     const password = row['Password'] || row['password'];
 
                     if (name && rollNo) {
-                        const success = await createSingleStudent(name, rollNo, password);
+                        const success = await createSingleStudent(name, rollNo, password, currentInstId);
                         if (success) successCount++;
                     }
                 }

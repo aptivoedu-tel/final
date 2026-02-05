@@ -49,15 +49,44 @@ export default function InstitutionNotificationsPage() {
         setUser(activeUser);
 
         try {
+            const { data: { user: authUser } } = await supabase.auth.getUser();
+            if (!authUser) return;
+
+            const { data: profile } = await supabase
+                .from('users')
+                .select('institution_id')
+                .eq('id', authUser.id)
+                .single();
+
+            let instId = profile?.institution_id;
+
+            if (!instId) {
+                // FALLBACK: Try checking institution_admins table
+                const { data: adminLink } = await supabase
+                    .from('institution_admins')
+                    .select('institution_id')
+                    .eq('user_id', authUser.id)
+                    .maybeSingle();
+
+                if (adminLink?.institution_id) {
+                    console.log("Rescued institution link from institution_admins");
+                    instId = adminLink.institution_id;
+                    // Update user state so handleSend works
+                    setUser((prev: any) => prev ? { ...prev, institution_id: instId } : prev);
+                    // Proactively update the users table for next time
+                    await supabase.from('users').update({ institution_id: instId }).eq('id', authUser.id);
+                }
+            }
+
             const { notifications } = await NotificationService.getUserNotifications(activeUser.id);
             if (notifications) setNotifications(notifications);
 
             // Fetch students for compose
-            if (activeUser.institution_id) {
+            if (instId) {
                 const { data: stds } = await supabase
                     .from('users')
                     .select('id, full_name, email')
-                    .eq('institution_id', activeUser.institution_id)
+                    .eq('institution_id', instId)
                     .eq('role', 'student')
                     .eq('status', 'active');
                 if (stds) setStudents(stds);

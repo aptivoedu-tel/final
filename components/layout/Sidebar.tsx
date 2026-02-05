@@ -22,7 +22,8 @@ import {
     Search,
     Sun,
     Moon,
-    MessageSquare
+    MessageSquare,
+    Settings
 } from 'lucide-react';
 import { useUI } from '@/lib/context/UIContext';
 import { AuthService } from '@/lib/services/authService';
@@ -87,7 +88,9 @@ const Sidebar: React.FC<SidebarProps> = ({ userRole }) => {
             { icon: FolderTree, label: 'Uni. Content Mapper', href: '/admin/university-mapper', section: 'Hierarchy' },
 
             { header: 'ACCOUNT' },
+            { icon: Users, label: 'Manage Users', href: '/admin/users', section: 'Account' },
             { icon: Users, label: 'Profile', href: '/admin/profile', section: 'Account' },
+            { icon: Settings, label: 'Settings', href: '/admin/settings', section: 'Account' },
             { icon: MessageSquare, label: 'Feedback', href: '/admin/feedbacks', section: 'Account' },
         ];
 

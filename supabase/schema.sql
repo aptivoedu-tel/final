@@ -403,8 +403,38 @@ ALTER TABLE detected_weaknesses ENABLE ROW LEVEL SECURITY;
 CREATE POLICY "Users can view their own data" ON users
   FOR SELECT USING (auth.uid() = id);
 
-CREATE POLICY "Super admins can view all users" ON users
-  FOR SELECT USING (
+CREATE POLICY "Users can update their own profile" ON users
+  FOR UPDATE USING (auth.uid() = id)
+  WITH CHECK (auth.uid() = id);
+
+CREATE POLICY "Super admins can manage all users" ON users
+  FOR ALL USING (
+    EXISTS (
+      SELECT 1 FROM users WHERE id = auth.uid() AND role = 'super_admin'
+    )
+  );
+
+-- Enable RLS on institution_admins (was missing in original ENABLE section)
+ALTER TABLE institution_admins ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "Users can view their own institution links" ON institution_admins
+  FOR SELECT USING (auth.uid() = user_id);
+
+CREATE POLICY "Super admins can manage all institution links" ON institution_admins
+  FOR ALL USING (
+    EXISTS (
+      SELECT 1 FROM users WHERE id = auth.uid() AND role = 'super_admin'
+    )
+  );
+
+-- Enable RLS and policies for institutions
+ALTER TABLE institutions ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "Anyone can view institutions" ON institutions
+  FOR SELECT USING (TRUE);
+
+CREATE POLICY "Super admins can manage institutions" ON institutions
+  FOR ALL USING (
     EXISTS (
       SELECT 1 FROM users WHERE id = auth.uid() AND role = 'super_admin'
     )

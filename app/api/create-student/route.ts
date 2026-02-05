@@ -34,12 +34,55 @@ export async function POST(request: Request) {
             );
         }
 
-        // 1. Synthesize Email (Supabase requires email)
-        // We use a pattern: ID@institutionID.aptivo.local to avoid collisions across institutions?
-        // Or stick to ID@aptivo-student.local if IDs are globally unique?
-        // Let's use ID + Institution ID to be safe against duplicate Roll Numbers across schools
-        // e.g. 101@99.aptivo-student.local
-        const email = `${studentId}.${institutionId}@aptivo-student.local`.toLowerCase();
+        // 1. Fetch Institution Domain
+        // Ensure institutionId is a number
+        const numericInstId = Number(institutionId);
+
+        if (!numericInstId || isNaN(numericInstId)) {
+            console.error('Invalid institutionId received:', institutionId);
+            return NextResponse.json(
+                { error: `Invalid Institution ID provided: ${institutionId}. Please check your account settings.` },
+                { status: 400 }
+            );
+        }
+
+        console.log('Fetching domain for institutionId:', numericInstId);
+
+        const { data: instData, error: instError } = await supabaseAdmin
+            .from('institutions')
+            .select('domain, name')
+            .eq('id', numericInstId)
+            .maybeSingle();
+
+        if (instError) {
+            console.error('Database Error while fetching institution:', instError);
+            return NextResponse.json(
+                { error: `Database error: ${instError.message}` },
+                { status: 500 }
+            );
+        }
+
+        if (!instData) {
+            console.error('Institution NOT FOUND:', { numericInstId });
+            return NextResponse.json(
+                { error: `Institution with ID ${numericInstId} was not found in the database. Please contact support.` },
+                { status: 404 }
+            );
+        }
+
+        if (!instData.domain) {
+            console.error('Institution found but DOMAIN IS MISSING:', instData);
+            return NextResponse.json(
+                { error: `The institution "${instData.name}" (ID ${numericInstId}) does not have a domain assigned. Please assign a domain (e.g., ha.edu) in the Institutions manager.` },
+                { status: 400 }
+            );
+        }
+
+        const domain = instData.domain.toLowerCase();
+
+        // 2. Synthesize Email (Supabase requires email)
+        // Format: roll_number@institution_domain
+        const email = `${studentId}@${domain}`.toLowerCase();
 
         // 2. Create User in Supabase Auth
         const { data: authData, error: authError } = await supabaseAdmin.auth.admin.createUser({

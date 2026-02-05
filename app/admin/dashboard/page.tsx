@@ -3,7 +3,7 @@
 import React, { useEffect, useState } from 'react';
 import {
     Users, BookOpen, Layers, UploadCloud, Edit3,
-    Network, TrendingUp, MoreHorizontal
+    Network, TrendingUp, MoreHorizontal, Shield
 } from 'lucide-react';
 import { useUI } from '@/lib/context/UIContext';
 import Sidebar from '@/components/layout/Sidebar';
@@ -186,6 +186,51 @@ export default function AdminDashboard() {
                     </a>
                 </div>
 
+                {/* Secondary Action Cards */}
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+                    {/* Universities */}
+                    <a href="/admin/universities" className="group relative overflow-hidden bg-rose-500 rounded-2xl p-8 text-white shadow-lg shadow-rose-500/20 hover:shadow-rose-500/30 transition-all hover:-translate-y-1 block">
+                        <div className="relative z-10">
+                            <div className="w-14 h-14 bg-white/20 rounded-2xl flex items-center justify-center backdrop-blur-sm mb-6 group-hover:bg-white/30 transition-colors">
+                                <BookOpen className="w-7 h-7" />
+                            </div>
+                            <h3 className="text-xl font-bold mb-2">Universities</h3>
+                            <p className="text-rose-100 text-sm leading-relaxed">
+                                Manage university profiles and domains
+                            </p>
+                        </div>
+                        <BookOpen className="absolute -right-8 -bottom-8 w-48 h-48 text-white opacity-10 transform rotate-12 group-hover:scale-110 transition-transform" />
+                    </a>
+
+                    {/* Institutions */}
+                    <a href="/admin/institutions" className="group relative overflow-hidden bg-amber-500 rounded-2xl p-8 text-white shadow-lg shadow-amber-500/20 hover:shadow-amber-500/30 transition-all hover:-translate-y-1 block">
+                        <div className="relative z-10">
+                            <div className="w-14 h-14 bg-white/20 rounded-2xl flex items-center justify-center backdrop-blur-sm mb-6 group-hover:bg-white/30 transition-colors">
+                                <Users className="w-7 h-7" />
+                            </div>
+                            <h3 className="text-xl font-bold mb-2">Institutions</h3>
+                            <p className="text-amber-100 text-sm leading-relaxed">
+                                Manage colleges and school partners
+                            </p>
+                        </div>
+                        <Users className="absolute -right-8 -bottom-8 w-48 h-48 text-white opacity-10 transform rotate-12 group-hover:scale-110 transition-transform" />
+                    </a>
+
+                    {/* User Management */}
+                    <a href="/admin/users" className="group relative overflow-hidden bg-indigo-600 rounded-2xl p-8 text-white shadow-lg shadow-indigo-600/20 hover:shadow-indigo-600/30 transition-all hover:-translate-y-1 block">
+                        <div className="relative z-10">
+                            <div className="w-14 h-14 bg-white/20 rounded-2xl flex items-center justify-center backdrop-blur-sm mb-6 group-hover:bg-white/30 transition-colors">
+                                <Shield className="w-7 h-7" />
+                            </div>
+                            <h3 className="text-xl font-bold mb-2">User Access</h3>
+                            <p className="text-indigo-100 text-sm leading-relaxed">
+                                Manage admin and student accounts
+                            </p>
+                        </div>
+                        <Shield className="absolute -right-8 -bottom-8 w-48 h-48 text-white opacity-10 transform rotate-12 group-hover:scale-110 transition-transform" />
+                    </a>
+                </div>
+
                 {/* Bottom Section - Activity or Trends */}
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                     <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
@@ -242,7 +287,7 @@ export default function AdminDashboard() {
                         )}
                     </div>
                 </div>
-            </main>
-        </div>
+            </main >
+        </div >
     );
 }

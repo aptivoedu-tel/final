@@ -1,11 +1,13 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, Suspense } from 'react';
+import { useSearchParams } from 'next/navigation';
 import { supabase } from '@/lib/supabase/client';
 import Sidebar from '@/components/layout/Sidebar';
 import Header from '@/components/layout/Header';
 import { useUI } from '@/lib/context/UIContext';
 import { Plus, Search, Building2, Trash2, Edit2, X, CheckCircle, Globe, Mail, Phone, MapPin, AlertCircle, Ban, UserCheck, ShieldAlert } from 'lucide-react';
+import { toast } from 'sonner';
 
 type Institution = {
     id: number;
@@ -22,12 +24,28 @@ type Institution = {
     created_at: string;
 };
 
-export default function InstitutionsPage() {
+function InstitutionsContent() {
+    const searchParams = useSearchParams();
+    const searchParam = searchParams.get('search');
+
     const [loading, setLoading] = useState(true);
     const [institutions, setInstitutions] = useState<Institution[]>([]);
-    const [searchTerm, setSearchTerm] = useState('');
+    const [searchTerm, setSearchTerm] = useState(searchParam || '');
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [activeTab, setActiveTab] = useState<'approved' | 'pending' | 'rejected' | 'blocked'>('approved');
+
+    useEffect(() => {
+        if (searchParam) {
+            setSearchTerm(searchParam);
+        }
+    }, [searchParam]);
+
+    const [editingInst, setEditingInst] = useState<Institution | null>(null);
+    const [editDomain, setEditDomain] = useState('');
+
+    const [linkingInst, setLinkingInst] = useState<Institution | null>(null);
+    const [availableAdmins, setAvailableAdmins] = useState<any[]>([]);
+    const [selectedAdminId, setSelectedAdminId] = useState<string>('');
 
     // Form State
     const [formData, setFormData] = useState({
@@ -63,6 +81,17 @@ export default function InstitutionsPage() {
         if (!confirm(confirmMsg)) return;
 
         try {
+            // If approving, make sure domain is set
+            if (newStatus === 'approved') {
+                const inst = institutions.find(i => i.id === id);
+                if (!inst?.domain) {
+                    alert('Please assign a domain before approving.');
+                    setEditingInst(inst || null);
+                    setEditDomain(inst?.domain || '');
+                    return;
+                }
+            }
+
             const { error } = await supabase
                 .from('institutions')
                 .update({ status: newStatus, is_active: newStatus === 'approved' })
@@ -71,8 +100,76 @@ export default function InstitutionsPage() {
             if (error) throw error;
 
             fetchInstitutions();
+            toast.success(`Institution ${newStatus} successfully`);
         } catch (error: any) {
             alert(`Error: ${error.message}`);
+        }
+    };
+
+    const handleUpdateDomain = async () => {
+        if (!editingInst) return;
+        try {
+            const { error } = await supabase
+                .from('institutions')
+                .update({ domain: editDomain })
+                .eq('id', editingInst.id);
+
+            if (error) throw error;
+
+            toast.success('Domain updated successfully');
+            setEditingInst(null);
+            fetchInstitutions();
+        } catch (error: any) {
+            alert(`Error updating domain: ${error.message}`);
+        }
+    };
+
+    const fetchAvailableAdmins = async () => {
+        const { data, error } = await supabase
+            .from('users')
+            .select('id, full_name, email')
+            .eq('role', 'institution_admin')
+            .eq('status', 'active');
+        if (data) setAvailableAdmins(data);
+        if (error) console.error(error);
+    };
+
+    const handleLinkAdmin = async () => {
+        if (!linkingInst || !selectedAdminId) return;
+        const admin = availableAdmins.find(a => a.id === selectedAdminId);
+        if (!admin) return;
+
+        try {
+            // 1. Update institution_admins table
+            const { error: linkError } = await supabase
+                .from('institution_admins')
+                .upsert({
+                    user_id: selectedAdminId,
+                    institution_id: linkingInst.id
+                });
+            if (linkError) throw linkError;
+
+            // 2. Update users table primary link
+            await supabase
+                .from('users')
+                .update({ institution_id: linkingInst.id })
+                .eq('id', selectedAdminId);
+
+            // 3. Update institutions table metadata
+            await supabase
+                .from('institutions')
+                .update({
+                    admin_name: admin.full_name,
+                    admin_email: admin.email
+                })
+                .eq('id', linkingInst.id);
+
+            toast.success('Admin linked successfully');
+            setLinkingInst(null);
+            setSelectedAdminId('');
+            fetchInstitutions();
+        } catch (error: any) {
+            alert(`Error linking admin: ${error.message}`);
         }
     };
 
@@ -130,7 +227,7 @@ export default function InstitutionsPage() {
         <div className="min-h-screen bg-gray-50 flex font-sans">
             <Sidebar userRole="super_admin" />
             <div className={`flex-1 flex flex-col min-h-screen transition-all duration-300 ${isSidebarCollapsed ? 'lg:ml-28' : 'lg:ml-80'}`}>
-                <Header userName="Admin" userEmail="admin@system.com" />
+                <Header />
 
                 <main className="flex-1 pt-28 lg:pt-24 pb-12 px-4 sm:px-8">
                     <div className="max-w-6xl mx-auto">
@@ -230,12 +327,23 @@ export default function InstitutionsPage() {
                                                 <div className="w-8 h-8 rounded-lg bg-gray-50 flex items-center justify-center"><Mail className="w-4 h-4" /></div>
                                                 <span className="truncate">{inst.contact_email}</span>
                                             </div>
-                                            {inst.admin_name && (
+                                            {inst.admin_name ? (
                                                 <div className="mt-4 pt-4 border-t border-gray-50">
-                                                    <p className="text-[10px] font-bold text-slate-400 mb-2 uppercase">Lead Admin Account</p>
+                                                    <div className="flex justify-between items-center mb-2">
+                                                        <p className="text-[10px] font-bold text-slate-400 uppercase">Lead Admin Account</p>
+                                                        <button
+                                                            onClick={() => {
+                                                                setLinkingInst(inst);
+                                                                fetchAvailableAdmins();
+                                                            }}
+                                                            className="text-[10px] font-bold text-indigo-600 hover:underline"
+                                                        >
+                                                            Change
+                                                        </button>
+                                                    </div>
                                                     <div className="flex items-center gap-3">
-                                                        <div className="w-8 h-8 rounded-full bg-indigo-50 flex items-center justify-center text-indigo-600 font-bold text-xs">
-                                                            {inst.admin_name.charAt(0)}
+                                                        <div className="w-8 h-8 rounded-full bg-indigo-50 flex items-center justify-center text-indigo-600 font-bold text-xs border border-indigo-100">
+                                                            {(inst.admin_name || '?').charAt(0)}
                                                         </div>
                                                         <div className="min-w-0">
                                                             <p className="text-sm font-bold text-slate-700 truncate">{inst.admin_name}</p>
@@ -243,51 +351,96 @@ export default function InstitutionsPage() {
                                                         </div>
                                                     </div>
                                                 </div>
+                                            ) : (
+                                                <div className="mt-4 pt-4 border-t border-gray-50">
+                                                    <button
+                                                        onClick={() => {
+                                                            setLinkingInst(inst);
+                                                            fetchAvailableAdmins();
+                                                        }}
+                                                        className="w-full py-2 bg-amber-50 text-amber-600 text-[10px] font-black uppercase tracking-widest rounded-lg hover:bg-amber-100 transition-colors flex items-center justify-center gap-2 border border-amber-100"
+                                                    >
+                                                        <ShieldAlert className="w-3.5 h-3.5" /> Assign Admin Account
+                                                    </button>
+                                                </div>
                                             )}
                                         </div>
 
                                         {/* Action Bar */}
                                         <div className="flex gap-2">
                                             {inst.status === 'pending' && (
-                                                <>
+                                                <div className="flex flex-col gap-2 w-full">
+                                                    <div className="flex gap-2">
+                                                        <button
+                                                            onClick={() => handleUpdateStatus(inst.id, 'approved')}
+                                                            className="flex-1 py-2.5 bg-green-600 text-white text-xs font-bold rounded-xl hover:bg-green-700 transition-colors flex items-center justify-center gap-1.5"
+                                                        >
+                                                            <UserCheck className="w-3.5 h-3.5" /> Approve
+                                                        </button>
+                                                        <button
+                                                            onClick={() => handleUpdateStatus(inst.id, 'rejected')}
+                                                            className="flex-1 py-2.5 bg-slate-900 text-white text-xs font-bold rounded-xl hover:bg-black transition-colors flex items-center justify-center gap-1.5"
+                                                        >
+                                                            <X className="w-3.5 h-3.5" /> Reject
+                                                        </button>
+                                                    </div>
                                                     <button
-                                                        onClick={() => handleUpdateStatus(inst.id, 'approved')}
-                                                        className="flex-1 py-2.5 bg-green-600 text-white text-xs font-bold rounded-xl hover:bg-green-700 transition-colors flex items-center justify-center gap-1.5"
+                                                        onClick={() => {
+                                                            setEditingInst(inst);
+                                                            setEditDomain(inst.domain || '');
+                                                        }}
+                                                        className="w-full py-2 bg-indigo-50 text-indigo-600 text-xs font-bold rounded-xl hover:bg-indigo-100 transition-colors flex items-center justify-center gap-1.5 border border-indigo-100/50"
                                                     >
-                                                        <UserCheck className="w-3.5 h-3.5" /> Approve
+                                                        <Edit2 className="w-3 h-3" /> Assign/Edit Domain
                                                     </button>
-                                                    <button
-                                                        onClick={() => handleUpdateStatus(inst.id, 'rejected')}
-                                                        className="flex-1 py-2.5 bg-slate-900 text-white text-xs font-bold rounded-xl hover:bg-black transition-colors flex items-center justify-center gap-1.5"
-                                                    >
-                                                        <X className="w-3.5 h-3.5" /> Reject
-                                                    </button>
-                                                </>
+                                                </div>
                                             )}
 
                                             {(inst.status === 'approved' || inst.status === 'blocked') && (
-                                                <button
-                                                    onClick={() => handleUpdateStatus(inst.id, inst.status === 'approved' ? 'blocked' : 'approved')}
-                                                    className={`flex-1 py-2.5 text-xs font-bold rounded-xl flex items-center justify-center gap-1.5 transition-all ${inst.status === 'approved'
-                                                        ? 'bg-red-50 text-red-600 hover:bg-red-100'
-                                                        : 'bg-green-50 text-green-600 hover:bg-green-100'
-                                                        }`}
-                                                >
-                                                    {inst.status === 'approved' ? (
-                                                        <><Ban className="w-3.5 h-3.5" /> Block Institution</>
-                                                    ) : (
-                                                        <><ShieldAlert className="w-3.5 h-3.5" /> Lift Suspension</>
-                                                    )}
-                                                </button>
+                                                <div className="flex flex-col gap-2 w-full">
+                                                    <button
+                                                        onClick={() => handleUpdateStatus(inst.id, inst.status === 'approved' ? 'blocked' : 'approved')}
+                                                        className={`w-full py-2.5 text-xs font-bold rounded-xl flex items-center justify-center gap-1.5 transition-all ${inst.status === 'approved'
+                                                            ? 'bg-red-50 text-red-600 hover:bg-red-100'
+                                                            : 'bg-green-50 text-green-600 hover:bg-green-100'
+                                                            }`}
+                                                    >
+                                                        {inst.status === 'approved' ? (
+                                                            <><Ban className="w-3.5 h-3.5" /> Block Institution</>
+                                                        ) : (
+                                                            <><ShieldAlert className="w-3.5 h-3.5" /> Lift Suspension</>
+                                                        )}
+                                                    </button>
+                                                    <button
+                                                        onClick={() => {
+                                                            setEditingInst(inst);
+                                                            setEditDomain(inst.domain || '');
+                                                        }}
+                                                        className="w-full py-2 bg-indigo-50 text-indigo-600 text-xs font-bold rounded-xl hover:bg-indigo-100 transition-colors flex items-center justify-center gap-1.5 border border-indigo-100/50"
+                                                    >
+                                                        <Edit2 className="w-3 h-3" /> Edit Domain
+                                                    </button>
+                                                </div>
                                             )}
 
                                             {inst.status === 'rejected' && (
-                                                <button
-                                                    onClick={() => handleUpdateStatus(inst.id, 'pending')}
-                                                    className="flex-1 py-2.5 bg-indigo-50 text-indigo-600 text-xs font-bold rounded-xl hover:bg-indigo-100 flex items-center justify-center gap-1.5"
-                                                >
-                                                    <AlertCircle className="w-3.5 h-3.5" /> Re-Review
-                                                </button>
+                                                <div className="flex flex-col gap-2 w-full">
+                                                    <button
+                                                        onClick={() => handleUpdateStatus(inst.id, 'pending')}
+                                                        className="w-full py-2.5 bg-indigo-50 text-indigo-600 text-xs font-bold rounded-xl hover:bg-indigo-100 flex items-center justify-center gap-1.5"
+                                                    >
+                                                        <AlertCircle className="w-3.5 h-3.5" /> Re-Review
+                                                    </button>
+                                                    <button
+                                                        onClick={() => {
+                                                            setEditingInst(inst);
+                                                            setEditDomain(inst.domain || '');
+                                                        }}
+                                                        className="w-full py-2 bg-indigo-50 text-indigo-600 text-xs font-bold rounded-xl hover:bg-indigo-100 transition-colors flex items-center justify-center gap-1.5 border border-indigo-100/50"
+                                                    >
+                                                        <Edit2 className="w-3 h-3" /> Edit Domain
+                                                    </button>
+                                                </div>
                                             )}
                                         </div>
                                     </div>
@@ -381,6 +534,118 @@ export default function InstitutionsPage() {
                     </div>
                 )}
             </div>
+            {/* DOMAIN EDIT MODAL */}
+            {editingInst && (
+                <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-[60] flex items-center justify-center p-4">
+                    <div className="bg-white rounded-2xl w-full max-w-md shadow-2xl overflow-hidden animate-in fade-in zoom-in duration-200">
+                        <div className="p-6 border-b border-gray-100 bg-gray-50/50">
+                            <h2 className="text-xl font-bold text-slate-900">Assign Domain</h2>
+                            <p className="text-slate-500 text-sm mt-1">Set the email domain for {editingInst.name}.</p>
+                        </div>
+                        <div className="p-6 space-y-4">
+                            <div>
+                                <label className="block text-sm font-bold text-slate-700 mb-1 text-xs uppercase tracking-widest">Email Domain</label>
+                                <div className="relative">
+                                    <Globe className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                                    <input
+                                        required
+                                        className="w-full pl-10 pr-4 py-3 bg-gray-50 border border-gray-200 rounded-lg outline-none focus:ring-2 focus:ring-indigo-500 font-medium"
+                                        placeholder="e.g. stanford.edu"
+                                        value={editDomain}
+                                        onChange={e => setEditDomain(e.target.value)}
+                                    />
+                                </div>
+                                <p className="text-[10px] text-slate-400 mt-2 italic">Students using this domain will automatically be associated with this institution.</p>
+                            </div>
+
+                            <div className="flex gap-3 pt-4">
+                                <button
+                                    type="button"
+                                    onClick={() => setEditingInst(null)}
+                                    className="flex-1 py-3 bg-gray-100 text-slate-700 font-bold rounded-xl hover:bg-gray-200 transition-colors"
+                                >
+                                    Cancel
+                                </button>
+                                <button
+                                    onClick={handleUpdateDomain}
+                                    className="flex-1 py-3 bg-indigo-600 text-white font-bold rounded-xl hover:bg-indigo-700 transition-colors shadow-lg shadow-indigo-100"
+                                >
+                                    Save Changes
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* LINK ADMIN MODAL */}
+            {linkingInst && (
+                <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-[60] flex items-center justify-center p-4">
+                    <div className="bg-white rounded-3xl w-full max-w-md shadow-2xl overflow-hidden animate-in fade-in zoom-in duration-200">
+                        <div className="p-6 border-b border-gray-100 bg-gray-50/50 flex justify-between items-center">
+                            <div>
+                                <h2 className="text-xl font-bold text-slate-900">Assign Admin Account</h2>
+                                <p className="text-slate-500 text-xs mt-1 font-medium">Link an administrator to {linkingInst.name}.</p>
+                            </div>
+                            <button onClick={() => setLinkingInst(null)} className="p-2 hover:bg-gray-100 rounded-full transition-colors">
+                                <X className="w-5 h-5 text-gray-400" />
+                            </button>
+                        </div>
+                        <div className="p-6 space-y-4">
+                            <div>
+                                <label className="block text-xs font-black text-slate-400 uppercase tracking-widest mb-2">Available Administrators</label>
+                                <select
+                                    value={selectedAdminId}
+                                    onChange={(e) => setSelectedAdminId(e.target.value)}
+                                    className="w-full p-4 bg-gray-50 border border-gray-100 rounded-2xl outline-none focus:ring-2 focus:ring-indigo-500 font-medium text-slate-700 shadow-inner appearance-none bg-no-repeat bg-[right_1rem_center]"
+                                    style={{ backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='%2394a3b8' stroke-width='2'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' d='M19 9l-7 7-7-7'%3E%3C/path%3E%3C/svg%3E")`, backgroundSize: '1.25rem' }}
+                                >
+                                    <option value="">Select an account...</option>
+                                    {availableAdmins.map(admin => (
+                                        <option key={admin.id} value={admin.id}>
+                                            {admin.full_name} ({admin.email})
+                                        </option>
+                                    ))}
+                                </select>
+                            </div>
+
+                            {availableAdmins.length === 0 && (
+                                <div className="p-4 bg-red-50 rounded-2xl border border-red-100 flex items-start gap-3">
+                                    <AlertCircle className="w-5 h-5 text-red-500 shrink-0 mt-0.5" />
+                                    <p className="text-xs text-red-600 leading-relaxed font-medium">
+                                        No available institution administrators found. Please create an administrator account first in the User Management section.
+                                    </p>
+                                </div>
+                            )}
+
+                            <div className="flex gap-3 pt-4">
+                                <button
+                                    type="button"
+                                    onClick={() => setLinkingInst(null)}
+                                    className="flex-1 py-4 bg-gray-100 text-slate-700 font-bold rounded-2xl hover:bg-gray-200 transition-all active:scale-95"
+                                >
+                                    Cancel
+                                </button>
+                                <button
+                                    onClick={handleLinkAdmin}
+                                    disabled={!selectedAdminId}
+                                    className="flex-1 py-4 bg-indigo-600 text-white font-bold rounded-2xl hover:bg-indigo-700 transition-all shadow-lg shadow-indigo-100 disabled:opacity-50 disabled:shadow-none active:scale-95"
+                                >
+                                    Link Account
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
+    );
+}
+
+export default function InstitutionsPage() {
+    return (
+        <Suspense fallback={<div className="min-h-screen bg-gray-50 flex items-center justify-center"><div className="w-8 h-8 border-4 border-indigo-600 border-t-transparent rounded-full animate-spin"></div></div>}>
+            <InstitutionsContent />
+        </Suspense>
     );
 }

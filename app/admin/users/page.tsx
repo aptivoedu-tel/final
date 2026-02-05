@@ -1,7 +1,8 @@
 'use client';
 
 import React, { useEffect, useState } from 'react';
-import { Users, Search, MoreVertical, Shield, UserCheck, UserX, Mail } from 'lucide-react';
+import { Users, Search, MoreVertical, Shield, UserCheck, UserX, Mail, Trash2, Building2, ExternalLink } from 'lucide-react';
+import Link from 'next/link';
 import Sidebar from '@/components/layout/Sidebar';
 import Header from '@/components/layout/Header';
 import { AuthService } from '@/lib/services/authService';
@@ -28,16 +29,32 @@ export default function UserManagementPage() {
 
     const loadUsers = async () => {
         try {
-            // In a real app, this would be a secure RPC or Admin API call
-            // For demo, we'll fetch from the users table which should be RLS protected
-            // Admin should be able to see all users via RLS policy
             const { data, error } = await supabase
                 .from('users')
-                .select('*')
+                .select(`
+                    *,
+                    institution_admins(
+                        institutions(id, name)
+                    ),
+                    student_university_enrollments(
+                        institutions(id, name)
+                    )
+                `)
                 .order('created_at', { ascending: false });
 
             if (error) throw error;
-            setUsers(data || []);
+
+            // Post-process to flatten institution info
+            const usersWithInst = (data || []).map(u => {
+                const adminInst = u.institution_admins?.[0]?.institutions;
+                const studentInst = u.student_university_enrollments?.[0]?.institutions;
+                return {
+                    ...u,
+                    institution: adminInst || studentInst || null
+                };
+            });
+
+            setUsers(usersWithInst);
         } catch (error) {
             console.error('Error loading users:', error);
             // Fallback for demo if RLS blocks listing
@@ -63,8 +80,76 @@ export default function UserManagementPage() {
 
     const handleStatusToggle = async (userId: string, currentStatus: string) => {
         const newStatus = currentStatus === 'active' ? 'suspended' : 'active';
-        // Ideally call an API endpoint
-        alert(`Toggling status for ${userId} to ${newStatus}`);
+        try {
+            const { error } = await supabase
+                .from('users')
+                .update({ status: newStatus })
+                .eq('id', userId);
+
+            if (error) throw error;
+            loadUsers();
+        } catch (error: any) {
+            alert(`Error updating status: ${error.message}`);
+        }
+    };
+
+    const [linkingUser, setLinkingUser] = useState<any | null>(null);
+    const [institutions, setInstitutions] = useState<any[]>([]);
+    const [selectedInstId, setSelectedInstId] = useState<string>('');
+
+    const fetchInstitutions = async () => {
+        const { data } = await supabase.from('institutions').select('id, name');
+        if (data) setInstitutions(data);
+    };
+
+    const handleLinkToInstitution = async () => {
+        if (!linkingUser || !selectedInstId) return;
+        try {
+            // 1. Update institution_admins for admins or just the users table for students/admins
+            if (linkingUser.role === 'institution_admin') {
+                await supabase.from('institution_admins').upsert({
+                    user_id: linkingUser.id,
+                    institution_id: parseInt(selectedInstId)
+                });
+            }
+
+            // 2. Primary link in users table
+            const { error } = await supabase
+                .from('users')
+                .update({ institution_id: parseInt(selectedInstId) })
+                .eq('id', linkingUser.id);
+
+            if (error) throw error;
+
+            alert('User successfully linked to institution');
+            setLinkingUser(null);
+            setSelectedInstId('');
+            loadUsers();
+        } catch (error: any) {
+            alert(`Error linking user: ${error.message}`);
+        }
+    };
+
+    const handleDeleteUser = async (userId: string, fullName: string) => {
+        if (!confirm(`Are you sure you want to PERMANENTLY delete user ${fullName}? This will remove them from both the database and Supabase Auth.`)) {
+            return;
+        }
+
+        try {
+            const response = await fetch('/api/delete-user', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ userId }),
+            });
+
+            const result = await response.json();
+            if (!response.ok) throw new Error(result.error || 'Failed to delete user');
+
+            alert('User deleted successfully');
+            loadUsers();
+        } catch (error: any) {
+            alert(`Error deleting user: ${error.message}`);
+        }
     };
 
     if (loading) {
@@ -80,8 +165,8 @@ export default function UserManagementPage() {
             <Sidebar userRole={currentUser?.role || 'institution_admin'} />
             <div className={`flex-1 flex flex-col min-h-screen transition-all duration-300 ${isSidebarCollapsed ? 'lg:ml-28' : 'lg:ml-80'}`}>
                 <Header
-                    userName={currentUser?.full_name || 'Admin'}
-                    userEmail={currentUser?.email || ''}
+                    userName={currentUser?.full_name}
+                    userEmail={currentUser?.email}
                 />
 
                 <main className="flex-1 pt-28 lg:pt-24 pb-12 px-4 sm:px-8">
@@ -141,6 +226,7 @@ export default function UserManagementPage() {
                             <thead className="bg-slate-50 border-b border-slate-100">
                                 <tr>
                                     <th className="px-6 py-4 text-left text-[10px] font-black text-slate-400 uppercase tracking-widest">User</th>
+                                    <th className="px-6 py-4 text-left text-[10px] font-black text-slate-400 uppercase tracking-widest">Institution</th>
                                     <th className="px-6 py-4 text-left text-[10px] font-black text-slate-400 uppercase tracking-widest">Role</th>
                                     <th className="px-6 py-4 text-left text-[10px] font-black text-slate-400 uppercase tracking-widest">Status</th>
                                     <th className="px-6 py-4 text-left text-[10px] font-black text-slate-400 uppercase tracking-widest">Joined</th>
@@ -174,6 +260,33 @@ export default function UserManagementPage() {
                                                 </div>
                                             </td>
                                             <td className="px-6 py-4 whitespace-nowrap">
+                                                {user.institution ? (
+                                                    <Link
+                                                        href={`/admin/institutions?search=${encodeURIComponent(user.institution.name)}`}
+                                                        className="flex items-center gap-1.5 text-xs font-bold text-indigo-600 hover:text-indigo-800 transition-colors"
+                                                    >
+                                                        <Building2 className="w-3 h-3" />
+                                                        {user.institution.name}
+                                                        <ExternalLink className="w-2.5 h-2.5 opacity-0 group-hover:opacity-100 transition-opacity" />
+                                                    </Link>
+                                                ) : (
+                                                    <div className="flex items-center gap-2">
+                                                        <span className="text-xs font-medium text-slate-400 italic">No link</span>
+                                                        {user.role === 'institution_admin' && (
+                                                            <button
+                                                                onClick={() => {
+                                                                    setLinkingUser(user);
+                                                                    fetchInstitutions();
+                                                                }}
+                                                                className="px-2 py-0.5 bg-amber-50 text-amber-600 text-[10px] font-black uppercase tracking-widest rounded border border-amber-100 hover:bg-amber-100 transition-colors"
+                                                            >
+                                                                Link
+                                                            </button>
+                                                        )}
+                                                    </div>
+                                                )}
+                                            </td>
+                                            <td className="px-6 py-4 whitespace-nowrap">
                                                 <span className={`inline-flex items-center px-2.5 py-1 rounded-lg text-[10px] font-black uppercase tracking-wider ${['super_admin', 'institution_admin'].includes(user.role)
                                                     ? 'bg-purple-50 text-purple-600 border border-purple-100'
                                                     : 'bg-indigo-50 text-indigo-600 border border-indigo-100'
@@ -205,10 +318,17 @@ export default function UserManagementPage() {
                                                     </button>
                                                     <button
                                                         onClick={() => handleStatusToggle(user.id, user.status)}
-                                                        className="p-2 hover:bg-rose-50 rounded-lg text-slate-400 hover:text-rose-600 transition-all active:scale-90"
-                                                        title="Suspend"
+                                                        className={`p-2 rounded-lg transition-all active:scale-90 ${user.status === 'suspended' ? 'text-emerald-500 hover:bg-emerald-50' : 'text-slate-400 hover:bg-rose-50 hover:text-rose-600'}`}
+                                                        title={user.status === 'suspended' ? "Activate" : "Suspend"}
                                                     >
-                                                        <UserX className="w-4 h-4" />
+                                                        {user.status === 'suspended' ? <UserCheck className="w-4 h-4" /> : <UserX className="w-4 h-4" />}
+                                                    </button>
+                                                    <button
+                                                        onClick={() => handleDeleteUser(user.id, user.full_name || user.email)}
+                                                        className="p-2 hover:bg-red-50 rounded-lg text-slate-400 hover:text-red-600 transition-all active:scale-90"
+                                                        title="Delete Permanently"
+                                                    >
+                                                        <Trash2 className="w-4 h-4" />
                                                     </button>
                                                 </div>
                                             </td>
@@ -229,6 +349,48 @@ export default function UserManagementPage() {
                     </div>
                 </main>
             </div>
+
+            {/* LINK MODAL */}
+            {linkingUser && (
+                <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+                    <div className="bg-white rounded-3xl shadow-2xl w-full max-w-md overflow-hidden animate-in fade-in zoom-in duration-200">
+                        <div className="p-6 border-b border-gray-100 bg-gray-50/50">
+                            <h3 className="text-xl font-bold text-slate-900">Link User to Institution</h3>
+                            <p className="text-xs text-slate-500 mt-1 font-medium">Link {linkingUser.full_name || linkingUser.email}</p>
+                        </div>
+                        <div className="p-6 space-y-4">
+                            <div>
+                                <label className="block text-xs font-black text-slate-400 uppercase tracking-widest mb-2">Select Institution</label>
+                                <select
+                                    value={selectedInstId}
+                                    onChange={(e) => setSelectedInstId(e.target.value)}
+                                    className="w-full p-4 bg-gray-50 border border-gray-100 rounded-2xl outline-none focus:ring-2 focus:ring-indigo-500 font-medium text-slate-700"
+                                >
+                                    <option value="">Search or select...</option>
+                                    {institutions.map(inst => (
+                                        <option key={inst.id} value={inst.id}>{inst.name}</option>
+                                    ))}
+                                </select>
+                            </div>
+                            <div className="flex gap-3 pt-4">
+                                <button
+                                    onClick={() => setLinkingUser(null)}
+                                    className="flex-1 py-4 bg-gray-100 text-slate-700 font-bold rounded-2xl hover:bg-gray-200 transition-all"
+                                >
+                                    Cancel
+                                </button>
+                                <button
+                                    onClick={handleLinkToInstitution}
+                                    disabled={!selectedInstId}
+                                    className="flex-1 py-4 bg-indigo-600 text-white font-bold rounded-2xl hover:bg-indigo-700 transition-all shadow-lg shadow-indigo-100 disabled:opacity-50"
+                                >
+                                    Confirm Link
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 }

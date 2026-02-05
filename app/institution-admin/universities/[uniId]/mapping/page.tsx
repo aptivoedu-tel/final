@@ -57,11 +57,27 @@ export default function UniversityContentMapper() {
                 .eq('id', user.id)
                 .single();
 
-            if (!profile?.institution_id) {
-                toast.error("Institution link missing.");
-                return;
+            let instId = profile?.institution_id;
+
+            if (!instId) {
+                // FALLBACK: Try checking institution_admins table
+                const { data: adminLink } = await supabase
+                    .from('institution_admins')
+                    .select('institution_id')
+                    .eq('user_id', user.id)
+                    .maybeSingle();
+
+                if (adminLink?.institution_id) {
+                    console.log("Rescued institution link from institution_admins");
+                    instId = adminLink.institution_id;
+                    // Proactively update the users table for next time
+                    await supabase.from('users').update({ institution_id: instId }).eq('id', user.id);
+                } else {
+                    toast.error("Institution link missing. Please contact Super Admin.");
+                    return;
+                }
             }
-            setInstitutionId(profile.institution_id);
+            setInstitutionId(instId);
 
             // 2. Load University Info
             const { data: uni } = await supabase.from('universities').select('*').eq('id', uniId).single();
@@ -88,7 +104,7 @@ export default function UniversityContentMapper() {
                 .from('university_content_access')
                 .select('subtopic_id')
                 .eq('university_id', uniId)
-                .eq('institution_id', profile.institution_id)
+                .eq('institution_id', instId)
                 .eq('is_active', true);
 
             if (mappings) {

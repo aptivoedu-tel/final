@@ -162,7 +162,7 @@ export default function UniversitiesPage() {
         <div className="min-h-screen bg-gray-50 flex font-sans">
             <Sidebar userRole="super_admin" />
             <div className={`flex-1 flex flex-col min-h-screen transition-all duration-300 ${isSidebarCollapsed ? 'lg:ml-28' : 'lg:ml-80'}`}>
-                <Header userName="Admin" userEmail="admin@system.com" />
+                <Header />
 
                 <main className="flex-1 pt-28 lg:pt-24 pb-12 px-4 sm:px-8">
                     <div className="max-w-6xl mx-auto">
