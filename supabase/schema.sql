@@ -89,7 +89,7 @@ CREATE TABLE student_university_enrollments (
   id SERIAL PRIMARY KEY,
   student_id UUID REFERENCES users(id) ON DELETE CASCADE,
   university_id INTEGER REFERENCES universities(id) ON DELETE CASCADE,
-  institution_id INTEGER REFERENCES institutions(id), -- NULL for solo students
+  institution_id INTEGER REFERENCES institutions(id) ON DELETE CASCADE, -- NULL for solo students
   enrollment_date TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
   is_active BOOLEAN DEFAULT TRUE,
   UNIQUE(student_id, university_id)
