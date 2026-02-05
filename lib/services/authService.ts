@@ -1,6 +1,10 @@
 import { supabase } from '../supabase/client';
 import { Database } from '../supabase/client';
 
+// Determine the base URL for redirects (Verification, Password Reset, OAuth)
+// Prioritizes NEXT_PUBLIC_SITE_URL (Production) over window.location.origin (Localhost)
+const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || (typeof window !== 'undefined' ? window.location.origin : '');
+
 type User = Database['public']['Tables']['users']['Row'];
 
 export interface LoginCredentials {
@@ -154,7 +158,7 @@ export class AuthService {
                         full_name: data.fullName,
                         role: data.role,
                     },
-                    emailRedirectTo: typeof window !== 'undefined' ? `${window.location.origin}/login?verified=true` : undefined
+                    emailRedirectTo: `${SITE_URL}/login?verified=true`
                 }
             });
 
@@ -256,7 +260,7 @@ export class AuthService {
      */
     static async resetPassword(email: string): Promise<{ error: string | null }> {
         const { error } = await supabase.auth.resetPasswordForEmail(email, {
-            redirectTo: typeof window !== 'undefined' ? `${window.location.origin}/update-password` : undefined,
+            redirectTo: `${SITE_URL}/update-password`,
         });
         return { error: error ? error.message : null };
     }
@@ -276,7 +280,7 @@ export class AuthService {
         const { error } = await supabase.auth.signInWithOAuth({
             provider: provider,
             options: {
-                redirectTo: typeof window !== 'undefined' ? `${window.location.origin}/auth/callback` : undefined,
+                redirectTo: `${SITE_URL}/auth/callback`,
             }
         });
         return { error: error ? error.message : null };
