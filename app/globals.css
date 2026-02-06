@@ -460,6 +460,90 @@
   }
 
   /* =====================================================
+     MARKDOWN & PROSE COMPATIBILITY
+     ===================================================== */
+  .prose,
+  .markdown-content {
+    line-height: 1.8;
+  }
+
+  .prose p,
+  .markdown-content p {
+    margin-bottom: 1.5rem;
+    white-space: pre-wrap;
+  }
+
+  .prose p:last-child,
+  .markdown-content p:last-child {
+    margin-bottom: 0;
+  }
+
+  .prose br,
+  .markdown-content br {
+    display: block;
+    content: "";
+    margin-top: 0.75rem;
+  }
+
+  .prose h1,
+  .markdown-content h1 {
+    font-size: 2.25rem;
+    margin-top: 2.5rem;
+    margin-bottom: 1.5rem;
+    font-weight: 800;
+  }
+
+  .prose h2,
+  .markdown-content h2 {
+    font-size: 1.875rem;
+    margin-top: 2rem;
+    margin-bottom: 1.25rem;
+    font-weight: 800;
+  }
+
+  .prose h3,
+  .markdown-content h3 {
+    font-size: 1.5rem;
+    margin-top: 1.5rem;
+    margin-bottom: 1rem;
+    font-weight: 700;
+  }
+
+  .prose ul,
+  .markdown-content ul {
+    list-style-type: disc;
+    padding-left: 1.5rem;
+    margin-bottom: 1.5rem;
+  }
+
+  .prose ol,
+  .markdown-content ol {
+    list-style-type: decimal;
+    padding-left: 1.5rem;
+    margin-bottom: 1.5rem;
+  }
+
+  .prose li,
+  .markdown-content li {
+    margin-bottom: 0.5rem;
+  }
+
+  .prose blockquote,
+  .markdown-content blockquote {
+    border-left: 4px solid var(--secondary);
+    padding-left: 1.5rem;
+    font-style: italic;
+    color: var(--text-secondary);
+    margin: 2rem 0;
+  }
+
+  /* Handle empty blocks and explicit line spacing */
+  .prose p:empty,
+  .markdown-content p:empty {
+    height: 1.5rem;
+  }
+
+  /* =====================================================
      PRINT STYLES
      ===================================================== */
 

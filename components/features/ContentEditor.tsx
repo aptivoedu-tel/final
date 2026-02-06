@@ -594,19 +594,7 @@ export default function ContentEditor() {
                                 <span className="text-xs font-bold uppercase tracking-wider">Live Preview</span>
                             </div>
                         </div>
-                        <div className="flex-1 p-8 overflow-y-auto custom-scrollbar prose prose-slate max-w-none 
-                            prose-headings:font-black prose-headings:text-slate-900 prose-headings:tracking-tight prose-headings:mt-12 prose-headings:mb-6
-                            prose-h1:text-3xl prose-h2:text-xl prose-h3:text-lg prose-h4:text-base
-                            prose-p:text-slate-700 prose-p:leading-loose prose-p:mb-10
-                            prose-strong:text-slate-900 prose-strong:font-black
-                            prose-code:bg-slate-100 prose-code:px-1.5 prose-code:py-0.5 prose-code:rounded-md prose-code:text-xs prose-code:font-mono prose-code:text-indigo-600
-                            prose-pre:bg-slate-900 prose-pre:text-slate-100 prose-pre:rounded-xl prose-pre:p-5
-                            prose-img:rounded-2xl prose-img:shadow-xl prose-img:mx-auto prose-img:my-10
-                            prose-hr:my-16 prose-hr:border-slate-200
-                            prose-blockquote:border-l-4 prose-blockquote:border-indigo-500 prose-blockquote:bg-indigo-50/50 prose-blockquote:p-6 prose-blockquote:rounded-r-xl prose-blockquote:my-8 prose-blockquote:not-italic
-                            [&_.katex-display]:flex [&_.katex-display]:justify-center [&_.katex-display]:my-10 [&_.katex-display]:overflow-x-auto [&_.katex-display]:py-8 [&_.katex-display]:bg-slate-50/50 [&_.katex-display]:rounded-xl [&_.katex-display]:border [&_.katex-display]:border-slate-100
-                            [&_br]:block [&_br]:content-[''] [&_br]:my-2
-                        ">
+                        <div className="flex-1 p-8 overflow-y-auto custom-scrollbar prose max-w-none">
                             {content ? (
                                 <ReactMarkdown
                                     remarkPlugins={[remarkMath, remarkGfm, remarkBreaks]}

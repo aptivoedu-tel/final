@@ -16,7 +16,9 @@ import { supabase } from '@/lib/supabase/client';
 import ReactMarkdown from 'react-markdown';
 import remarkMath from 'remark-math';
 import rehypeKatex from 'rehype-katex';
+import rehypeRaw from 'rehype-raw';
 import remarkGfm from 'remark-gfm';
+import remarkBreaks from 'remark-breaks';
 import 'katex/dist/katex.min.css';
 import Link from 'next/link';
 import { toast } from 'sonner';
@@ -393,21 +395,11 @@ export default function SuperAdminContentLibraryPage() {
                                         </button>
                                     </div>
                                     <div className="flex-1 overflow-y-auto p-12 bg-white custom-scrollbar">
-                                        <div className="prose prose-slate prose-lg max-w-none 
-                                            prose-headings:font-black prose-headings:text-slate-900 prose-headings:tracking-tight prose-headings:mt-10 prose-headings:mb-6
-                                            prose-h1:text-3xl prose-h2:text-2xl prose-h3:text-xl 
-                                            prose-p:text-slate-700 prose-p:leading-[2.2] prose-p:mb-8
-                                            prose-ul:my-8 prose-li:text-slate-700 prose-li:my-3 prose-li:leading-loose
-                                            prose-strong:text-slate-900 prose-strong:font-bold
-                                            prose-code:bg-slate-100 prose-code:px-2 prose-code:py-1 prose-code:rounded prose-code:text-sm prose-code:font-mono prose-code:text-indigo-600
-                                            prose-pre:bg-slate-900 prose-pre:text-slate-100 prose-pre:rounded-2xl prose-pre:p-8
-                                            prose-blockquote:border-l-4 prose-blockquote:border-indigo-500 prose-blockquote:bg-indigo-50 prose-blockquote:p-6 prose-blockquote:rounded-r-2xl prose-blockquote:my-10
-                                            [&_.katex-display]:flex [&_.katex-display]:justify-center [&_.katex-display]:my-10 [&_.katex-display]:overflow-x-auto [&_.katex-display]:py-4
-                                        ">
+                                        <div className="prose max-w-none">
                                             {selectedItem.content ? (
                                                 <ReactMarkdown
-                                                    remarkPlugins={[remarkMath, remarkGfm]}
-                                                    rehypePlugins={[rehypeKatex]}
+                                                    remarkPlugins={[remarkMath, remarkGfm, remarkBreaks]}
+                                                    rehypePlugins={[rehypeKatex, rehypeRaw]}
                                                 >
                                                     {selectedItem.content}
                                                 </ReactMarkdown>
@@ -538,21 +530,11 @@ Math: $E=mc^2$
                                             <span className="text-[10px] font-black uppercase text-slate-400">Live Preview</span>
                                         </div>
                                         <div className="flex-1 p-8 overflow-y-auto custom-scrollbar bg-white">
-                                            <div className="prose prose-slate prose-lg max-w-none 
-                                                prose-headings:font-black prose-headings:text-slate-900 prose-headings:tracking-tight prose-headings:mt-10 prose-headings:mb-6
-                                                prose-h1:text-3xl prose-h2:text-2xl prose-h3:text-xl 
-                                                prose-p:text-slate-700 prose-p:leading-[2.2] prose-p:mb-8
-                                                prose-ul:my-8 prose-li:text-slate-700 prose-li:my-3 prose-li:leading-loose
-                                                prose-strong:text-slate-900 prose-strong:font-bold
-                                                prose-code:bg-slate-100 prose-code:px-2 prose-code:py-1 prose-code:rounded prose-code:text-sm prose-code:font-mono prose-code:text-indigo-600
-                                                prose-pre:bg-slate-900 prose-pre:text-slate-100 prose-pre:rounded-2xl prose-pre:p-8
-                                                prose-blockquote:border-l-4 prose-blockquote:border-indigo-500 prose-blockquote:bg-indigo-50 prose-blockquote:p-6 prose-blockquote:rounded-r-2xl prose-blockquote:my-10
-                                                [&_.katex-display]:flex [&_.katex-display]:justify-center [&_.katex-display]:my-10 [&_.katex-display]:overflow-x-auto [&_.katex-display]:py-4
-                                            ">
+                                            <div className="prose max-w-none bg-white">
                                                 {editContent ? (
                                                     <ReactMarkdown
-                                                        remarkPlugins={[remarkMath, remarkGfm]}
-                                                        rehypePlugins={[rehypeKatex]}
+                                                        remarkPlugins={[remarkMath, remarkGfm, remarkBreaks]}
+                                                        rehypePlugins={[rehypeKatex, rehypeRaw]}
                                                     >
                                                         {editContent}
                                                     </ReactMarkdown>
