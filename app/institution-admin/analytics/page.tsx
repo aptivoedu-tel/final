@@ -7,6 +7,7 @@ import { toast } from 'sonner';
 import { AnalyticsService } from '@/lib/services/analyticsService';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
+import Loader from '@/components/ui/Loader';
 
 export default function PerformanceAnalyticsPage() {
     const [loading, setLoading] = useState(true);
@@ -16,10 +17,12 @@ export default function PerformanceAnalyticsPage() {
     const [selectedStudentId, setSelectedStudentId] = useState<string>('');
     const [drillData, setDrillData] = useState<any>(null);
     const [exporting, setExporting] = useState(false);
+    const [duration, setDuration] = useState<'all' | 'today' | '7days' | '30days'>('all');
+    const [institutionId, setInstitutionId] = useState<number | null>(null);
 
     useEffect(() => {
         loadAnalytics();
-    }, []);
+    }, [duration]);
 
     useEffect(() => {
         if (selectedStudentId) {
@@ -30,7 +33,8 @@ export default function PerformanceAnalyticsPage() {
     const handleStudentDrilldown = async (studentId: string) => {
         setDrillLoading(true);
         try {
-            const data = await AnalyticsService.getStudentDrilldownAnalytics(studentId);
+            const { startDate } = getDates();
+            const data = await AnalyticsService.getStudentDrilldownAnalytics(studentId, startDate);
             setDrillData(data);
             setActiveTab('drilldown');
         } catch (error) {
@@ -40,45 +44,67 @@ export default function PerformanceAnalyticsPage() {
         }
     };
 
+    const getDates = () => {
+        let startDate: Date | undefined;
+        const endDate = new Date();
+
+        if (duration === 'today') {
+            startDate = new Date();
+            startDate.setHours(0, 0, 0, 0);
+        } else if (duration === '7days') {
+            startDate = new Date();
+            startDate.setDate(startDate.getDate() - 7);
+        } else if (duration === '30days') {
+            startDate = new Date();
+            startDate.setDate(startDate.getDate() - 30);
+        }
+
+        return { startDate, endDate };
+    };
+
     const loadAnalytics = async () => {
         setLoading(true);
         try {
             const { data: { user } } = await supabase.auth.getUser();
             if (!user) return;
 
-            const { data: profile } = await supabase
-                .from('users')
-                .select('institution_id')
-                .eq('id', user.id)
-                .single();
-
-            let instId = profile?.institution_id;
-
-            if (!instId) {
-                // FALLBACK: Try checking institution_admins table
-                const { data: adminLink } = await supabase
-                    .from('institution_admins')
+            // Fetch institutionId if not already in state
+            let currentInstId = institutionId;
+            if (!currentInstId) {
+                const { data: profile } = await supabase
+                    .from('users')
                     .select('institution_id')
-                    .eq('user_id', user.id)
-                    .maybeSingle();
+                    .eq('id', user.id)
+                    .single();
 
-                if (adminLink?.institution_id) {
-                    console.log("Rescued institution link from institution_admins");
-                    instId = adminLink.institution_id;
-                    // Proactively update the users table for next time
-                    await supabase.from('users').update({ institution_id: instId }).eq('id', user.id);
-                } else {
-                    toast.error("Institution link missing. Please contact Super Admin.");
-                    setLoading(false);
-                    return;
+                currentInstId = profile?.institution_id;
+
+                if (!currentInstId) {
+                    const { data: adminLink } = await supabase
+                        .from('institution_admins')
+                        .select('institution_id')
+                        .eq('user_id', user.id)
+                        .maybeSingle();
+                    currentInstId = adminLink?.institution_id;
+                }
+
+                if (currentInstId) {
+                    setInstitutionId(currentInstId);
                 }
             }
 
-            const data = await AnalyticsService.getInstitutionDetailedAnalytics(instId);
+            if (!currentInstId) {
+                toast.error("Institution link missing.");
+                setLoading(false);
+                return;
+            }
+
+            const { startDate } = getDates();
+            const data = await AnalyticsService.getInstitutionDetailedAnalytics(currentInstId, startDate);
             setStats(data);
         } catch (error: any) {
             console.error(error);
-            toast.error("Failed to load live report");
+            toast.error("Failed to load report");
         } finally {
             setLoading(false);
         }
@@ -104,7 +130,7 @@ export default function PerformanceAnalyticsPage() {
             pdf.setFontSize(10);
             pdf.setFont('helvetica', 'normal');
             pdf.text(`Generated: ${new Date().toLocaleString()}`, 14, 30);
-            pdf.text(`Total Students: ${stats.overall.totalStudents} | Avg Performance: ${stats.overall.averageScore}%`, 14, 35);
+            pdf.text(`Duration: ${duration.toUpperCase()} | Students: ${stats.overall.totalStudents}`, 14, 35);
 
             // University Table
             pdf.setTextColor(15, 23, 42);
@@ -147,8 +173,8 @@ export default function PerformanceAnalyticsPage() {
                 styles: { fontSize: 9 }
             });
 
-            pdf.save(`Aptivo_Institutional_Report_${new Date().toLocaleDateString()}.pdf`);
-            toast.success("Standardized PDF Generated");
+            pdf.save(`Institutional_Report_${duration}_${new Date().toLocaleDateString()}.pdf`);
+            toast.success("Institutional PDF Generated");
         } catch (error: any) {
             console.error("PDF Export Fail:", error);
             toast.error(`PDF Generation Error: ${error.message}`);
@@ -157,11 +183,84 @@ export default function PerformanceAnalyticsPage() {
         }
     };
 
+    const handleExportStudent = async () => {
+        if (exporting || !drillData) return;
+        setExporting(true);
+
+        try {
+            const pdf = new jsPDF();
+            const pageWidth = pdf.internal.pageSize.getWidth();
+
+            // Header
+            pdf.setFillColor(79, 70, 229); // indigo-600
+            pdf.rect(0, 0, pageWidth, 50, 'F');
+
+            pdf.setTextColor(255, 255, 255);
+            pdf.setFontSize(24);
+            pdf.setFont('helvetica', 'bold');
+            pdf.text(drillData.student.full_name, 14, 25);
+
+            pdf.setFontSize(10);
+            pdf.setFont('helvetica', 'normal');
+            pdf.text(`Individual Performance Report | ${drillData.student.email}`, 14, 35);
+            pdf.text(`Duration: ${duration.toUpperCase()} | Generated: ${new Date().toLocaleString()}`, 14, 42);
+
+            // Summary Stats box-like
+            pdf.setTextColor(255, 255, 255);
+            pdf.text(`Overall Score: ${drillData.stats.averageScore}%`, pageWidth - 60, 25);
+            pdf.text(`Total Sessions: ${drillData.stats.totalSessions}`, pageWidth - 60, 32);
+
+            // Subject Mastery Table
+            pdf.setTextColor(15, 23, 42);
+            pdf.setFontSize(16);
+            pdf.setFont('helvetica', 'bold');
+            pdf.text("Subject Mastery Profile", 14, 65);
+
+            autoTable(pdf, {
+                startY: 70,
+                head: [['Subject', 'Completion/Mastery', 'Attempts']],
+                body: (drillData.stats.subjectStats || []).map((s: any) => [
+                    s.name,
+                    `${s.average}%`,
+                    s.count
+                ]),
+                theme: 'striped',
+                headStyles: { fillColor: [79, 70, 229] }
+            });
+
+            // Topic Breakdown
+            const finalY = (pdf as any).lastAutoTable?.finalY || 100;
+            pdf.setFontSize(16);
+            pdf.setFont('helvetica', 'bold');
+            pdf.text("Granular Topic Intelligence", 14, finalY + 20);
+
+            autoTable(pdf, {
+                startY: finalY + 25,
+                head: [['Subject', 'Topic', 'Average Score', 'Attempts']],
+                body: (drillData.stats.topicStats || []).map((t: any) => [
+                    t.subjectName || '-',
+                    t.name,
+                    `${t.average}%`,
+                    t.count
+                ]),
+                theme: 'grid',
+                headStyles: { fillColor: [15, 23, 42] }
+            });
+
+            pdf.save(`Student_Report_${drillData.student.full_name.replace(' ', '_')}_${new Date().toLocaleDateString()}.pdf`);
+            toast.success("Individual Student Report Generated");
+        } catch (error: any) {
+            console.error("Student PDF Export Fail:", error);
+            toast.error("Failed to generate individual report");
+        } finally {
+            setExporting(false);
+        }
+    };
+
     if (loading && !stats) {
         return (
             <div className="flex flex-col items-center justify-center min-h-[400px]">
-                <RefreshCw className="w-10 h-10 text-indigo-600 animate-spin mb-4" />
-                <p className="text-slate-500 font-medium">Crunching live data...</p>
+                <Loader size="lg" text="Crunching live institutional data..." />
             </div>
         );
     }
@@ -174,6 +273,17 @@ export default function PerformanceAnalyticsPage() {
                     <p className="text-slate-500 text-base lg:text-lg">Performance metrics across all campuses and students.</p>
                 </div>
                 <div className="flex flex-wrap items-center gap-2 lg:gap-3 w-full lg:w-auto">
+                    <div className="flex gap-1 p-1 bg-white border border-gray-100 rounded-xl shadow-sm mr-2">
+                        {(['all', 'today', '7days', '30days'] as const).map((d) => (
+                            <button
+                                key={d}
+                                onClick={() => setDuration(d)}
+                                className={`px-3 py-1.5 text-[10px] font-black uppercase tracking-widest rounded-lg transition-all ${duration === d ? 'bg-indigo-600 text-white shadow-md' : 'text-slate-400 hover:bg-gray-50'}`}
+                            >
+                                {d === 'all' ? 'All Time' : d === 'today' ? 'Today' : d === '7days' ? '7D' : '30D'}
+                            </button>
+                        ))}
+                    </div>
                     <button onClick={loadAnalytics} className="flex-none flex items-center justify-center p-2.5 bg-white border border-gray-200 rounded-xl hover:bg-gray-50 transition-colors shadow-sm">
                         <RefreshCw className={`w-5 h-5 text-slate-500 ${loading ? 'animate-spin' : ''}`} />
                     </button>
@@ -352,23 +462,33 @@ export default function PerformanceAnalyticsPage() {
 
                         {drillLoading ? (
                             <div className="py-20 flex flex-col items-center">
-                                <RefreshCw className="w-10 h-10 text-indigo-600 animate-spin mb-4" />
-                                <p className="text-slate-400 font-black uppercase tracking-widest text-xs">Accessing Student Core...</p>
+                                <Loader text="Accessing Student Core..." />
                             </div>
                         ) : drillData ? (
                             <div className="space-y-10">
                                 {/* Student Profile Header */}
-                                <div className="flex items-center gap-6 p-8 bg-slate-900 rounded-3xl text-white shadow-xl">
-                                    <div className="w-20 h-20 bg-indigo-500 rounded-2xl flex items-center justify-center text-4xl font-black">
+                                <div className="flex flex-col md:flex-row items-center gap-6 p-8 bg-slate-900 rounded-3xl text-white shadow-xl relative overflow-hidden">
+                                    <div className="absolute top-0 right-0 w-64 h-64 bg-indigo-500/10 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2" />
+                                    <div className="w-20 h-20 bg-indigo-500 rounded-2xl flex items-center justify-center text-4xl font-black relative z-10 shrink-0">
                                         {drillData.student.full_name[0]}
                                     </div>
-                                    <div className="flex-1">
+                                    <div className="flex-1 relative z-10 text-center md:text-left">
                                         <h3 className="text-3xl font-black">{drillData.student.full_name}</h3>
                                         <p className="text-indigo-300 font-bold opacity-80">{drillData.student.email}</p>
                                     </div>
-                                    <div className="text-right">
-                                        <div className="text-4xl font-black text-indigo-400">{drillData.stats.averageScore}%</div>
-                                        <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">Composite Score</p>
+                                    <div className="flex flex-col items-center md:items-end gap-3 relative z-10">
+                                        <div className="text-right">
+                                            <div className="text-4xl font-black text-indigo-400">{drillData.stats.averageScore}%</div>
+                                            <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">Composite Score</p>
+                                        </div>
+                                        <button
+                                            onClick={handleExportStudent}
+                                            disabled={exporting}
+                                            className="px-4 py-2 bg-indigo-600 rounded-xl text-[9px] font-black uppercase tracking-widest hover:bg-indigo-700 transition-all flex items-center gap-2"
+                                        >
+                                            <Download className="w-3 h-3" />
+                                            {exporting ? 'Exporting...' : 'Export Individual Report'}
+                                        </button>
                                     </div>
                                 </div>
 

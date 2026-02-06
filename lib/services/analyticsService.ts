@@ -427,7 +427,7 @@ export class AnalyticsService {
     /**
      * Get detailed institution-specific analytics (Hierarchical)
      */
-    static async getInstitutionDetailedAnalytics(institutionId: number) {
+    static async getInstitutionDetailedAnalytics(institutionId: number, startDate?: Date, endDate?: Date) {
         try {
             // 1. Get all enrollment links first
             const { data: enrolls, error: enrollError } = await supabase
@@ -455,11 +455,20 @@ export class AnalyticsService {
             const universities = Array.from(new Map(enrollments.map(e => [e.university.id, e.university])).values()) as any[];
 
             // 3. Get practice sessions for these students
-            const { data: sessions, error: sessionError } = await supabase
+            let query = supabase
                 .from('practice_sessions')
                 .select('student_id, university_id, score_percentage, total_questions, started_at, is_completed')
                 .in('student_id', studentIds)
                 .eq('is_completed', true);
+
+            if (startDate) {
+                query = query.gte('started_at', startDate.toISOString());
+            }
+            if (endDate) {
+                query = query.lte('started_at', endDate.toISOString());
+            }
+
+            const { data: sessions, error: sessionError } = await query;
 
             if (sessionError) throw sessionError;
 
@@ -539,7 +548,7 @@ export class AnalyticsService {
     /**
      * Get deep drill-down analytics for a specific student
      */
-    static async getStudentDrilldownAnalytics(studentId: string) {
+    static async getStudentDrilldownAnalytics(studentId: string, startDate?: Date, endDate?: Date) {
         try {
             // 1. Basic User Info
             const { data: user, error: userError } = await supabase
@@ -551,7 +560,7 @@ export class AnalyticsService {
             if (userError) throw userError;
 
             // 2. Fetch all completed sessions with full hierarchy
-            const { data: sessions, error: sessionError } = await supabase
+            let query = supabase
                 .from('practice_sessions')
                 .select(`
                     id,
@@ -572,6 +581,15 @@ export class AnalyticsService {
                 `)
                 .eq('student_id', studentId)
                 .eq('is_completed', true);
+
+            if (startDate) {
+                query = query.gte('started_at', startDate.toISOString());
+            }
+            if (endDate) {
+                query = query.lte('started_at', endDate.toISOString());
+            }
+
+            const { data: sessions, error: sessionError } = await query;
 
             if (sessionError) throw sessionError;
 

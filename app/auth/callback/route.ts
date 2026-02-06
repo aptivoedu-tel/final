@@ -28,8 +28,15 @@ export async function GET(request: Request) {
                 },
             }
         )
-        const { error } = await supabase.auth.exchangeCodeForSession(code)
-        if (!error) {
+        const { data, error } = await supabase.auth.exchangeCodeForSession(code)
+        if (!error && data?.user) {
+            // Check if user needs to set a password
+            const isPasswordSet = data.user.user_metadata?.password_set === true
+
+            if (!isPasswordSet) {
+                return NextResponse.redirect(`${origin}/set-password?next=${next}`)
+            }
+
             return NextResponse.redirect(`${origin}${next}`)
         }
     }

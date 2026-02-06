@@ -325,11 +325,19 @@ export class NotificationService {
         senderRole?: string;
         institutionId?: number;
         limit?: number;
-    } = {}): Promise<{ history: Notification[]; error?: string }> {
+    } = {}): Promise<{ history: any[]; error?: string }> {
         try {
             let query = supabase
                 .from('notifications')
-                .select('*')
+                .select(`
+                    *,
+                    recipients:notification_recipients(
+                        user_id,
+                        is_read,
+                        read_at,
+                        user:users(id, full_name, email)
+                    )
+                `)
                 .order('created_at', { ascending: false });
 
             if (options.senderRole) {
@@ -353,8 +361,15 @@ export class NotificationService {
             return {
                 history: (data || []).map((n: any) => ({
                     ...n,
-                    created_at: n.created_at
-                })) as Notification[]
+                    created_at: n.created_at,
+                    recipientCount: n.recipients?.length || 0,
+                    recipients: n.recipients?.map((r: any) => ({
+                        id: r.user?.id,
+                        name: r.user?.full_name,
+                        email: r.user?.email,
+                        isRead: r.is_read
+                    }))
+                }))
             };
         } catch (error: any) {
             console.error('Error fetching sent history:', error);

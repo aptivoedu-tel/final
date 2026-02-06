@@ -28,6 +28,7 @@ export default function LessonReaderPage() {
     const [topic, setTopic] = useState<any>(null);
     const [subject, setSubject] = useState<any>(null);
     const [error, setError] = useState<string | null>(null);
+    const [mcqCount, setMcqCount] = useState(0);
 
     useEffect(() => {
         const init = async () => {
@@ -66,6 +67,14 @@ export default function LessonReaderPage() {
                 if (subError) throw subError;
                 setSubject(sub);
             }
+
+            // 3. Fetch MCQ count
+            const { count } = await supabase
+                .from('mcqs')
+                .select('*', { count: 'exact', head: true })
+                .eq('subtopic_id', subtopicId)
+                .eq('is_active', true);
+            setMcqCount(count || 0);
         } catch (e: any) {
             console.error('Error loading lesson:', e);
             setError(e.message);
@@ -241,6 +250,21 @@ export default function LessonReaderPage() {
                                             <div className="h-full bg-indigo-600 w-2/3 shadow-sm shadow-indigo-200" />
                                         </div>
                                     </div>
+
+                                    {mcqCount > 0 && (
+                                        <div className="mt-8 pt-6 border-t border-slate-100">
+                                            <button
+                                                onClick={() => router.push(`/university/${uniId}/practice/${subtopicId}`)}
+                                                className="w-full py-4 bg-indigo-600 text-white rounded-2xl text-[10px] font-black uppercase tracking-widest hover:bg-indigo-700 transition-all shadow-lg shadow-indigo-100 flex items-center justify-center gap-2 group"
+                                            >
+                                                Practice Now
+                                                <MoveRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
+                                            </button>
+                                            <p className="text-[9px] text-center text-slate-400 font-bold uppercase tracking-tighter mt-4">
+                                                {mcqCount} Items Available
+                                            </p>
+                                        </div>
+                                    )}
                                 </div>
                             </div>
                         </div>
@@ -254,6 +278,16 @@ export default function LessonReaderPage() {
                                 <ChevronLeft className="w-5 h-5 group-hover:-translate-x-1 transition-transform" />
                                 BACK TO ALL MODULES
                             </Link>
+
+                            {mcqCount > 0 && (
+                                <button
+                                    onClick={() => router.push(`/university/${uniId}/practice/${subtopicId}`)}
+                                    className="group flex items-center gap-3 text-sm font-bold text-indigo-600 hover:text-indigo-700 transition-colors"
+                                >
+                                    PROCEED TO PRACTICE
+                                    <MoveRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
+                                </button>
+                            )}
                         </div>
                     </div>
                 </main>

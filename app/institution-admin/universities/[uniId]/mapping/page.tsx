@@ -33,7 +33,7 @@ export default function UniversityContentMapper() {
     const [globalSessionLimit, setGlobalSessionLimit] = useState(10);
 
     const [subjects, setSubjects] = useState<Subject[]>([]);
-    const [selectedSubtopics, setSelectedSubtopics] = useState<Set<number>>(new Set());
+    const [selectedSubtopics, setSelectedSubtopics] = useState<Record<number, string[]>>({});
     const [expandedSubjects, setExpandedSubjects] = useState<Set<number>>(new Set());
     const [expandedTopics, setExpandedTopics] = useState<Set<number>>(new Set());
 
@@ -102,13 +102,17 @@ export default function UniversityContentMapper() {
             // 4. Load Existing Mappings
             const { data: mappings } = await supabase
                 .from('university_content_access')
-                .select('subtopic_id')
+                .select('subtopic_id, allowed_difficulties')
                 .eq('university_id', uniId)
                 .eq('institution_id', instId)
                 .eq('is_active', true);
 
             if (mappings) {
-                setSelectedSubtopics(new Set(mappings.map(m => m.subtopic_id)));
+                const map: Record<number, string[]> = {};
+                mappings.forEach(m => {
+                    map[m.subtopic_id] = m.allowed_difficulties || ['easy', 'medium', 'hard'];
+                });
+                setSelectedSubtopics(map);
             }
 
         } catch (error: any) {
@@ -119,37 +123,55 @@ export default function UniversityContentMapper() {
     };
 
     const toggleSubtopic = (subtopicId: number) => {
-        const newSelected = new Set(selectedSubtopics);
-        if (newSelected.has(subtopicId)) {
-            newSelected.delete(subtopicId);
+        const newSelected = { ...selectedSubtopics };
+        if (newSelected[subtopicId]) {
+            delete newSelected[subtopicId];
         } else {
-            newSelected.add(subtopicId);
+            newSelected[subtopicId] = ['easy', 'medium', 'hard'];
         }
         setSelectedSubtopics(newSelected);
     };
 
     const toggleTopic = (topic: Topic, isSelected: boolean) => {
-        const newSelected = new Set(selectedSubtopics);
+        const newSelected = { ...selectedSubtopics };
         topic.subtopics.forEach(st => {
             if (isSelected) {
-                newSelected.add(st.id);
+                newSelected[st.id] = newSelected[st.id] || ['easy', 'medium', 'hard'];
             } else {
-                newSelected.delete(st.id);
+                delete newSelected[st.id];
             }
         });
         setSelectedSubtopics(newSelected);
     };
 
     const toggleSubject = (subject: Subject, isSelected: boolean) => {
-        const newSelected = new Set(selectedSubtopics);
+        const newSelected = { ...selectedSubtopics };
         subject.topics.forEach(t => {
             t.subtopics.forEach(st => {
                 if (isSelected) {
-                    newSelected.add(st.id);
+                    newSelected[st.id] = newSelected[st.id] || ['easy', 'medium', 'hard'];
                 } else {
-                    newSelected.delete(st.id);
+                    delete newSelected[st.id];
                 }
             });
+        });
+        setSelectedSubtopics(newSelected);
+    };
+
+    const toggleDifficulty = (topic: Topic, difficulty: string) => {
+        const newSelected = { ...selectedSubtopics };
+        topic.subtopics.forEach(st => {
+            const current = newSelected[st.id] || ['easy', 'medium', 'hard'];
+            let next: string[];
+            if (current.includes(difficulty)) {
+                next = current.filter(d => d !== difficulty);
+            } else {
+                next = [...current, difficulty];
+            }
+            // Ensure at least one is selected if the subtopic is active
+            if (next.length > 0) {
+                newSelected[st.id] = next;
+            }
         });
         setSelectedSubtopics(newSelected);
     };
@@ -171,7 +193,7 @@ export default function UniversityContentMapper() {
             subjects.forEach(subject => {
                 subject.topics.forEach(topic => {
                     topic.subtopics.forEach(subtopic => {
-                        if (selectedSubtopics.has(subtopic.id)) {
+                        if (selectedSubtopics[subtopic.id]) {
                             newMappings.push({
                                 university_id: parseInt(uniId as string),
                                 institution_id: institutionId,
@@ -179,7 +201,8 @@ export default function UniversityContentMapper() {
                                 topic_id: topic.id,
                                 subtopic_id: subtopic.id,
                                 is_active: true,
-                                session_limit: globalSessionLimit
+                                session_limit: globalSessionLimit,
+                                allowed_difficulties: selectedSubtopics[subtopic.id]
                             });
                         }
                     });
@@ -203,24 +226,24 @@ export default function UniversityContentMapper() {
     };
 
     const isTopicSelected = (topic: Topic) => {
-        return topic.subtopics.length > 0 && topic.subtopics.every(st => selectedSubtopics.has(st.id));
+        return topic.subtopics.length > 0 && topic.subtopics.every(st => !!selectedSubtopics[st.id]);
     };
 
     const isTopicPartial = (topic: Topic) => {
-        const selectedCount = topic.subtopics.filter(st => selectedSubtopics.has(st.id)).length;
+        const selectedCount = topic.subtopics.filter(st => !!selectedSubtopics[st.id]).length;
         return selectedCount > 0 && selectedCount < topic.subtopics.length;
     };
 
     const isSubjectSelected = (subject: Subject) => {
         const allStIds: number[] = [];
         subject.topics.forEach(t => t.subtopics.forEach(st => allStIds.push(st.id)));
-        return allStIds.length > 0 && allStIds.every(id => selectedSubtopics.has(id));
+        return allStIds.length > 0 && allStIds.every(id => !!selectedSubtopics[id]);
     };
 
     const isSubjectPartial = (subject: Subject) => {
         const allStIds: number[] = [];
         subject.topics.forEach(t => t.subtopics.forEach(st => allStIds.push(st.id)));
-        const selectedCount = allStIds.filter(id => selectedSubtopics.has(id)).length;
+        const selectedCount = allStIds.filter(id => !!selectedSubtopics[id]).length;
         return selectedCount > 0 && selectedCount < allStIds.length;
     };
 
@@ -348,19 +371,40 @@ export default function UniversityContentMapper() {
                                                             {topicOpen ? <ChevronDown className="w-4 h-4 text-slate-600" /> : <ChevronRight className="w-4 h-4 text-slate-400" />}
                                                         </button>
 
-                                                        <button
-                                                            onClick={() => toggleTopic(topic, !topSelected)}
-                                                            className="flex items-center gap-3 flex-1 text-left group"
-                                                        >
-                                                            <div className="text-slate-600">
-                                                                {topSelected ? <CheckSquare className="w-5 h-5 fill-indigo-600 text-white" /> : (topPartial ? <div className="w-5 h-5 border-2 border-indigo-600 rounded bg-indigo-50 flex items-center justify-center"><div className="w-2.5 h-0.5 bg-indigo-600" /></div> : <Square className="w-5 h-5 text-slate-300 group-hover:text-indigo-300" />)}
-                                                            </div>
-                                                            <div className="flex items-center gap-2">
-                                                                <Lightbulb className="w-4 h-4 text-amber-500" />
-                                                                <span className="font-bold text-slate-700">{topic.name}</span>
-                                                                <span className="ml-2 text-[10px] text-slate-400 font-bold uppercase tracking-wider">{topic.subtopics.length} Lessons</span>
-                                                            </div>
-                                                        </button>
+                                                        <div className="flex items-center gap-3 flex-1">
+                                                            <button
+                                                                onClick={() => toggleTopic(topic, !topSelected)}
+                                                                className="flex items-center gap-3 flex-1 text-left group"
+                                                            >
+                                                                <div className="text-slate-600">
+                                                                    {topSelected ? <CheckSquare className="w-5 h-5 fill-indigo-600 text-white" /> : (topPartial ? <div className="w-5 h-5 border-2 border-indigo-600 rounded bg-indigo-50 flex items-center justify-center"><div className="w-2.5 h-0.5 bg-indigo-600" /></div> : <Square className="w-5 h-5 text-slate-300 group-hover:text-indigo-300" />)}
+                                                                </div>
+                                                                <div className="flex items-center gap-2">
+                                                                    <Lightbulb className="w-4 h-4 text-amber-500" />
+                                                                    <span className="font-bold text-slate-700">{topic.name}</span>
+                                                                    <span className="ml-2 text-[10px] text-slate-400 font-bold uppercase tracking-wider">{topic.subtopics.length} Lessons</span>
+                                                                </div>
+                                                            </button>
+
+                                                            {topSelected && (
+                                                                <div className="flex items-center gap-2 bg-white px-3 py-1.5 rounded-xl border border-gray-100 shadow-sm ml-4">
+                                                                    <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest mr-1">Difficulty:</span>
+                                                                    {['easy', 'medium', 'hard'].map(diff => {
+                                                                        const isDiffSelected = topic.subtopics.every(st => selectedSubtopics[st.id]?.includes(diff));
+                                                                        return (
+                                                                            <button
+                                                                                key={diff}
+                                                                                onClick={() => toggleDifficulty(topic, diff)}
+                                                                                className={`w-7 h-7 flex items-center justify-center rounded-lg text-[10px] font-black uppercase transition-all ${isDiffSelected ? 'bg-indigo-600 text-white shadow-md shadow-indigo-200' : 'bg-gray-50 text-slate-400 hover:bg-gray-100'}`}
+                                                                                title={diff.charAt(0).toUpperCase() + diff.slice(1)}
+                                                                            >
+                                                                                {diff.charAt(0).toUpperCase()}
+                                                                            </button>
+                                                                        );
+                                                                    })}
+                                                                </div>
+                                                            )}
+                                                        </div>
                                                     </div>
 
                                                     {topicOpen && (
@@ -372,13 +416,13 @@ export default function UniversityContentMapper() {
                                                                     className="flex items-center gap-3 w-full p-2.5 rounded-lg hover:bg-white hover:shadow-sm transition-all group group-hover:translate-x-1"
                                                                 >
                                                                     <div className="text-slate-400 group-hover:text-indigo-400">
-                                                                        {selectedSubtopics.has(subtopic.id) ? (
+                                                                        {selectedSubtopics[subtopic.id] ? (
                                                                             <CheckSquare className="w-4 h-4 fill-indigo-600 text-white group-hover:scale-110 transition-transform" />
                                                                         ) : (
                                                                             <Square className="w-4 h-4 group-hover:border-indigo-300" />
                                                                         )}
                                                                     </div>
-                                                                    <span className={`text-sm ${selectedSubtopics.has(subtopic.id) ? 'font-bold text-slate-900' : 'text-slate-500 group-hover:text-slate-700'}`}>
+                                                                    <span className={`text-sm ${selectedSubtopics[subtopic.id] ? 'font-bold text-slate-900' : 'text-slate-500 group-hover:text-slate-700'}`}>
                                                                         {subtopic.name}
                                                                     </span>
                                                                 </button>

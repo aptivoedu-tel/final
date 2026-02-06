@@ -2,7 +2,7 @@
 
 import React, { useEffect, useState } from 'react';
 import {
-    Bell, Check, Trash2, Filter, AlertTriangle, Info, CheckCircle, Clock, Send, Users, User, Image as ImageIcon, Loader2, XCircle, Bold
+    Bell, Check, Trash2, Filter, AlertTriangle, Info, CheckCircle, Clock, Send, Users, User, Image as ImageIcon, Loader2, XCircle, Bold, ChevronRight
 } from 'lucide-react';
 import { supabase } from '@/lib/supabase/client';
 import Sidebar from '@/components/layout/Sidebar';
@@ -10,12 +10,15 @@ import Header from '@/components/layout/Header';
 import { AuthService } from '@/lib/services/authService';
 import { NotificationService, Notification } from '@/lib/services/notificationService';
 import { useUI } from '@/lib/context/UIContext';
+import Loader from '@/components/ui/Loader';
 
 export default function InstitutionNotificationsPage() {
     const [user, setUser] = useState<any>(null);
     const [notifications, setNotifications] = useState<Notification[]>([]);
     const [loading, setLoading] = useState(true);
-    const [activeTab, setActiveTab] = useState<'inbox' | 'compose'>('inbox');
+    const [activeTab, setActiveTab] = useState<'inbox' | 'compose' | 'history'>('inbox');
+    const [sentHistory, setSentHistory] = useState<any[]>([]);
+    const [historyLoading, setHistoryLoading] = useState(false);
     const [filter, setFilter] = useState<'all' | 'unread' | 'read'>('all');
     const [processing, setProcessing] = useState<string | null>(null);
     const { isSidebarCollapsed } = useUI();
@@ -35,6 +38,30 @@ export default function InstitutionNotificationsPage() {
     useEffect(() => {
         loadNotifications();
     }, []);
+
+    useEffect(() => {
+        if (activeTab === 'history') {
+            loadHistory();
+        }
+    }, [activeTab]);
+
+    const loadHistory = async () => {
+        const currentUser = AuthService.getCurrentUser() as any;
+        if (!currentUser || !currentUser.institution_id) return;
+
+        setHistoryLoading(true);
+        try {
+            const { history } = await NotificationService.getSentHistory({
+                senderRole: 'institution_admin',
+                institutionId: currentUser.institution_id
+            });
+            if (history) setSentHistory(history);
+        } catch (error) {
+            console.error("Error loading history:", error);
+        } finally {
+            setHistoryLoading(false);
+        }
+    };
 
     const loadNotifications = async () => {
         const currentUser = AuthService.getCurrentUser();
@@ -258,6 +285,12 @@ export default function InstitutionNotificationsPage() {
                             >
                                 Compose
                             </button>
+                            <button
+                                onClick={() => setActiveTab('history')}
+                                className={`flex-1 sm:flex-none px-4 py-1.5 text-xs sm:text-sm font-bold rounded-md transition-all ${activeTab === 'history' ? 'bg-indigo-600 text-white shadow-lg' : 'text-slate-500 hover:text-slate-800'}`}
+                            >
+                                History
+                            </button>
                         </div>
                         {activeTab === 'inbox' && (
                             <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto">
@@ -290,7 +323,7 @@ export default function InstitutionNotificationsPage() {
                     </div>
                 </div>
 
-                {activeTab === 'inbox' ? (
+                {activeTab === 'inbox' && (
                     <div className="space-y-4">
                         {filteredNotifications.length > 0 ? (
                             filteredNotifications.map((notification) => (
@@ -354,11 +387,13 @@ export default function InstitutionNotificationsPage() {
                             </div>
                         )}
                     </div>
-                ) : (
+                )}
+
+                {activeTab === 'compose' && (
                     <div className="bg-white rounded-3xl shadow-xl border border-gray-100 overflow-hidden animate-in fade-in slide-in-from-bottom-4 duration-500">
                         <div className="bg-[#1e1b4b] p-8 text-white relative">
                             <div className="absolute top-0 right-0 w-32 h-32 bg-indigo-500/10 rounded-full blur-2xl" />
-                            <h2 className="text-xl font-black flex items-center gap-3">
+                            <h2 className="text-xl font-black flex items-center gap-3 text-white">
                                 <Send className="w-6 h-6 text-indigo-400" />
                                 Broadcast Announcement
                             </h2>
@@ -482,10 +517,79 @@ export default function InstitutionNotificationsPage() {
                                 disabled={sending}
                                 className="w-full py-5 bg-[#1e1b4b] text-white rounded-[2rem] font-black text-xs uppercase tracking-[0.2em] shadow-2xl shadow-indigo-200 hover:scale-[1.02] active:scale-95 transition-all flex items-center justify-center gap-3 disabled:opacity-50"
                             >
-                                {sending ? <Loader2 className="w-5 h-5 animate-spin" /> : <Send className="w-5 h-5" />}
+                                {sending ? <Loader size="sm" /> : <Send className="w-5 h-5" />}
                                 Dispatch Broadcast
                             </button>
                         </form>
+                    </div>
+                )}
+
+                {activeTab === 'history' && (
+                    <div className="space-y-6">
+                        {historyLoading ? (
+                            <div className="py-20 flex justify-center">
+                                <Loader text="Accessing broadcast archives..." />
+                            </div>
+                        ) : sentHistory.length > 0 ? (
+                            sentHistory.map((item) => (
+                                <div key={item.id} className="bg-white rounded-[2rem] border border-slate-100 p-8 shadow-sm hover:shadow-xl transition-all group">
+                                    <div className="flex flex-col sm:flex-row justify-between items-start gap-4 mb-6">
+                                        <div className="flex-1">
+                                            <div className="flex items-center gap-3 mb-2">
+                                                <span className={`px-3 py-1 rounded-full text-[9px] font-black uppercase tracking-widest ${item.category === 'alert' ? 'bg-rose-50 text-rose-600' : 'bg-indigo-50 text-indigo-600'}`}>
+                                                    {item.category || 'System'}
+                                                </span>
+                                                <span className="text-[10px] font-bold text-slate-400">
+                                                    {new Date(item.created_at).toLocaleString()}
+                                                </span>
+                                            </div>
+                                            <h3 className="text-lg font-black text-slate-900 tracking-tight leading-tight mb-2">{item.title}</h3>
+                                            <p className="text-slate-600 text-sm whitespace-pre-wrap">{item.message}</p>
+                                        </div>
+                                        <div className="flex flex-col items-center sm:items-end shrink-0">
+                                            <div className="w-14 h-14 bg-indigo-50 rounded-2xl flex flex-col items-center justify-center border border-indigo-100 mb-2">
+                                                <Users className="w-5 h-5 text-indigo-600" />
+                                                <span className="text-[10px] font-black text-indigo-600">{item.recipientCount}</span>
+                                            </div>
+                                            <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Recipients</p>
+                                        </div>
+                                    </div>
+
+                                    <div className="border-t border-slate-50 pt-6">
+                                        <button
+                                            onClick={() => {
+                                                const el = document.getElementById(`recipients-${item.id}`);
+                                                if (el) el.classList.toggle('hidden');
+                                            }}
+                                            className="text-[10px] font-black text-indigo-600 uppercase tracking-widest flex items-center gap-2 hover:gap-3 transition-all"
+                                        >
+                                            View Recipient Details <ChevronRight className="w-3 h-3" />
+                                        </button>
+
+                                        <div id={`recipients-${item.id}`} className="hidden mt-4 grid grid-cols-1 sm:grid-cols-2 gap-3 animate-in slide-in-from-top-2">
+                                            {item.recipients?.map((r: any) => (
+                                                <div key={r.id} className="flex items-center gap-3 p-3 bg-slate-50 rounded-xl border border-slate-100">
+                                                    <div className="w-8 h-8 bg-white rounded-lg flex items-center justify-center text-xs font-black text-slate-400 shadow-sm">
+                                                        {r.name?.[0] || '?'}
+                                                    </div>
+                                                    <div className="flex-1 min-w-0">
+                                                        <p className="text-xs font-bold text-slate-800 truncate">{r.name || 'Unknown'}</p>
+                                                        <p className="text-[10px] text-slate-400 truncate">{r.email}</p>
+                                                    </div>
+                                                    {r.isRead ? <CheckCircle className="w-3 h-3 text-green-500" /> : <Clock className="w-3 h-3 text-slate-300" />}
+                                                </div>
+                                            ))}
+                                        </div>
+                                    </div>
+                                </div>
+                            ))
+                        ) : (
+                            <div className="text-center py-20 bg-white rounded-2xl border border-dashed border-gray-200">
+                                <Send className="w-12 h-12 mx-auto text-slate-200 mb-4" />
+                                <h3 className="text-lg font-bold text-slate-700 mb-1">No Broadcast History</h3>
+                                <p className="text-slate-400 max-w-xs mx-auto">You haven't sent any institution-wide notifications yet.</p>
+                            </div>
+                        )}
                     </div>
                 )}
             </main>

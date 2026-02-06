@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { Mail, Lock, Eye, EyeOff, AlertCircle, CheckCircle, Shield, GraduationCap, Chrome, Apple, User, Building2, ArrowRight } from 'lucide-react';
 import { AuthService } from '@/lib/services/authService';
+import { supabase } from '@/lib/supabase/client';
 import Link from 'next/link';
 
 export default function LoginPage() {
@@ -12,6 +13,7 @@ export default function LoginPage() {
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState('');
     const [infoMessage, setInfoMessage] = useState('');
+    const [rememberMe, setRememberMe] = useState(false);
 
     // UI States
     const [mode, setMode] = useState<'login' | 'register'>('login');
@@ -41,20 +43,48 @@ export default function LoginPage() {
         const checkSession = async () => {
             const { data: { session } } = await AuthService.getSession();
             if (session) {
-                const user = AuthService.getCurrentUser();
-                if (user) {
+                // Fetch fresh profile to ensure status (suspended/blocked) is accurate
+                const { data: profile } = await supabase
+                    .from('users')
+                    .select('*')
+                    .eq('id', session.user.id)
+                    .single();
+
+                if (profile) {
+                    // Update localStorage with fresh data
+                    localStorage.setItem('aptivo_user', JSON.stringify(profile));
+
+                    // LOOP FIX: Verify status against fresh database record
+                    if (profile.status === 'suspended' || profile.status === 'blocked') {
+                        console.log("Session exists but account restricted. Staying on login.");
+                        return;
+                    }
+
+                    // Proceed if active
                     let target = '/dashboard';
-                    if (user.role === 'super_admin') target = '/admin/dashboard';
-                    else if (user.role === 'institution_admin') target = '/institution-admin';
+                    if (profile.role === 'super_admin') target = '/admin/dashboard';
+                    else if (profile.role === 'institution_admin') target = '/institution-admin';
                     window.location.href = target;
                 }
             }
         };
         checkSession();
 
+        // Load Remembered Email
+        const rememberedEmail = localStorage.getItem('aptivo_remembered_email');
+        if (rememberedEmail) {
+            setEmail(rememberedEmail);
+            setRememberMe(true);
+        }
+
         const searchParams = new URLSearchParams(window.location.search);
         if (searchParams.get('verified') === 'true') {
             setInfoMessage('Email verified successfully! You can now log in.');
+        }
+
+        const errorType = searchParams.get('error');
+        if (errorType === 'suspended' || errorType === 'blocked') {
+            setError('ACCESS DENIED: Your account has been restricted by your institution. Please contact your administrator for assistance.');
         }
 
         const timer = setInterval(() => {
@@ -80,6 +110,14 @@ export default function LoginPage() {
 
             if (result.user) {
                 const user = result.user;
+
+                // Handle Remember Me
+                if (rememberMe) {
+                    localStorage.setItem('aptivo_remembered_email', email);
+                } else {
+                    localStorage.removeItem('aptivo_remembered_email');
+                }
+
                 setInfoMessage('Login successful! Entering dashboard...');
                 if (typeof window !== 'undefined') {
                     localStorage.setItem('aptivo_user', JSON.stringify(user));
@@ -248,7 +286,12 @@ export default function LoginPage() {
 
                                         <div className="flex items-center justify-between px-1">
                                             <label className="flex items-center gap-2.5 cursor-pointer group">
-                                                <input type="checkbox" className="w-4 h-4 rounded-md border-slate-200 text-[#4CAF50] focus:ring-[#4CAF50] transition-all cursor-pointer shadow-sm" />
+                                                <input
+                                                    type="checkbox"
+                                                    checked={rememberMe}
+                                                    onChange={(e) => setRememberMe(e.target.checked)}
+                                                    className="w-4 h-4 rounded-md border-slate-200 text-[#4CAF50] focus:ring-[#4CAF50] transition-all cursor-pointer shadow-sm"
+                                                />
                                                 <span className="text-[11px] text-slate-500 font-bold group-hover:text-slate-900 transition-colors">Remember me</span>
                                             </label>
                                             <Link href="/forgot-password" className="text-[11px] text-[#4CAF50] hover:underline font-black">
@@ -373,6 +416,51 @@ export default function LoginPage() {
                     </div>
                 </div>
 
+                {/* Blocked Overlay */}
+                {(new URLSearchParams(typeof window !== 'undefined' ? window.location.search : '').get('error') === 'suspended') && (
+                    <div className="absolute inset-0 z-[100] bg-white/95 backdrop-blur-xl flex items-center justify-center p-8 animate-in fade-in duration-500">
+                        <div className="max-w-md w-full text-center space-y-8">
+                            <div className="relative inline-block">
+                                <div className="absolute inset-0 bg-rose-500/20 rounded-full blur-3xl animate-pulse" />
+                                <div className="relative w-24 h-24 bg-rose-50 rounded-[2.5rem] border-4 border-rose-100 flex items-center justify-center mx-auto text-rose-500 shadow-xl">
+                                    <Shield className="w-12 h-12" />
+                                </div>
+                            </div>
+
+                            <div className="space-y-4">
+                                <h2 className="text-3xl font-black text-slate-900 tracking-tight leading-tight">Identity Restricted</h2>
+                                <p className="text-slate-500 font-medium leading-relaxed">
+                                    It appears your access has been <span className="text-rose-600 font-bold uppercase tracking-widest text-[10px]">Suspended</span> by your institution.
+                                    This usually happens due to administrative updates or missing credentials.
+                                </p>
+                            </div>
+
+                            <div className="bg-slate-50 rounded-3xl p-6 border border-slate-100 text-left space-y-4">
+                                <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] text-center">Protocol Guidance</p>
+                                <ul className="space-y-3">
+                                    <li className="flex gap-3 text-xs font-bold text-slate-600">
+                                        <div className="w-5 h-5 bg-white rounded-lg flex items-center justify-center shadow-sm shrink-0">1</div>
+                                        <span>Contact your Institutional IT or Admin center.</span>
+                                    </li>
+                                    <li className="flex gap-3 text-xs font-bold text-slate-600">
+                                        <div className="w-5 h-5 bg-white rounded-lg flex items-center justify-center shadow-sm shrink-0">2</div>
+                                        <span>Provide your registered email: {email || 'associated with your account'}</span>
+                                    </li>
+                                </ul>
+                            </div>
+
+                            <button
+                                onClick={async () => {
+                                    await AuthService.logout();
+                                    window.location.href = '/login';
+                                }}
+                                className="w-full py-4 bg-slate-900 text-white rounded-2xl font-black text-xs uppercase tracking-widest hover:bg-slate-800 transition-all shadow-xl"
+                            >
+                                Return & Sign Out
+                            </button>
+                        </div>
+                    </div>
+                )}
             </div>
         </div>
     );
