@@ -97,7 +97,8 @@ const Sidebar: React.FC<SidebarProps> = ({ userRole }) => {
         const institutionItems = [
             { icon: LayoutDashboard, label: 'Dashboard', href: '/institution-admin', section: 'Main' },
             { icon: Users, label: 'Manage Students', href: '/institution-admin/students', section: 'Main' },
-            { icon: Building2, label: 'University Access', href: '/institution-admin/universities', section: 'Main' },
+            { icon: Building2, label: 'University Management', href: '/institution-admin/universities', section: 'Main' },
+            { icon: FileText, label: 'Content Library', href: '/institution-admin/content-editor', section: 'Main' },
             { icon: Bell, label: 'Notifications', href: '/institution-admin/notifications', section: 'Main' },
             { icon: TrendingUp, label: 'Analytics', href: '/institution-admin/analytics', section: 'Main' },
         ];
@@ -139,7 +140,11 @@ const Sidebar: React.FC<SidebarProps> = ({ userRole }) => {
             `}>
                 {/* Logo */}
                 <div className={`p-4 h-20 border-b flex items-center ${isSidebarCollapsed ? 'justify-center' : 'gap-3'} border-slate-100`}>
-                    <Link href={isAdmin ? "/admin/dashboard" : "/dashboard"} className="flex items-center gap-3" onClick={closeSidebar}>
+                    <Link
+                        href={userRole === 'super_admin' ? "/admin/dashboard" : userRole === 'institution_admin' ? "/institution-admin" : "/dashboard"}
+                        className="flex items-center gap-3"
+                        onClick={closeSidebar}
+                    >
                         <div className="w-10 h-10 min-w-[40px] rounded-xl flex items-center justify-center bg-teal-600 text-white">
                             <GraduationCap className="w-5 h-5 text-white" />
                         </div>
@@ -149,7 +154,7 @@ const Sidebar: React.FC<SidebarProps> = ({ userRole }) => {
                                     Aptivo
                                 </span>
                                 <span className="text-[10px] font-semibold uppercase tracking-wider text-slate-500">
-                                    {isAdmin ? 'Portal Admin' : 'Student Portal'}
+                                    {userRole === 'super_admin' ? 'Portal Admin' : userRole === 'institution_admin' ? 'Institution Portal' : 'Student Portal'}
                                 </span>
                             </div>
                         )}

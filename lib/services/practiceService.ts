@@ -1,5 +1,5 @@
 import { supabase } from '../supabase/client';
-import { shuffleArray } from '../utils';
+import { shuffleArray, shuffleGrouped } from '../utils';
 
 export interface MCQ {
     id: number;
@@ -14,12 +14,14 @@ export interface MCQ {
     explanation: string | null;
     explanation_url: string | null;
     difficulty: 'easy' | 'medium' | 'hard';
+    passage_id?: number | null;
 }
 
 export interface PracticeSession {
     id: number;
     student_id: string;
     subtopic_id: number | null;
+    topic_id: number | null;
     university_id: number | null;
     session_type: string;
     started_at: string;
@@ -84,10 +86,11 @@ export class PracticeService {
      * Generate practice session based on rules
      */
     static async generatePracticeSession(
-        subtopicId: number,
+        subtopicId: number | null,
         universityId: number | null,
         subjectId: number,
-        studentId?: string
+        studentId?: string,
+        topicId?: number | null
     ): Promise<MCQ[]> {
         // 1. Get student profile for institution_id
         let institutionId: number | null = null;
@@ -103,14 +106,20 @@ export class PracticeService {
         // 2. Try to get granular session limit for this mapping
         let sessionLimit = 10;
         if (universityId && institutionId) {
-            const { data: mapping } = await supabase
+            let mappingQuery = supabase
                 .from('university_content_access')
                 .select('session_limit')
                 .eq('university_id', universityId)
                 .eq('institution_id', institutionId)
-                .eq('subtopic_id', subtopicId)
-                .eq('is_active', true)
-                .single();
+                .eq('is_active', true);
+
+            if (subtopicId) {
+                mappingQuery = mappingQuery.eq('subtopic_id', subtopicId);
+            } else if (topicId) {
+                mappingQuery = mappingQuery.eq('topic_id', topicId).is('subtopic_id', null);
+            }
+
+            const { data: mapping } = await mappingQuery.single();
 
             if (mapping?.session_limit) {
                 sessionLimit = mapping.session_limit;
@@ -134,30 +143,36 @@ export class PracticeService {
         const hardCount = totalQuestions - easyCount - mediumCount;
 
         // Fetch MCQs by difficulty
-        const easyMCQs = await this.getMCQsByDifficulty(subtopicId, 'easy', easyCount, studentId);
-        const mediumMCQs = await this.getMCQsByDifficulty(subtopicId, 'medium', mediumCount, studentId);
-        const hardMCQs = await this.getMCQsByDifficulty(subtopicId, 'hard', hardCount, studentId);
+        const easyMCQs = await this.getMCQsByDifficulty(subtopicId, 'easy', easyCount, studentId, topicId);
+        const mediumMCQs = await this.getMCQsByDifficulty(subtopicId, 'medium', mediumCount, studentId, topicId);
+        const hardMCQs = await this.getMCQsByDifficulty(subtopicId, 'hard', hardCount, studentId, topicId);
 
-        // Combine and shuffle
+        // Combine and shuffle (grouped by passage)
         const allMCQs = [...easyMCQs, ...mediumMCQs, ...hardMCQs];
-        return shuffleArray(allMCQs);
+        return shuffleGrouped(allMCQs, q => q.passage_id);
     }
 
     /**
      * Get MCQs by difficulty level
      */
     private static async getMCQsByDifficulty(
-        subtopicId: number,
+        subtopicId: number | null,
         difficulty: 'easy' | 'medium' | 'hard',
         count: number,
-        studentId?: string
+        studentId?: string,
+        topicId?: number | null
     ): Promise<MCQ[]> {
         let query = supabase
             .from('mcqs')
             .select('*')
-            .eq('subtopic_id', subtopicId)
             .eq('difficulty', difficulty)
             .eq('is_active', true);
+
+        if (subtopicId) {
+            query = query.eq('subtopic_id', subtopicId);
+        } else if (topicId) {
+            query = query.eq('topic_id', topicId).is('subtopic_id', null);
+        }
 
         if (studentId) {
             // Get correctly answered question IDs
@@ -190,7 +205,8 @@ export class PracticeService {
         studentId: string,
         subtopicId: number | null,
         universityId: number | null,
-        sessionType: string = 'practice'
+        sessionType: string = 'practice',
+        topicId: number | null = null
     ): Promise<{ session: PracticeSession | null; error: string | null }> {
         const { data, error } = await supabase
             .from('practice_sessions')
@@ -198,6 +214,7 @@ export class PracticeService {
                 {
                     student_id: studentId,
                     subtopic_id: subtopicId,
+                    topic_id: topicId,
                     university_id: universityId,
                     session_type: sessionType,
                     started_at: new Date().toISOString(),
@@ -305,6 +322,37 @@ export class PracticeService {
 
         if (error) {
             return { success: false, error: error.message };
+        }
+
+        // Update subtopic progress if it's a subtopic practice
+        if (studentId) {
+            const { data: sessionData } = await supabase
+                .from('practice_sessions')
+                .select('subtopic_id, topic_id')
+                .eq('id', sessionId)
+                .single();
+
+            if (sessionData?.subtopic_id) {
+                await supabase
+                    .from('subtopic_progress')
+                    .upsert({
+                        student_id: studentId,
+                        subtopic_id: sessionData.subtopic_id,
+                        is_completed: true,
+                        reading_percentage: 100,
+                        last_accessed_at: new Date().toISOString()
+                    }, { onConflict: 'student_id,subtopic_id' });
+            } else if (sessionData?.topic_id) {
+                await supabase
+                    .from('topic_progress')
+                    .upsert({
+                        student_id: studentId,
+                        topic_id: sessionData.topic_id,
+                        is_completed: true,
+                        reading_percentage: 100, // Mark reading as done too if they finished practice
+                        last_accessed_at: new Date().toISOString()
+                    }, { onConflict: 'student_id,topic_id' });
+            }
         }
 
         // Update streak

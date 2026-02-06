@@ -2,8 +2,10 @@ import { supabase } from '../supabase/client';
 import { Database } from '../supabase/client';
 
 // Determine the base URL for redirects (Verification, Password Reset, OAuth)
-// Prioritizes NEXT_PUBLIC_SITE_URL (Production) over window.location.origin (Localhost)
-const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || (typeof window !== 'undefined' ? window.location.origin : '');
+// Prioritizes NEXT_PUBLIC_SITE_URL or NEXT_PUBLIC_APP_URL (Production) over window.location.origin (Localhost)
+const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ||
+    process.env.NEXT_PUBLIC_APP_URL ||
+    (typeof window !== 'undefined' ? window.location.origin : '');
 
 type User = Database['public']['Tables']['users']['Row'];
 

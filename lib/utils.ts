@@ -118,6 +118,47 @@ export function shuffleArray<T>(array: T[]): T[] {
     return shuffled;
 }
 
+/**
+ * Shuffles an array but keeps items with the same group key together.
+ * Useful for passages and their sub-questions.
+ */
+export function shuffleGrouped<T>(array: T[], groupKeySelector: (item: T) => any): T[] {
+    // 1. Group items
+    const groups: Map<any, T[]> = new Map();
+    const standalones: T[] = [];
+
+    array.forEach(item => {
+        const key = groupKeySelector(item);
+        if (key === null || key === undefined || key === '') {
+            standalones.push(item);
+        } else {
+            if (!groups.has(key)) groups.set(key, []);
+            groups.get(key)!.push(item);
+        }
+    });
+
+    // 2. Prepare units for shuffling (each group is a unit, each standalone is a unit)
+    const units: (T | T[])[] = [
+        ...standalones,
+        ...Array.from(groups.values())
+    ];
+
+    // 3. Shuffle units
+    const shuffledUnits = shuffleArray(units);
+
+    // 4. Flatten
+    const result: T[] = [];
+    shuffledUnits.forEach(unit => {
+        if (Array.isArray(unit)) {
+            result.push(...unit);
+        } else {
+            result.push(unit);
+        }
+    });
+
+    return result;
+}
+
 // Calculate streak
 export function calculateStreak(dates: Date[]): number {
     if (dates.length === 0) return 0;

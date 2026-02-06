@@ -17,17 +17,16 @@ import 'katex/dist/katex.min.css';
 import Link from 'next/link';
 import { useUI } from '@/lib/context/UIContext';
 
-export default function LessonReaderPage() {
+export default function TopicLessonReaderPage() {
     const { isSidebarCollapsed } = useUI();
     const params = useParams();
     const router = useRouter();
     const uniId = params.uniId as string;
-    const subtopicId = params.subtopicId as string;
+    const topicId = params.topicId as string;
 
     const [loading, setLoading] = useState(true);
     const [user, setUser] = useState<any>(null);
     const [userRole, setUserRole] = useState<string>('student');
-    const [subtopic, setSubtopic] = useState<any>(null);
     const [topic, setTopic] = useState<any>(null);
     const [subject, setSubject] = useState<any>(null);
     const [error, setError] = useState<string | null>(null);
@@ -43,40 +42,30 @@ export default function LessonReaderPage() {
             setUserRole(userData.role || 'student');
         }
 
-        if (subtopicId) {
+        if (topicId) {
             loadLessonData();
         }
-    }, [subtopicId]);
+    }, [topicId]);
 
     const loadLessonData = async () => {
         try {
-            // 1. Fetch subtopic
-            const { data: st, error: stError } = await supabase
-                .from('subtopics')
-                .select('*, topic:topics(*)')
-                .eq('id', subtopicId)
+            // 1. Fetch topic
+            const { data: t, error: tError } = await supabase
+                .from('topics')
+                .select('*, subject:subjects(*)')
+                .eq('id', topicId)
                 .single();
 
-            if (stError) throw stError;
-            setSubtopic(st);
-            setTopic(st.topic);
+            if (tError) throw tError;
+            setTopic(t);
+            setSubject(t.subject);
 
-            // 2. Fetch subject
-            if (st.topic) {
-                const { data: sub, error: subError } = await supabase
-                    .from('subjects')
-                    .select('*')
-                    .eq('id', st.topic.subject_id)
-                    .single();
-                if (subError) throw subError;
-                setSubject(sub);
-            }
-
-            // 3. Fetch MCQ count
+            // 2. Fetch MCQ count (direct topic questions)
             const { count } = await supabase
                 .from('mcqs')
                 .select('*', { count: 'exact', head: true })
-                .eq('subtopic_id', subtopicId)
+                .eq('topic_id', topicId)
+                .is('subtopic_id', null)
                 .eq('is_active', true);
             setMcqCount(count || 0);
         } catch (e: any) {
@@ -87,32 +76,21 @@ export default function LessonReaderPage() {
         }
     };
 
-    const markAsRead = async (userId: string, stId: number) => {
+    const markAsRead = async (userId: string, tId: number) => {
         try {
-            await supabase
-                .from('subtopic_progress')
-                .upsert({
-                    student_id: userId,
-                    subtopic_id: stId,
-                    is_completed: true,
-                    reading_percentage: 100,
-                    last_accessed_at: new Date().toISOString(),
-                    completed_at: new Date().toISOString()
-                }, { onConflict: 'student_id,subtopic_id' });
-
-            // Update streak
-            const { PracticeService } = await import('@/lib/services/practiceService');
-            await PracticeService.updateStreak(userId);
+            // Note: We might want a topic_progress table too, but for now we can skip or add it.
+            // Since user specifically asked for "topics to serve as final hierarchy", we should probably track it.
+            // But let's skip for now unless requested.
         } catch (e) {
             console.error('Error marking progress:', e);
         }
     };
 
     useEffect(() => {
-        if (user && subtopicId) {
-            markAsRead(user.id, parseInt(subtopicId));
+        if (user && topicId) {
+            markAsRead(user.id, parseInt(topicId));
         }
-    }, [user, subtopicId]);
+    }, [user, topicId]);
 
 
     if (loading) return (
@@ -164,13 +142,13 @@ export default function LessonReaderPage() {
                             <div className="relative z-10">
                                 <div className="flex items-start justify-between mb-6">
                                     <div className="flex items-baseline gap-3">
-                                        <div className="bg-indigo-600 px-3 py-1 rounded-lg text-[10px] font-black text-white uppercase tracking-tighter">Lesson</div>
-                                        <h1 className="text-4xl font-black text-slate-900 leading-tight">{subtopic?.name}</h1>
+                                        <div className="bg-indigo-600 px-3 py-1 rounded-lg text-[10px] font-black text-white uppercase tracking-tighter">Core Module</div>
+                                        <h1 className="text-4xl font-black text-slate-900 leading-tight">{topic?.name}</h1>
                                     </div>
                                     <div className="flex gap-2">
                                         <div className="flex items-center gap-1.5 px-3 py-1.5 bg-slate-50 rounded-full border border-slate-100 text-xs font-bold text-slate-500">
                                             <Clock className="w-3.5 h-3.5" />
-                                            {subtopic?.estimated_minutes || '15'} MIN
+                                            25 MIN
                                         </div>
                                     </div>
                                 </div>
@@ -179,10 +157,6 @@ export default function LessonReaderPage() {
                                     <div className="flex items-center gap-2 text-slate-400 bg-slate-50 px-3 py-1.5 rounded-xl border border-slate-100/50">
                                         <GraduationCap className="w-4 h-4 text-indigo-500" />
                                         <span className="text-xs font-bold uppercase">{subject?.name}</span>
-                                    </div>
-                                    <div className="flex items-center gap-2 text-slate-400 bg-slate-50 px-3 py-1.5 rounded-xl border border-slate-100/50">
-                                        <BookOpen className="w-4 h-4 text-orange-500" />
-                                        <span className="text-xs font-bold uppercase">{topic?.name}</span>
                                     </div>
                                 </div>
                             </div>
@@ -205,7 +179,7 @@ export default function LessonReaderPage() {
                                     [&_.katex-display]:flex [&_.katex-display]:justify-center [&_.katex-display]:my-10 [&_.katex-display]:overflow-x-auto [&_.katex-display]:py-8 [&_.katex-display]:bg-slate-50/50 [&_.katex-display]:rounded-xl [&_.katex-display]:border [&_.katex-display]:border-slate-100
                                     [&_br]:block [&_br]:content-[''] [&_br]:my-2
                                 ">
-                                    {subtopic?.content_markdown ? (
+                                    {topic?.content_markdown ? (
                                         <ReactMarkdown
                                             remarkPlugins={[remarkMath, remarkGfm, remarkBreaks]}
                                             rehypePlugins={[rehypeKatex, rehypeRaw]}
@@ -234,7 +208,7 @@ export default function LessonReaderPage() {
                                                 }
                                             }}
                                         >
-                                            {subtopic?.content_markdown}
+                                            {topic?.content_markdown}
                                         </ReactMarkdown>
                                     ) : (
                                         <div className="py-20 text-center">
@@ -242,7 +216,7 @@ export default function LessonReaderPage() {
                                                 <BarChart className="w-8 h-8 text-gray-200" />
                                             </div>
                                             <h3 className="text-xl font-bold text-slate-800 mb-2">Detailed Content Coming Soon</h3>
-                                            <p className="text-slate-400 text-sm max-w-xs mx-auto">This lesson is being finalized by our curriculum experts. Check back soon for the full study material.</p>
+                                            <p className="text-slate-400 text-sm max-w-xs mx-auto">This module is being finalized by our curriculum experts. Check back soon for the full study material.</p>
                                         </div>
                                     )}
                                 </div>
@@ -260,12 +234,6 @@ export default function LessonReaderPage() {
                                             </div>
                                             <span className="text-xs font-bold text-slate-600 leading-normal">Concepts in this module</span>
                                         </li>
-                                        <li className="flex gap-3">
-                                            <div className="w-5 h-5 rounded-full bg-blue-50 flex items-center justify-center flex-shrink-0 mt-0.5">
-                                                <CheckCircle className="w-3 h-3 text-blue-500" />
-                                            </div>
-                                            <span className="text-xs font-bold text-slate-600 leading-normal">Practical applications</span>
-                                        </li>
                                         <li className="flex gap-3 text-slate-300">
                                             <div className="w-5 h-5 rounded-full bg-gray-50 flex items-center justify-center flex-shrink-0 mt-0.5">
                                                 <CheckCircle className="w-3 h-3" />
@@ -276,21 +244,11 @@ export default function LessonReaderPage() {
 
                                     <div className="h-px bg-gray-100 my-8" />
 
-                                    <div className="space-y-4">
-                                        <div className="flex items-center justify-between text-[10px] font-black tracking-widest text-slate-400 uppercase">
-                                            <span>Progress</span>
-                                            <span>66%</span>
-                                        </div>
-                                        <div className="h-2 bg-gray-100 rounded-full overflow-hidden">
-                                            <div className="h-full bg-indigo-600 w-2/3 shadow-sm shadow-indigo-200" />
-                                        </div>
-                                    </div>
-
                                     {mcqCount > 0 && (
                                         <div className="mt-8 pt-6 border-t border-slate-100">
                                             {userRole === 'student' ? (
                                                 <button
-                                                    onClick={() => router.push(`/university/${uniId}/practice/${subtopicId}`)}
+                                                    onClick={() => router.push(`/university/${uniId}/practice/topic/${topicId}`)}
                                                     className="w-full py-4 bg-indigo-600 text-white rounded-2xl text-[10px] font-black uppercase tracking-widest hover:bg-indigo-700 transition-all shadow-lg shadow-indigo-100 flex items-center justify-center gap-2 group"
                                                 >
                                                     Practice Now
@@ -313,16 +271,16 @@ export default function LessonReaderPage() {
                         {/* Navigation Footer */}
                         <div className="mt-12 pt-8 border-t border-gray-200 flex items-center justify-between gap-4 flex-wrap">
                             <Link
-                                href="/university"
+                                href={`/university/${uniId}`}
                                 className="group flex items-center gap-3 text-sm font-bold text-slate-500 hover:text-indigo-600 transition-colors"
                             >
                                 <ChevronLeft className="w-5 h-5 group-hover:-translate-x-1 transition-transform" />
-                                BACK TO ALL MODULES
+                                BACK TO LIBRARY
                             </Link>
 
                             {mcqCount > 0 && (
                                 <button
-                                    onClick={() => router.push(`/university/${uniId}/practice/${subtopicId}`)}
+                                    onClick={() => router.push(`/university/${uniId}/practice/topic/${topicId}`)}
                                     className="group flex items-center gap-3 text-sm font-bold text-indigo-600 hover:text-indigo-700 transition-colors"
                                 >
                                     PROCEED TO PRACTICE

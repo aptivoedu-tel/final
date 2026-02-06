@@ -437,6 +437,89 @@ export default function PerformanceAnalyticsPage() {
                 </div>
             )}
 
+            {/* Tab: Students */}
+            {activeTab === 'students' && (
+                <div className="bg-white rounded-[2rem] border border-gray-100 shadow-sm overflow-hidden animate-in fade-in slide-in-from-bottom-4 duration-500">
+                    <div className="overflow-x-auto">
+                        <table className="w-full text-left border-collapse">
+                            <thead>
+                                <tr className="bg-gray-50/50 border-b border-gray-100">
+                                    <th className="px-8 py-5 text-[10px] font-black uppercase tracking-widest text-slate-400">Student Identity</th>
+                                    <th className="px-8 py-5 text-[10px] font-black uppercase tracking-widest text-slate-400">Academic Score</th>
+                                    <th className="px-8 py-5 text-[10px] font-black uppercase tracking-widest text-slate-400">Total Volume</th>
+                                    <th className="px-8 py-5 text-[10px] font-black uppercase tracking-widest text-slate-400">Current Status</th>
+                                    <th className="px-8 py-5 text-[10px] font-black uppercase tracking-widest text-slate-400 text-right">Action</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {stats?.studentStats.map((student: any) => (
+                                    <tr key={student.id} className="border-b border-gray-50 hover:bg-slate-50/50 transition-colors group">
+                                        <td className="px-8 py-6">
+                                            <div className="flex items-center gap-4">
+                                                <div className="w-10 h-10 rounded-xl bg-indigo-50 text-indigo-600 flex items-center justify-center font-black text-sm shrink-0">
+                                                    {student.name[0]}
+                                                </div>
+                                                <div className="min-w-0">
+                                                    <div className="font-bold text-slate-900 truncate">{student.name}</div>
+                                                    <div className="flex items-center gap-2">
+                                                        <div className="text-[10px] font-medium text-slate-400">{student.email}</div>
+                                                        <div className="w-1 h-1 rounded-full bg-slate-300" />
+                                                        <div className="text-[10px] font-bold text-indigo-500 uppercase tracking-tighter">{student.universities?.[0]?.name || 'No Campus'}</div>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </td>
+                                        <td className="px-8 py-6">
+                                            <div className="flex items-center gap-2">
+                                                <span className="font-black text-slate-900">{student.averageScore}%</span>
+                                                <div className="w-16 h-1 bg-gray-100 rounded-full overflow-hidden">
+                                                    <div
+                                                        className={`h-full rounded-full transition-all duration-1000 ${student.averageScore >= 80 ? 'bg-emerald-500' : student.averageScore >= 60 ? 'bg-indigo-500' : 'bg-red-500'}`}
+                                                        style={{ width: `${student.averageScore}%` }}
+                                                    />
+                                                </div>
+                                            </div>
+                                        </td>
+                                        <td className="px-8 py-6">
+                                            <span className="text-sm font-bold text-slate-600">{student.totalSessions} Sessions</span>
+                                        </td>
+                                        <td className="px-8 py-6">
+                                            <span className={`px-3 py-1 rounded-full text-[9px] font-black uppercase tracking-widest ${student.status === 'Mastery' ? 'bg-emerald-50 text-emerald-600' :
+                                                student.status === 'On Track' ? 'bg-indigo-50 text-indigo-600' :
+                                                    student.status === 'At Risk' ? 'bg-red-50 text-red-600' :
+                                                        'bg-gray-100 text-slate-400'
+                                                }`}>
+                                                {student.status}
+                                            </span>
+                                        </td>
+                                        <td className="px-8 py-6 text-right">
+                                            <button
+                                                onClick={() => {
+                                                    setSelectedStudentId(student.id);
+                                                    setActiveTab('drilldown');
+                                                }}
+                                                className="p-2 hover:bg-indigo-50 text-slate-400 hover:text-indigo-600 rounded-lg transition-all"
+                                                title="Deep Intelligence Drill Down"
+                                            >
+                                                <BarChart3 className="w-4 h-4" />
+                                            </button>
+                                        </td>
+                                    </tr>
+                                ))}
+                                {stats?.studentStats.length === 0 && (
+                                    <tr>
+                                        <td colSpan={5} className="py-20 text-center">
+                                            <Users className="w-12 h-12 text-slate-200 mx-auto mb-4" />
+                                            <p className="text-slate-400 font-bold uppercase tracking-widest text-xs">No students identified in this scope</p>
+                                        </td>
+                                    </tr>
+                                )}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            )}
+
             {/* Tab: Drilldown */}
             {activeTab === 'drilldown' && (
                 <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">

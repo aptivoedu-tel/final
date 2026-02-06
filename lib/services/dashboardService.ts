@@ -41,11 +41,12 @@ export class DashboardService {
                 .eq('student_id', studentId)
                 .eq('is_active', true);
 
-            // Get total questions attempted
-            const { count: questionsCount } = await supabase
-                .from('mcq_attempts')
+            // Get total modules (subtopics) completed
+            const { count: modulesCount } = await supabase
+                .from('subtopic_progress')
                 .select('*', { count: 'exact', head: true })
-                .eq('student_id', studentId);
+                .eq('student_id', studentId)
+                .eq('is_completed', true);
 
             // Get current streak
             const { data: streakData } = await supabase
@@ -78,7 +79,7 @@ export class DashboardService {
             return {
                 stats: {
                     enrolledTopics: enrolledCount || 0,
-                    questionsSolved: questionsCount || 0,
+                    questionsSolved: modulesCount || 0,
                     currentStreak,
                     overallAccuracy,
                     totalStudyTime
@@ -153,18 +154,15 @@ export class DashboardService {
                 const { data: sessions } = await supabase
                     .from('practice_sessions')
                     .select(`
-            score_percentage,
-            subtopic_id,
-            subtopics:subtopic_id (
-              topic_id,
-              topics:topic_id (
-                subject_id,
-                subjects:subject_id (
-                  name
-                )
-              )
-            )
-          `)
+                        score_percentage,
+                        subtopics (
+                            topics (
+                                subjects (
+                                    name
+                                )
+                            )
+                        )
+                    `)
                     .eq('student_id', studentId)
                     .eq('is_completed', true);
 
@@ -177,7 +175,7 @@ export class DashboardService {
                         if (!subjectScores[subjectName]) {
                             subjectScores[subjectName] = [];
                         }
-                        subjectScores[subjectName].push(session.score_percentage);
+                        subjectScores[subjectName].push(parseFloat(session.score_percentage.toString()));
                     }
                 });
 
@@ -281,37 +279,48 @@ export class DashboardService {
     static async getRecommendedSubtopic(studentId: string): Promise<{ subtopic: any; error?: string }> {
         try {
             const { data, error } = await supabase
-                .from('detected_weaknesses')
-                .select(`
-          subtopic_id,
-          weakness_score,
-          subtopics:subtopic_id (
-            name,
-            topic_id,
-            topics:topic_id (
-              name,
-              subject_id,
-              subjects:subject_id (
-                name
-              )
-            )
-          )
-        `)
-                .eq('student_id', studentId)
-                .order('weakness_score', { ascending: false })
-                .limit(1)
-                .single();
+                .rpc('detect_student_weaknesses', { student_uuid: studentId });
 
-            if (error) {
-                if (error.code === 'PGRST116') {
-                    return { subtopic: null };
-                }
-                throw error;
+            if (error) throw error;
+
+            if (!data || data.length === 0) {
+                return { subtopic: null };
             }
 
-            return { subtopic: data };
+            // Get the first weakness (highest priority)
+            const weakness = data[0];
+
+            // Reconstruct the expected object structure for the UI
+            // The UI expects { subtopics: { name: '...', topic: { ... } } }
+            // Let's fetch the full subtopic detail since RPC only gives us names
+            const { data: fullSubtopic } = await supabase
+                .from('subtopics')
+                .select(`
+                    id,
+                    name,
+                    topic_id,
+                    topics (
+                        name,
+                        subject_id,
+                        subjects (
+                            name
+                        )
+                    )
+                `)
+                .eq('id', weakness.subtopic_id)
+                .single();
+
+            if (!fullSubtopic) return { subtopic: null };
+
+            return {
+                subtopic: {
+                    subtopic_id: weakness.subtopic_id,
+                    weakness_score: 100 - weakness.avg_score,
+                    subtopics: fullSubtopic
+                }
+            };
         } catch (error: any) {
-            console.error('Error fetching recommended subtopic:', error);
+            console.error('Error fetching recommended subtopic:', error.message || error);
             return { subtopic: null, error: error.message };
         }
     }

@@ -610,11 +610,13 @@ export default function StudentExamPage() {
                                         </div>
                                     )}
 
-                                    {activeQuestion.question_type === 'essay' && (
+                                    {(activeQuestion.question_type === 'essay' || activeQuestion.question_type === 'short_answer') && (
                                         <div className="space-y-4">
-                                            <label className="block text-[9px] lg:text-[10px] font-black text-slate-400 uppercase tracking-widest mb-4">Essay / Long Answer</label>
+                                            <label className="block text-[9px] lg:text-[10px] font-black text-slate-400 uppercase tracking-widest mb-4">
+                                                {activeQuestion.question_type === 'essay' ? 'Essay / Long Answer' : 'Short Answer Response'}
+                                            </label>
                                             <textarea
-                                                className="w-full p-6 lg:p-8 bg-white border-2 border-slate-100 rounded-2xl lg:rounded-[2.5rem] outline-none focus:border-indigo-600 focus:ring-4 focus:ring-indigo-600/10 font-bold text-base lg:text-lg text-slate-700 shadow-sm min-h-[300px] lg:min-h-[400px] leading-relaxed"
+                                                className={`w-full p-6 lg:p-8 bg-white border-2 border-slate-100 rounded-2xl lg:rounded-[2.5rem] outline-none focus:border-indigo-600 focus:ring-4 focus:ring-indigo-600/10 font-bold text-base lg:text-lg text-slate-700 shadow-sm leading-relaxed ${activeQuestion.question_type === 'essay' ? 'min-h-[300px] lg:min-h-[400px]' : 'min-h-[150px] lg:min-h-[200px]'}`}
                                                 placeholder="Begin typing your response here..."
                                                 value={answers[activeQuestion.id] || ''}
                                                 onChange={(e) => handleAnswer(activeQuestion.id, e.target.value)}
@@ -625,6 +627,19 @@ export default function StudentExamPage() {
                                                 </div>
                                                 <p className="text-[9px] lg:text-[10px] font-black text-slate-400 uppercase tracking-widest">Progress saved automatically</p>
                                             </div>
+                                        </div>
+                                    )}
+
+                                    {activeQuestion.question_type === 'fill_blank' && (
+                                        <div className="max-w-xl">
+                                            <label className="block text-[9px] lg:text-[10px] font-black text-slate-400 uppercase tracking-widest mb-4">Missing Words</label>
+                                            <input
+                                                type="text"
+                                                className="w-full p-6 lg:p-8 bg-white border-2 border-slate-100 rounded-2xl lg:rounded-[2.5rem] outline-none focus:border-indigo-600 focus:ring-4 focus:ring-indigo-600/10 font-black text-lg lg:text-xl text-slate-900 shadow-sm transition-all"
+                                                placeholder="Enter the missing content..."
+                                                value={answers[activeQuestion.id] || ''}
+                                                onChange={(e) => handleAnswer(activeQuestion.id, e.target.value)}
+                                            />
                                         </div>
                                     )}
                                 </div>

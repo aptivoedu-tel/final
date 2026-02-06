@@ -2,7 +2,7 @@
 
 import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
-import { Users, Building2, BarChart3, ArrowRight, RefreshCw } from 'lucide-react';
+import { Users, Building2, BarChart3, ArrowRight, RefreshCw, FileText } from 'lucide-react';
 import { supabase } from '@/lib/supabase/client';
 import { AnalyticsService } from '@/lib/services/analyticsService';
 
@@ -82,6 +82,14 @@ export default function InstitutionAdminDashboard() {
             href: '/institution-admin/analytics',
             color: 'text-emerald-600',
             bg: 'bg-emerald-50'
+        },
+        {
+            title: 'Content Library',
+            description: 'Examine the educational curriculum (Read-Only).',
+            icon: FileText,
+            href: '/institution-admin/content-editor',
+            color: 'text-slate-100',
+            bg: 'bg-slate-900'
         }
     ];
 

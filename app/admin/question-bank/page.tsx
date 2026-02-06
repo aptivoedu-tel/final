@@ -6,7 +6,7 @@ import {
     Layers, Hash, FileText,
     Search, RefreshCw, Target,
     CheckCircle2, HelpCircle,
-    BarChart3, Plus, Filter
+    BarChart3, Plus, Filter, Settings
 } from 'lucide-react';
 import Sidebar from '@/components/layout/Sidebar';
 import Header from '@/components/layout/Header';
@@ -32,15 +32,18 @@ export default function SuperAdminQuestionBankPage() {
     const [data, setData] = useState<HierarchyItem[]>([]);
     const [loading, setLoading] = useState(true);
     const [searchQuery, setSearchQuery] = useState('');
-    const [selectedSubtopic, setSelectedSubtopic] = useState<HierarchyItem | null>(null);
+    const [selectedItem, setSelectedItem] = useState<HierarchyItem | null>(null);
     const [questions, setQuestions] = useState<any[]>([]);
     const [questionsLoading, setQuestionsLoading] = useState(false);
 
     // MCQ Modal State
     const [isMcqModalOpen, setIsMcqModalOpen] = useState(false);
+    const [isPassageModalOpen, setIsPassageModalOpen] = useState(false);
+    const [passages, setPassages] = useState<any[]>([]);
     const [editingMcq, setEditingMcq] = useState<any>(null);
     const [mcqForm, setMcqForm] = useState({
         question: '',
+        question_type: 'mcq_single',
         difficulty: 'medium',
         option_a: '',
         option_b: '',
@@ -51,7 +54,13 @@ export default function SuperAdminQuestionBankPage() {
         question_image_url: '',
         question_image_type: 'direct',
         explanation_url: '',
-        explanation_image_type: 'direct'
+        explanation_image_type: 'direct',
+        passage_id: '' as string | number
+    });
+
+    const [passageForm, setPassageForm] = useState({
+        title: '',
+        content: ''
     });
 
     const convertDriveLink = (url: string) => {
@@ -68,13 +77,13 @@ export default function SuperAdminQuestionBankPage() {
     const loadHierarchy = async () => {
         setLoading(true);
         try {
-            // Fetch ALL subjects, topics, subtopics for Super Admin
+            // Fetch ALL subjects, topics, subtopics
             const { data: subjects } = await supabase.from('subjects').select('*').order('name');
             const { data: topics } = await supabase.from('topics').select('*').order('name');
             const { data: subtopics } = await supabase.from('subtopics').select('*').order('name');
 
-            // Get MCQ counts
-            const { data: mcqStats } = await supabase.rpc('get_mcq_stats_per_subtopic');
+            // Get MCQ counts for both subtopics and direct topics
+            const { data: allMcqs } = await supabase.from('mcqs').select('id, subtopic_id, topic_id');
 
             if (subjects) {
                 const tree: HierarchyItem[] = subjects.map((s: any) => {
@@ -82,23 +91,26 @@ export default function SuperAdminQuestionBankPage() {
                     const processedTopics = subjectTopics.map((t: any): HierarchyItem => {
                         const topicSubtopics = subtopics?.filter((st: any) => st.topic_id === t.id) || [];
                         const processedSubtopics: HierarchyItem[] = topicSubtopics.map((st: any): HierarchyItem => {
-                            const stat = mcqStats?.find((ms: any) => ms.subtopic_id === st.id);
+                            const count = allMcqs?.filter(m => m.subtopic_id === st.id).length || 0;
                             return {
                                 id: `st-${st.id}`,
                                 dbId: st.id,
                                 type: 'subtopic',
                                 title: st.name,
-                                mcqCount: stat?.count || 0
+                                mcqCount: count
                             };
                         });
-                        const topicCount = processedSubtopics.reduce((sum, st) => sum + (st.mcqCount || 0), 0);
+
+                        const directTopicCount = allMcqs?.filter(m => m.topic_id === t.id).length || 0;
+                        const totalTopicCount = processedSubtopics.reduce((sum, st) => sum + (st.mcqCount || 0), 0) + directTopicCount;
+
                         return {
                             id: `t-${t.id}`,
                             dbId: t.id,
                             type: 'topic',
                             title: t.name,
                             expanded: false,
-                            mcqCount: topicCount,
+                            mcqCount: totalTopicCount,
                             children: processedSubtopics
                         };
                     });
@@ -122,14 +134,57 @@ export default function SuperAdminQuestionBankPage() {
         }
     };
 
-    const loadQuestions = async (subtopicId: number) => {
-        setQuestionsLoading(true);
+    const fetchPassages = async () => {
+        const { data } = await supabase.from('passages').select('*').order('created_at', { ascending: false });
+        if (data) setPassages(data);
+    };
+
+    const handleSavePassage = async () => {
+        if (!passageForm.content) {
+            toast.error("Passage content is required");
+            return;
+        }
+
         try {
             const { data, error } = await supabase
-                .from('mcqs')
-                .select('*')
-                .eq('subtopic_id', subtopicId)
-                .order('created_at', { ascending: false });
+                .from('passages')
+                .insert([passageForm])
+                .select()
+                .single();
+
+            if (error) throw error;
+
+            toast.success("Passage created successfully");
+            setPassages([data, ...passages]);
+            setIsPassageModalOpen(false);
+            setPassageForm({ title: '', content: '' });
+        } catch (error: any) {
+            toast.error(error.message);
+        }
+    };
+
+    useEffect(() => {
+        const currentUser = AuthService.getCurrentUser();
+        if (currentUser) setUser(currentUser);
+        loadHierarchy();
+        fetchPassages();
+    }, []);
+
+    const loadQuestions = async (item: HierarchyItem) => {
+        setQuestionsLoading(true);
+        try {
+            let query = supabase.from('mcqs').select('*');
+
+            if (item.type === 'subtopic') {
+                query = query.eq('subtopic_id', item.dbId);
+            } else if (item.type === 'topic') {
+                query = query.eq('topic_id', item.dbId);
+            } else {
+                setQuestions([]);
+                return;
+            }
+
+            const { data, error } = await query.order('created_at', { ascending: false });
 
             if (data) setQuestions(data);
         } catch (error) {
@@ -141,13 +196,14 @@ export default function SuperAdminQuestionBankPage() {
     };
 
     const handleOpenAddMcq = () => {
-        if (!selectedSubtopic) {
-            toast.error("Please select a subtopic first");
+        if (!selectedItem || selectedItem.type === 'subject') {
+            toast.error("Please select a topic or subtopic first");
             return;
         }
         setEditingMcq(null);
         setMcqForm({
             question: '',
+            question_type: 'mcq_single',
             difficulty: 'medium',
             option_a: '',
             option_b: '',
@@ -158,7 +214,8 @@ export default function SuperAdminQuestionBankPage() {
             question_image_url: '',
             question_image_type: 'direct',
             explanation_url: '',
-            explanation_image_type: 'direct'
+            explanation_image_type: 'direct',
+            passage_id: ''
         });
         setIsMcqModalOpen(true);
     };
@@ -167,6 +224,7 @@ export default function SuperAdminQuestionBankPage() {
         setEditingMcq(q);
         setMcqForm({
             question: q.question || '',
+            question_type: q.question_type || 'mcq_single',
             difficulty: q.difficulty || 'medium',
             option_a: q.option_a || '',
             option_b: q.option_b || '',
@@ -177,7 +235,8 @@ export default function SuperAdminQuestionBankPage() {
             question_image_url: q.question_image_url || '',
             question_image_type: q.question_image_url?.includes('googleusercontent.com') ? 'drive' : 'direct',
             explanation_url: q.explanation_url || '',
-            explanation_image_type: q.explanation_url?.includes('googleusercontent.com') ? 'drive' : 'direct'
+            explanation_image_type: q.explanation_url?.includes('googleusercontent.com') ? 'drive' : 'direct',
+            passage_id: q.passage_id || ''
         });
         setIsMcqModalOpen(true);
     };
@@ -196,13 +255,15 @@ export default function SuperAdminQuestionBankPage() {
                     : mcqForm.question_image_url,
                 explanation_url: mcqForm.explanation_image_type === 'drive'
                     ? convertDriveLink(mcqForm.explanation_url)
-                    : mcqForm.explanation_url
+                    : mcqForm.explanation_url,
+                passage_id: mcqForm.passage_id === '' ? null : Number(mcqForm.passage_id)
             };
 
             // Remove internal UI state before saving
             const { question_image_type, explanation_image_type, ...payload } = {
                 ...processedForm,
-                subtopic_id: selectedSubtopic?.dbId,
+                subtopic_id: selectedItem?.type === 'subtopic' ? selectedItem.dbId : null,
+                topic_id: selectedItem?.type === 'topic' ? selectedItem.dbId : null,
                 is_active: true
             };
 
@@ -222,9 +283,9 @@ export default function SuperAdminQuestionBankPage() {
 
             if (error) throw error;
 
-            toast.success(editingMcq ? "MCQ updated successfully" : "MCQ added successfully");
+            toast.success(editingMcq ? "Question updated successfully" : "Question added successfully");
             setIsMcqModalOpen(false);
-            if (selectedSubtopic) loadQuestions(selectedSubtopic.dbId);
+            if (selectedItem) loadQuestions(selectedItem);
         } catch (err: any) {
             console.error("Save MCQ error:", err);
             toast.error(err.message || "Failed to save MCQ");
@@ -243,7 +304,7 @@ export default function SuperAdminQuestionBankPage() {
             if (error) throw error;
 
             toast.success("Question deleted successfully");
-            if (selectedSubtopic) loadQuestions(selectedSubtopic.dbId);
+            if (selectedItem) loadQuestions(selectedItem);
         } catch (err: any) {
             console.error("Delete MCQ error:", err);
             toast.error(err.message || "Failed to delete question");
@@ -256,13 +317,6 @@ export default function SuperAdminQuestionBankPage() {
         loadHierarchy();
     }, []);
 
-    useEffect(() => {
-        if (selectedSubtopic) {
-            loadQuestions(selectedSubtopic.dbId);
-        } else {
-            setQuestions([]);
-        }
-    }, [selectedSubtopic]);
 
     const toggleExpand = (id: string, items: HierarchyItem[]): HierarchyItem[] => {
         return items.map(item => {
@@ -290,15 +344,19 @@ export default function SuperAdminQuestionBankPage() {
             <div key={item.id} className="select-none">
                 <div
                     className={`
-                        group flex items-center gap-3 py-2 px-4 border-b border-indigo-50/30 hover:bg-slate-800/50 transition-all cursor-pointer
-                        ${selectedSubtopic?.id === item.id ? 'bg-indigo-600/20 border-l-4 border-l-indigo-500' : 'bg-transparent border-l-4 border-l-transparent'}
+                        group flex items-center gap-3 py-2 px-4 border-b border-indigo-50/10 hover:bg-slate-50 transition-all cursor-pointer
+                        ${selectedItem?.id === item.id ? 'bg-slate-100 border-l-4 border-l-indigo-600' : 'bg-transparent border-l-4 border-l-transparent'}
                     `}
                     style={{ paddingLeft: `${level * 16 + 16}px` }}
                     onClick={() => {
-                        if (item.type === 'subtopic') {
-                            setSelectedSubtopic(item);
-                        } else {
+                        if (item.type === 'subject' || item.type === 'topic') {
                             handleExpandCallback(item.id);
+                        }
+
+                        // Select if topic or subtopic
+                        if (item.type === 'topic' || item.type === 'subtopic') {
+                            setSelectedItem(item);
+                            loadQuestions(item);
                         }
                     }}
                 >
@@ -321,7 +379,7 @@ export default function SuperAdminQuestionBankPage() {
 
                     {/* Content */}
                     <div className="flex-1 min-w-0">
-                        <div className={`text-xs font-bold truncate ${selectedSubtopic?.id === item.id ? 'text-white' : 'text-slate-400'}`}>
+                        <div className={`text-xs font-bold truncate ${selectedItem?.id === item.id ? 'text-slate-900' : 'text-slate-500'}`}>
                             {item.title}
                         </div>
                     </div>
@@ -359,7 +417,7 @@ export default function SuperAdminQuestionBankPage() {
                         </div>
                         <button
                             onClick={handleOpenAddMcq}
-                            className="w-full sm:w-auto flex items-center justify-center gap-2 px-6 py-2.5 bg-indigo-600 text-white font-black uppercase tracking-wider text-[11px] rounded-xl hover:bg-slate-900 transition-all shadow-lg shadow-indigo-100 active:scale-95"
+                            className="w-full sm:w-auto flex items-center justify-center gap-2 px-6 py-2.5 bg-slate-900 text-white font-black uppercase tracking-wider text-[11px] rounded-xl hover:bg-indigo-600 transition-all shadow-lg active:scale-95"
                         >
                             <Plus className="w-4 h-4" />
                             New Question
@@ -368,7 +426,7 @@ export default function SuperAdminQuestionBankPage() {
 
                     <div className="flex-1 flex flex-col lg:flex-row gap-8 min-h-0">
                         {/* Left: Hierarchy Sidebar */}
-                        <div className="w-full lg:w-80 flex flex-col bg-white rounded-3xl border border-slate-200 shadow-sm overflow-hidden min-h-[300px] lg:min-h-0">
+                        <div className="w-full lg:w-80 flex flex-col bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden min-h-[300px] lg:min-h-0">
                             <div className="p-4 border-b border-slate-100 bg-slate-50/50">
                                 <div className="relative">
                                     <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
@@ -400,8 +458,8 @@ export default function SuperAdminQuestionBankPage() {
                         </div>
 
                         {/* Right: Modern Question Viewer */}
-                        <div className="flex-1 bg-white rounded-3xl border border-gray-200 shadow-sm overflow-hidden flex flex-col min-h-[500px] lg:min-h-0">
-                            {selectedSubtopic ? (
+                        <div className="flex-1 bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden flex flex-col min-h-[500px] lg:min-h-0">
+                            {selectedItem ? (
                                 <>
                                     <div className="p-6 border-b border-gray-100 bg-white flex justify-between items-center shadow-sm">
                                         <div>
@@ -410,10 +468,10 @@ export default function SuperAdminQuestionBankPage() {
                                                     Master Data Repository
                                                 </span>
                                                 <span className="text-[10px] font-black uppercase tracking-widest text-slate-500 bg-slate-100 px-2 py-0.5 rounded-full">
-                                                    {questions.length} Total MCQs
+                                                    {questions.length} Total Questions
                                                 </span>
                                             </div>
-                                            <h2 className="text-xl font-black text-slate-900">{selectedSubtopic.title}</h2>
+                                            <h2 className="text-xl font-black text-slate-900">{selectedItem?.title}</h2>
                                         </div>
                                         <div className="flex items-center gap-3">
                                             <div className="flex items-center gap-2 p-1.5 bg-slate-50 rounded-lg border border-gray-100">
@@ -435,7 +493,7 @@ export default function SuperAdminQuestionBankPage() {
                                             </div>
                                         ) : questions.length > 0 ? (
                                             questions.map((q, idx) => (
-                                                <div key={q.id} className="bg-white p-6 rounded-3xl border border-gray-100 shadow-sm hover:shadow-xl hover:shadow-indigo-500/5 transition-all group relative overflow-hidden">
+                                                <div key={q.id} className="bg-white p-6 rounded-xl border border-gray-100 shadow-sm hover:shadow-xl hover:shadow-indigo-500/5 transition-all group relative overflow-hidden">
                                                     <div className="absolute top-0 right-0 p-4 opacity-0 group-hover:opacity-100 transition-opacity">
                                                         <div className="flex gap-2">
                                                             <button
@@ -464,6 +522,9 @@ export default function SuperAdminQuestionBankPage() {
                                                                     'bg-rose-100 text-rose-700'
                                                                 }`}>
                                                                 {q.difficulty}
+                                                            </span>
+                                                            <span className="px-2.5 py-1 bg-indigo-50 text-indigo-600 rounded-lg text-[9px] font-black uppercase tracking-[0.1em]">
+                                                                {q.question_type?.replace('_', ' ') || 'MCQ Single'}
                                                             </span>
                                                         </div>
                                                         <div className="flex items-center gap-6 pr-12">
@@ -548,7 +609,7 @@ export default function SuperAdminQuestionBankPage() {
                                 <div className="p-6 border-b border-gray-100 flex justify-between items-center bg-white">
                                     <div>
                                         <h3 className="text-xl font-black text-slate-900">{editingMcq ? 'Edit MCQ' : 'Create New MCQ'}</h3>
-                                        <p className="text-xs font-bold text-slate-400 uppercase tracking-widest">{selectedSubtopic?.title}</p>
+                                        <p className="text-xs font-bold text-slate-400 uppercase tracking-widest">{selectedItem?.title}</p>
                                     </div>
                                     <button onClick={() => setIsMcqModalOpen(false)} className="p-2 hover:bg-slate-100 rounded-full text-slate-400 transition-colors">
                                         <X className="w-5 h-5" />
@@ -556,6 +617,58 @@ export default function SuperAdminQuestionBankPage() {
                                 </div>
 
                                 <div className="flex-1 overflow-y-auto p-8 space-y-6 custom-scrollbar">
+                                    {/* Question Type Selection */}
+                                    <div>
+                                        <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">System Blueprint Type</label>
+                                        <div className="relative group">
+                                            <Settings className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-indigo-600 z-10" />
+                                            <select
+                                                value={mcqForm.question_type}
+                                                onChange={(e) => setMcqForm({ ...mcqForm, question_type: e.target.value })}
+                                                className="w-full pl-12 pr-10 py-3 bg-slate-50 border border-gray-100 rounded-xl text-slate-800 font-bold outline-none appearance-none cursor-pointer focus:ring-2 focus:ring-indigo-500/10 transition-all"
+                                            >
+                                                <option value="mcq_single">MCQ Single Choice</option>
+                                                <option value="mcq_multiple">MCQ Multiple Choice</option>
+                                                <option value="true_false">True / False</option>
+                                                <option value="numerical">Numerical Entry</option>
+                                                <option value="essay">Essay / Free Text</option>
+                                                <option value="short_answer">Short Answer</option>
+                                                <option value="fill_blank">Fill in the Blanks</option>
+                                                <option value="matching">Match the Following</option>
+                                                <option value="ordering">Sequence / Ordering</option>
+                                                <option value="hotspot">Image Hotspot</option>
+                                                <option value="case_study">Case Study Analysis</option>
+                                                <option value="passage">Passage-Based Block</option>
+                                            </select>
+                                            <div className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none text-slate-400 group-hover:text-indigo-600 transition-colors">
+                                                <ChevronDown className="w-4 h-4" />
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    {/* Passage Selection */}
+                                    <div>
+                                        <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">Passage (Optional)</label>
+                                        <div className="flex gap-2">
+                                            <select
+                                                value={mcqForm.passage_id}
+                                                onChange={(e) => setMcqForm({ ...mcqForm, passage_id: e.target.value })}
+                                                className="flex-1 px-5 py-3 bg-slate-50 border border-gray-100 rounded-xl text-slate-800 font-bold outline-none truncate"
+                                            >
+                                                <option value="">No Passage</option>
+                                                {passages.map(p => (
+                                                    <option key={p.id} value={p.id}>{p.title || `Passage #${p.id}`}</option>
+                                                ))}
+                                            </select>
+                                            <button
+                                                onClick={() => setIsPassageModalOpen(true)}
+                                                className="px-4 py-3 bg-indigo-50 text-indigo-600 rounded-xl font-black text-[10px] uppercase tracking-widest hover:bg-indigo-100 transition-all"
+                                            >
+                                                <Plus className="w-4 h-4" />
+                                            </button>
+                                        </div>
+                                    </div>
+
                                     {/* Question Text */}
                                     <div>
                                         <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">Question Prompt</label>
@@ -714,6 +827,46 @@ export default function SuperAdminQuestionBankPage() {
                                     >
                                         <Save className="w-4 h-4" />
                                         {editingMcq ? 'Save Changes' : 'Initialize MCQ'}
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    )}
+
+                    {/* Passage Modal */}
+                    {isPassageModalOpen && (
+                        <div className="fixed inset-0 z-[70] flex items-center justify-center bg-slate-900/60 backdrop-blur-sm p-4">
+                            <div className="bg-white rounded-[2.5rem] shadow-2xl w-full max-w-2xl overflow-hidden flex flex-col animate-in fade-in zoom-in duration-200">
+                                <div className="p-8 border-b border-gray-100 flex justify-between items-center">
+                                    <h3 className="text-2xl font-black text-slate-900">Manage Passage</h3>
+                                    <button onClick={() => setIsPassageModalOpen(false)} className="p-2 hover:bg-slate-100 rounded-full text-slate-400">
+                                        <X className="w-5 h-5" />
+                                    </button>
+                                </div>
+                                <div className="p-8 space-y-6">
+                                    <div className="space-y-2">
+                                        <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Passage Title</label>
+                                        <input
+                                            value={passageForm.title}
+                                            onChange={e => setPassageForm({ ...passageForm, title: e.target.value })}
+                                            placeholder="Enter passage title (e.g. Reading Comprehension 1)"
+                                            className="w-full px-6 py-4 bg-slate-50 border border-gray-100 rounded-2xl font-bold outline-none focus:ring-2 focus:ring-indigo-600/20"
+                                        />
+                                    </div>
+                                    <div className="space-y-2">
+                                        <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Passage Content</label>
+                                        <textarea
+                                            value={passageForm.content}
+                                            onChange={e => setPassageForm({ ...passageForm, content: e.target.value })}
+                                            placeholder="Enter the full passage content here..."
+                                            className="w-full h-64 px-6 py-4 bg-slate-50 border border-gray-100 rounded-2xl font-bold resize-none outline-none focus:ring-2 focus:ring-indigo-600/20"
+                                        />
+                                    </div>
+                                    <button
+                                        onClick={handleSavePassage}
+                                        className="w-full py-5 bg-indigo-600 text-white rounded-2xl font-black uppercase tracking-widest text-xs shadow-xl shadow-indigo-600/20 hover:scale-[1.02] active:scale-[0.98] transition-all"
+                                    >
+                                        Deploy Passage to Repository
                                     </button>
                                 </div>
                             </div>

@@ -387,21 +387,49 @@ export default function UniversityContentMapper() {
                                                             </button>
 
                                                             {topSelected && (
-                                                                <div className="flex items-center gap-2 bg-white px-3 py-1.5 rounded-xl border border-gray-100 shadow-sm ml-4">
-                                                                    <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest mr-1">Difficulty:</span>
-                                                                    {['easy', 'medium', 'hard'].map(diff => {
-                                                                        const isDiffSelected = topic.subtopics.every(st => selectedSubtopics[st.id]?.includes(diff));
-                                                                        return (
-                                                                            <button
-                                                                                key={diff}
-                                                                                onClick={() => toggleDifficulty(topic, diff)}
-                                                                                className={`w-7 h-7 flex items-center justify-center rounded-lg text-[10px] font-black uppercase transition-all ${isDiffSelected ? 'bg-indigo-600 text-white shadow-md shadow-indigo-200' : 'bg-gray-50 text-slate-400 hover:bg-gray-100'}`}
-                                                                                title={diff.charAt(0).toUpperCase() + diff.slice(1)}
-                                                                            >
-                                                                                {diff.charAt(0).toUpperCase()}
-                                                                            </button>
-                                                                        );
-                                                                    })}
+                                                                <div className="relative ml-4">
+                                                                    <div className="flex items-center gap-2 bg-white px-4 py-2 rounded-full border border-gray-100 shadow-sm group/dropdown cursor-pointer hover:border-indigo-600 transition-all">
+                                                                        <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest mr-1">Difficulty:</span>
+                                                                        <div className="flex items-center gap-1.5 min-w-[100px] justify-between">
+                                                                            <span className="text-[11px] font-black text-indigo-600 uppercase tracking-widest">
+                                                                                {(() => {
+                                                                                    const selectedCount = ['easy', 'medium', 'hard'].filter(diff =>
+                                                                                        topic.subtopics.every(st => selectedSubtopics[st.id]?.includes(diff))
+                                                                                    ).length;
+                                                                                    if (selectedCount === 3) return 'All Levels';
+                                                                                    if (selectedCount === 0) return 'Select';
+                                                                                    return `${selectedCount} Selected`;
+                                                                                })()}
+                                                                            </span>
+                                                                            <ChevronDown className="w-3.5 h-3.5 text-indigo-600 group-hover/dropdown:rotate-180 transition-transform" />
+                                                                        </div>
+
+                                                                        {/* Dropdown Menu */}
+                                                                        <div className="absolute top-full right-0 mt-2 w-48 bg-white rounded-2xl shadow-2xl border border-gray-100 py-2 z-50 opacity-0 invisible group-hover/dropdown:opacity-100 group-hover/dropdown:visible transition-all">
+                                                                            {[
+                                                                                { id: 'easy', label: 'Basic' },
+                                                                                { id: 'medium', label: 'Intermediate' },
+                                                                                { id: 'hard', label: 'Advanced' }
+                                                                            ].map(diff => {
+                                                                                const isDiffSelected = topic.subtopics.every(st => selectedSubtopics[st.id]?.includes(diff.id));
+                                                                                return (
+                                                                                    <div
+                                                                                        key={diff.id}
+                                                                                        onClick={(e) => {
+                                                                                            e.stopPropagation();
+                                                                                            toggleDifficulty(topic, diff.id);
+                                                                                        }}
+                                                                                        className="px-4 py-2.5 hover:bg-indigo-50 flex items-center justify-between group/item transition-colors"
+                                                                                    >
+                                                                                        <span className={`text-[11px] font-bold ${isDiffSelected ? 'text-indigo-600' : 'text-slate-600'}`}>
+                                                                                            {diff.label}
+                                                                                        </span>
+                                                                                        {isDiffSelected && <CheckSquare className="w-3.5 h-3.5 text-indigo-600 fill-current" />}
+                                                                                    </div>
+                                                                                );
+                                                                            })}
+                                                                        </div>
+                                                                    </div>
                                                                 </div>
                                                             )}
                                                         </div>

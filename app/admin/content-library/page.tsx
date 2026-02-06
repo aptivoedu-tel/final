@@ -7,7 +7,7 @@ import {
     Search, RefreshCw, BookOpen,
     Eye, Edit3, Type, Bold, Italic,
     List, ListOrdered, Code, Terminal,
-    Sigma, Heading2, Quote
+    Sigma, Heading2, Quote, Image as ImageIcon, Loader2
 } from 'lucide-react';
 import Sidebar from '@/components/layout/Sidebar';
 import Header from '@/components/layout/Header';
@@ -39,12 +39,13 @@ export default function SuperAdminContentLibraryPage() {
     const [data, setData] = useState<HierarchyItem[]>([]);
     const [loading, setLoading] = useState(true);
     const [searchQuery, setSearchQuery] = useState('');
-    const [selectedSubtopic, setSelectedSubtopic] = useState<HierarchyItem | null>(null);
+    const [selectedItem, setSelectedItem] = useState<HierarchyItem | null>(null);
 
     // Content Editor Modal State
     const [isEditModalOpen, setIsEditModalOpen] = useState(false);
     const [editContent, setEditContent] = useState('');
     const [isSaving, setIsSaving] = useState(false);
+    const [isImageUploading, setIsImageUploading] = useState(false);
 
 
     // Editor Ref
@@ -88,6 +89,55 @@ export default function SuperAdminContentLibraryPage() {
         }, 0);
     };
 
+    const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        if (!file) return;
+
+        if (!file.type.startsWith('image/')) {
+            toast.error('Please select an image file.');
+            return;
+        }
+
+        setIsImageUploading(true);
+        try {
+            const fileExt = file.name.split('.').pop();
+            const fileName = `${Math.random().toString(36).substring(2)}-${Date.now()}.${fileExt}`;
+            const filePath = `inline/${fileName}`;
+
+            const { error: uploadError } = await supabase.storage
+                .from('lessons')
+                .upload(filePath, file);
+
+            if (uploadError) throw uploadError;
+
+            const { data: { publicUrl } } = supabase.storage
+                .from('lessons')
+                .getPublicUrl(filePath);
+
+            if (textareaRef.current) {
+                const textarea = textareaRef.current;
+                const start = textarea.selectionStart;
+                const end = textarea.selectionEnd;
+                const text = textarea.value;
+
+                const imageMarkdown = `\n![Image Description](${publicUrl})\n`;
+                const newText = text.substring(0, start) + imageMarkdown + text.substring(end);
+
+                setEditContent(newText);
+
+                setTimeout(() => {
+                    textarea.focus();
+                    textarea.setSelectionRange(start + imageMarkdown.length, start + imageMarkdown.length);
+                }, 0);
+            }
+        } catch (error: any) {
+            toast.error('Error uploading image: ' + error.message);
+        } finally {
+            setIsImageUploading(false);
+            e.target.value = '';
+        }
+    };
+
 
 
     const loadHierarchy = async () => {
@@ -110,6 +160,7 @@ export default function SuperAdminContentLibraryPage() {
                         dbId: t.id,
                         type: 'topic',
                         title: t.name,
+                        content: t.content_markdown,
                         expanded: false,
                         children: subtopics?.filter((st: any) => st.topic_id === t.id).map((st: any) => ({
                             id: `st-${st.id}`,
@@ -122,12 +173,20 @@ export default function SuperAdminContentLibraryPage() {
                 }));
                 setData(tree);
 
-                // Update selectedSubtopic if it exists
-                if (selectedSubtopic) {
-                    const flatSubtopics: any[] = [];
-                    tree.forEach(s => s.children?.forEach(t => t.children?.forEach(st => flatSubtopics.push(st))));
-                    const updated = flatSubtopics.find(st => st.dbId === selectedSubtopic.dbId);
-                    if (updated) setSelectedSubtopic(updated);
+                // Update selectedItem if it exists
+                if (selectedItem) {
+                    const findInItems = (items: HierarchyItem[]): HierarchyItem | null => {
+                        for (const item of items) {
+                            if (item.id === selectedItem.id) return item;
+                            if (item.children) {
+                                const found = findInItems(item.children);
+                                if (found) return found;
+                            }
+                        }
+                        return null;
+                    };
+                    const updated = findInItems(tree);
+                    if (updated) setSelectedItem(updated);
                 }
             }
         } catch (error) {
@@ -139,20 +198,21 @@ export default function SuperAdminContentLibraryPage() {
     };
 
     const handleOpenEditor = () => {
-        if (!selectedSubtopic) return;
-        const content = selectedSubtopic.content || '';
+        if (!selectedItem) return;
+        const content = selectedItem.content || '';
         setEditContent(content);
         setIsEditModalOpen(true);
     };
 
     const handleSaveContent = async () => {
-        if (!selectedSubtopic) return;
+        if (!selectedItem) return;
         setIsSaving(true);
         try {
+            const table = selectedItem.type === 'subtopic' ? 'subtopics' : 'topics';
             const { error } = await supabase
-                .from('subtopics')
+                .from(table)
                 .update({ content_markdown: editContent })
-                .eq('id', selectedSubtopic.dbId);
+                .eq('id', selectedItem.dbId);
 
             if (error) throw error;
 
@@ -200,29 +260,32 @@ export default function SuperAdminContentLibraryPage() {
                 <div
                     className={`
                         group flex items-center gap-3 py-2.5 px-4 border-b border-slate-800/20 hover:bg-indigo-600/10 transition-all cursor-pointer
-                        ${selectedSubtopic?.id === item.id ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-600/20' : 'bg-transparent text-slate-400'}
+                        ${selectedItem?.id === item.id ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-600/20' : 'bg-transparent text-slate-400'}
                     `}
                     style={{ paddingLeft: `${level * 16 + 16}px` }}
                     onClick={() => {
-                        if (item.type === 'subtopic') {
-                            setSelectedSubtopic(item);
-                        } else {
+                        if (item.type === 'subject' || item.type === 'topic') {
                             handleExpandCallback(item.id);
+                        }
+
+                        // Select if topic or subtopic
+                        if (item.type === 'topic' || item.type === 'subtopic') {
+                            setSelectedItem(item);
                         }
                     }}
                 >
                     {/* Expand Toggle */}
-                    <div className={`p-1 rounded ${selectedSubtopic?.id === item.id ? 'text-white' : 'text-slate-500'} ${!item.children || item.children.length === 0 ? 'invisible' : ''}`}>
+                    <div className={`p-1 rounded ${selectedItem?.id === item.id ? 'text-white' : 'text-slate-500'} ${!item.children || item.children.length === 0 ? 'invisible' : ''}`}>
                         {item.expanded ? <ChevronDown className="w-3 h-3" /> : <ChevronRight className="w-3 h-3" />}
                     </div>
 
                     {/* Icon */}
                     <div className={`
                         w-6 h-6 rounded flex items-center justify-center
-                        ${selectedSubtopic?.id === item.id ? 'bg-white/20 text-white' :
+                        ${selectedItem?.id === item.id ? 'bg-white/20 text-white' :
                             item.type === 'subject' ? 'bg-purple-500/10 text-purple-400' :
                                 item.type === 'topic' ? 'bg-blue-500/10 text-blue-400' :
-                                    'bg-emerald-500/10 text-emerald-400 text-emerald-400'}
+                                    'bg-emerald-500/10 text-emerald-400'}
                     `}>
                         {item.type === 'subject' && <Layers className="w-3 h-3" />}
                         {item.type === 'topic' && <Hash className="w-3 h-3" />}
@@ -230,12 +293,12 @@ export default function SuperAdminContentLibraryPage() {
                     </div>
 
                     {/* Content */}
-                    <div className={`flex-1 text-xs font-bold truncate ${selectedSubtopic?.id === item.id ? 'text-white' : 'text-slate-300'}`}>
+                    <div className={`flex-1 text-xs font-bold truncate ${selectedItem?.id === item.id ? 'text-white' : 'text-slate-300'}`}>
                         {item.title}
                     </div>
 
-                    {item.type === 'subtopic' && (
-                        <Eye className={`w-3 h-3 transition-opacity ${selectedSubtopic?.id === item.id ? 'opacity-100' : 'opacity-0 group-hover:opacity-40'}`} />
+                    {(item.type === 'subtopic' || item.type === 'topic') && (
+                        <Eye className={`w-3 h-3 transition-opacity ${selectedItem?.id === item.id ? 'opacity-100' : 'opacity-0 group-hover:opacity-40'}`} />
                     )}
                 </div>
 
@@ -274,7 +337,7 @@ export default function SuperAdminContentLibraryPage() {
 
                     <div className="flex-1 flex flex-col lg:flex-row gap-8 min-h-0">
                         {/* Left: Global Hierarchy Sidebar */}
-                        <div className="w-full lg:w-80 flex flex-col bg-white rounded-3xl border border-slate-200 shadow-sm overflow-hidden min-h-[300px] lg:min-h-0">
+                        <div className="w-full lg:w-80 flex flex-col bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden min-h-[300px] lg:min-h-0">
                             <div className="p-4 border-b border-slate-100 bg-slate-50/50">
                                 <div className="relative">
                                     <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
@@ -306,8 +369,8 @@ export default function SuperAdminContentLibraryPage() {
                         </div>
 
                         {/* Right: Content Viewer */}
-                        <div className="flex-1 bg-white rounded-3xl border border-gray-200 shadow-sm overflow-hidden flex flex-col min-h-[500px] lg:min-h-0">
-                            {selectedSubtopic ? (
+                        <div className="flex-1 bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden flex flex-col min-h-[500px] lg:min-h-0">
+                            {selectedItem ? (
                                 <>
                                     <div className="p-6 border-b border-gray-100 bg-white flex justify-between items-center shadow-sm">
                                         <div>
@@ -315,14 +378,17 @@ export default function SuperAdminContentLibraryPage() {
                                                 <span className="text-[10px] font-black uppercase tracking-widest text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-full">
                                                     Master Content Entry
                                                 </span>
+                                                <span className="text-[10px] font-black uppercase tracking-widest text-slate-500 bg-slate-100 px-2 py-0.5 rounded-full">
+                                                    {selectedItem.type.replace('_', ' ')} / {selectedItem.title}
+                                                </span>
                                             </div>
-                                            <h2 className="text-xl font-black text-slate-900">{selectedSubtopic.title}</h2>
+                                            <h2 className="text-xl font-black text-slate-900">{selectedItem.title}</h2>
                                         </div>
                                         <button
                                             onClick={handleOpenEditor}
-                                            className="flex items-center gap-2 px-4 py-2 bg-indigo-50 text-indigo-600 font-bold rounded-lg hover:bg-indigo-100 transition-colors text-xs"
+                                            className="flex items-center gap-2 px-6 py-2.5 bg-slate-900 text-white font-black uppercase tracking-wider text-[11px] rounded-xl hover:bg-indigo-600 transition-all shadow-lg active:scale-95"
                                         >
-                                            <Edit3 className="w-3.5 h-3.5" />
+                                            <Edit3 className="w-4 h-4" />
                                             Edit Content
                                         </button>
                                     </div>
@@ -338,12 +404,12 @@ export default function SuperAdminContentLibraryPage() {
                                             prose-blockquote:border-l-4 prose-blockquote:border-indigo-500 prose-blockquote:bg-indigo-50 prose-blockquote:p-6 prose-blockquote:rounded-r-2xl prose-blockquote:my-10
                                             [&_.katex-display]:flex [&_.katex-display]:justify-center [&_.katex-display]:my-10 [&_.katex-display]:overflow-x-auto [&_.katex-display]:py-4
                                         ">
-                                            {selectedSubtopic.content ? (
+                                            {selectedItem.content ? (
                                                 <ReactMarkdown
                                                     remarkPlugins={[remarkMath, remarkGfm]}
                                                     rehypePlugins={[rehypeKatex]}
                                                 >
-                                                    {selectedSubtopic.content}
+                                                    {selectedItem.content}
                                                 </ReactMarkdown>
                                             ) : (
                                                 <div className="h-full flex flex-col items-center justify-center text-center opacity-40">
@@ -375,7 +441,7 @@ export default function SuperAdminContentLibraryPage() {
                                 <div className="p-6 border-b border-gray-100 flex justify-between items-center bg-white">
                                     <div>
                                         <h3 className="text-xl font-black text-slate-900">Edit Course Material</h3>
-                                        <p className="text-xs font-bold text-slate-400 uppercase tracking-widest">{selectedSubtopic?.title}</p>
+                                        <p className="text-xs font-bold text-slate-400 uppercase tracking-widest">{selectedItem?.title}</p>
                                     </div>
                                     <button onClick={() => setIsEditModalOpen(false)} className="p-2 hover:bg-slate-100 rounded-full text-slate-400 transition-colors">
                                         <X className="w-5 h-5" />
@@ -422,6 +488,24 @@ export default function SuperAdminContentLibraryPage() {
                                                 <button onClick={() => insertFormat('mathblock')} className="p-1.5 hover:bg-slate-100 rounded text-slate-500 hover:text-indigo-600" title="Math Block">
                                                     <div className="flex text-[10px] font-bold">$$</div>
                                                 </button>
+                                                <div className="w-px h-4 bg-slate-200 mx-1"></div>
+                                                <div className="relative group/upload">
+                                                    <button
+                                                        onClick={() => document.getElementById('lib-image-upload')?.click()}
+                                                        className="p-1.5 hover:bg-slate-100 rounded text-slate-500 hover:text-indigo-600 flex items-center gap-1"
+                                                        title="Upload Image"
+                                                        disabled={isImageUploading}
+                                                    >
+                                                        {isImageUploading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <ImageIcon className="w-3.5 h-3.5" />}
+                                                    </button>
+                                                    <input
+                                                        id="lib-image-upload"
+                                                        type="file"
+                                                        className="hidden"
+                                                        accept="image/*"
+                                                        onChange={handleImageUpload}
+                                                    />
+                                                </div>
                                             </div>
 
                                             <div className="px-3 py-1 bg-slate-100 rounded text-[9px] font-black uppercase text-indigo-600">

@@ -23,7 +23,8 @@ import {
     ShieldAlert,
     Clock3,
     Trophy,
-    Loader2
+    Loader2,
+    ArrowRight
 } from 'lucide-react';
 import { toast } from 'sonner';
 import Link from 'next/link';
@@ -40,6 +41,7 @@ type ContentMap = {
         id: number;
         name: string;
         mcqCount?: number;
+        content_markdown?: string;
         subtopics: { id: number; name: string; mcqCount?: number }[];
     }[];
 };
@@ -100,7 +102,7 @@ export default function UniversityDetailPage() {
             loadContent(uniId, enroll.institution_id),
             loadStudentProgress(userId),
             loadUniversityStats(userId, uniId),
-            loadExams(uniId)
+            loadExams(userId, uniId)
         ]);
     }
 
@@ -109,7 +111,7 @@ export default function UniversityDetailPage() {
         if (institutionId) {
             const { data } = await supabase.from('university_content_access').select(`
                 subject:subjects(id, name),
-                topic:topics(id, name),
+                topic:topics(id, name, content_markdown),
                 subtopic:subtopics(id, name, topic_id),
                 session_limit
             `).eq('university_id', uniId).eq('institution_id', institutionId).eq('is_active', true);
@@ -118,7 +120,7 @@ export default function UniversityDetailPage() {
         if (!access) {
             const { data } = await supabase.from('university_content_access').select(`
                 subject:subjects(id, name),
-                topic:topics(id, name),
+                topic:topics(id, name, content_markdown),
                 subtopic:subtopics(id, name, topic_id),
                 session_limit
             `).eq('university_id', uniId).is('institution_id', null).eq('is_active', true);
@@ -126,20 +128,17 @@ export default function UniversityDetailPage() {
         }
 
         // 3. Fetch MCQ counts with fallback
-        const { data: mcqStats, error: rpcError } = await supabase.rpc('get_mcq_stats_per_subtopic');
-        const mcqMap: Record<number, number> = {};
+        const mcqSubtopicMap: Record<number, number> = {};
+        const mcqTopicMap: Record<number, number> = {};
 
-        if (rpcError) {
-            console.warn("RPC 'get_mcq_stats_per_subtopic' not found, using fallback count");
-            const { data: mcqs } = await supabase.from('mcqs').select('subtopic_id').eq('is_active', true);
-            mcqs?.forEach((m: any) => {
-                mcqMap[m.subtopic_id] = (mcqMap[m.subtopic_id] || 0) + 1;
-            });
-        } else {
-            mcqStats?.forEach((s: any) => {
-                mcqMap[s.subtopic_id] = Number(s.count);
-            });
-        }
+        const { data: mcqs } = await supabase.from('mcqs').select('subtopic_id, topic_id').eq('is_active', true);
+        mcqs?.forEach((m: any) => {
+            if (m.subtopic_id) {
+                mcqSubtopicMap[m.subtopic_id] = (mcqSubtopicMap[m.subtopic_id] || 0) + 1;
+            } else if (m.topic_id) {
+                mcqTopicMap[m.topic_id] = (mcqTopicMap[m.topic_id] || 0) + 1;
+            }
+        });
 
         if (access) {
             const subjectMap = new Map<number, ContentMap>();
@@ -152,13 +151,17 @@ export default function UniversityDetailPage() {
                 if (row.topic) {
                     let topic = currentSubject.topics.find(t => t.id === row.topic.id);
                     if (!topic) {
-                        const newTopic = { ...row.topic, subtopics: [] };
+                        const newTopic = {
+                            ...row.topic,
+                            subtopics: [],
+                            mcqCount: mcqTopicMap[row.topic.id] || 0
+                        };
                         currentSubject.topics.push(newTopic);
                         topic = newTopic;
                     }
                     if (row.subtopic && row.subtopic.topic_id === row.topic.id && topic) {
                         if (topic.subtopics && !topic.subtopics.find(st => st.id === row.subtopic.id)) {
-                            const subtopicWithCount = { ...row.subtopic, mcqCount: mcqMap[row.subtopic.id] || 0 };
+                            const subtopicWithCount = { ...row.subtopic, mcqCount: mcqSubtopicMap[row.subtopic.id] || 0 };
                             topic.subtopics.push(subtopicWithCount);
                             topic.mcqCount = (topic.mcqCount || 0) + subtopicWithCount.mcqCount;
                         }
@@ -194,8 +197,35 @@ export default function UniversityDetailPage() {
         }
     }
 
-    async function loadExams(uniId: number) {
-        const { data } = await supabase.from('university_exams').select('*').eq('university_id', uniId).eq('is_active', true);
+    async function loadExams(studentId: string, uniId: number) {
+        // Fetch student's institution link first if possible
+        const { data: enroll } = await supabase
+            .from('student_university_enrollments')
+            .select('institution_id')
+            .eq('student_id', studentId)
+            .eq('university_id', uniId)
+            .single();
+
+        const instId = enroll?.institution_id;
+
+        // Query for exams that are EITHER:
+        // 1. Global (institution_id is null)
+        // 2. Specific to the student's institution
+        const query = supabase
+            .from('university_exams')
+            .select('*')
+            .eq('university_id', uniId)
+            .eq('is_active', true);
+
+        if (instId) {
+            // Filter: (institution_id IS NULL OR institution_id = instId)
+            query.or(`institution_id.is.null,institution_id.eq.${instId}`);
+        } else {
+            // Filter: institution_id IS NULL
+            query.is('institution_id', null);
+        }
+
+        const { data } = await query;
         setExams(data || []);
     }
 
@@ -310,43 +340,50 @@ export default function UniversityDetailPage() {
                                             </div>
                                         ) : (
                                             exams.map(exam => (
-                                                <div key={exam.id} className="bg-white p-8 rounded-[2.5rem] border border-gray-100 shadow-sm hover:shadow-xl hover:shadow-indigo-50/30 transition-all group overflow-hidden relative">
-                                                    <div className="flex justify-between items-start mb-6">
-                                                        <span className={`px-4 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest border ${exam.exam_type === 'final' ? 'bg-rose-50 border-rose-100 text-rose-600' :
-                                                            exam.exam_type === 'module' ? 'bg-amber-50 border-amber-100 text-amber-600' :
-                                                                'bg-indigo-50 border-indigo-100 text-indigo-600'
-                                                            }`}>
-                                                            {exam.exam_type} Test
-                                                        </span>
-                                                        <div className="flex items-center gap-2 text-slate-400 group-hover:text-indigo-600 transition-colors">
-                                                            <Clock className="w-3.5 h-3.5" />
-                                                            <span className="text-[10px] font-black uppercase tracking-widest">{exam.total_duration} MINS</span>
+                                                <div
+                                                    key={exam.id}
+                                                    className="group relative bg-white rounded-[2.5rem] border border-slate-100 overflow-hidden shadow-xl shadow-slate-100/50 hover:shadow-2xl hover:shadow-indigo-100/20 transition-all duration-500"
+                                                >
+                                                    <div className="bg-gradient-to-br from-slate-900 via-slate-800 to-indigo-950 p-8 pb-12 relative overflow-hidden">
+                                                        <div className="absolute top-0 right-0 w-48 h-48 bg-indigo-500/10 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2" />
+                                                        <div className="relative z-10 flex justify-between items-start mb-6">
+                                                            <div className="px-5 py-2 bg-white/10 backdrop-blur-md rounded-full border border-white/20 text-white font-black text-[10px] uppercase tracking-widest flex items-center gap-2">
+                                                                <Clock className="w-3.5 h-3.5 text-indigo-300" /> {exam.total_duration} MINS
+                                                            </div>
+                                                            <div className="w-12 h-12 bg-white/10 backdrop-blur-md rounded-2xl flex items-center justify-center border border-white/20">
+                                                                <FileText className="w-6 h-6 text-indigo-400" />
+                                                            </div>
                                                         </div>
-                                                    </div>
-                                                    <h3 className="text-2xl font-black text-slate-900 mb-2 truncate">{exam.name}</h3>
-                                                    <p className="text-slate-500 text-sm font-medium mb-8">Formal evaluation aligned with your current academic session objectives.</p>
-
-                                                    <div className="grid grid-cols-2 gap-4 mb-8">
-                                                        <div className="p-4 bg-slate-50 rounded-2xl border border-slate-100">
-                                                            <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1">Attempt Mode</p>
-                                                            <p className="text-xs font-black text-slate-700 uppercase">
-                                                                {exam.allow_reattempt ? 'Continuable' : 'Single Shot'}
-                                                            </p>
-                                                        </div>
-                                                        <div className="p-4 bg-slate-50 rounded-2xl border border-slate-100">
-                                                            <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1">Results</p>
-                                                            <p className="text-xs font-black text-slate-700 uppercase">
-                                                                {exam.result_release_setting === 'instant' ? 'Immediate' : 'Post-Session'}
-                                                            </p>
-                                                        </div>
+                                                        <h3 className="relative z-10 text-3xl font-black text-white tracking-tighter mb-2 group-hover:translate-x-1 transition-transform">{exam.name}</h3>
+                                                        <span className="relative z-10 text-indigo-300/80 text-[10px] font-black uppercase tracking-[0.2em]">Session ID: #AX-{exam.id.toString().padStart(4, '0')}</span>
                                                     </div>
 
-                                                    <button
-                                                        onClick={() => router.push(`/university/${uniId}/exam/${exam.id}`)}
-                                                        className="w-full py-4 bg-slate-900 text-white rounded-2xl text-[10px] font-black uppercase tracking-widest hover:bg-indigo-600 transition-all shadow-lg active:scale-95 block text-center"
-                                                    >
-                                                        Initialize Examination
-                                                    </button>
+                                                    <div className="p-8 -mt-6 relative z-20">
+                                                        <div className="bg-white rounded-[2rem] p-6 shadow-xl shadow-slate-200/50 border border-slate-50 space-y-6">
+                                                            <p className="text-slate-500 text-sm font-medium leading-relaxed">
+                                                                Formal evaluation aligned with your current academic session objectives. Ensuring proper calibration of knowledge.
+                                                            </p>
+
+                                                            <div className="grid grid-cols-2 gap-4">
+                                                                <div className="p-5 bg-slate-50 rounded-2xl border border-slate-100 flex flex-col gap-1">
+                                                                    <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Attempt Policy</span>
+                                                                    <span className="text-xs font-black text-slate-700 uppercase">{exam.allow_reattempt ? 'UNRESTRICTED' : 'SINGLE ATTEMPT'}</span>
+                                                                </div>
+                                                                <div className="p-5 bg-slate-50 rounded-2xl border border-slate-100 flex flex-col gap-1">
+                                                                    <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Result Delivery</span>
+                                                                    <span className="text-xs font-black text-slate-700 uppercase">{exam.result_release_setting === 'instant' ? 'IMMEDIATE' : 'DEFERRED'}</span>
+                                                                </div>
+                                                            </div>
+
+                                                            <button
+                                                                onClick={() => router.push(`/university/${uniId}/exam/${exam.id}`)}
+                                                                className="w-full py-5 bg-slate-900 text-white rounded-[1.5rem] text-[11px] font-black uppercase tracking-[0.25em] hover:bg-indigo-600 transition-all shadow-2xl shadow-slate-900/20 active:scale-[0.98] flex items-center justify-center gap-3 group/btn"
+                                                            >
+                                                                Initialize Examination
+                                                                <ArrowRight className="w-4 h-4 group-hover/btn:translate-x-2 transition-transform" />
+                                                            </button>
+                                                        </div>
+                                                    </div>
                                                 </div>
                                             ))
                                         )}
@@ -375,21 +412,53 @@ export default function UniversityDetailPage() {
                                             <div className="p-8 space-y-4">
                                                 {subjectItem.topics.map(topic => (
                                                     <div key={topic.id} className="border border-gray-100 rounded-2xl overflow-hidden bg-white shadow-sm transition-all hover:border-indigo-100">
-                                                        <button
-                                                            onClick={() => setExpandedTopic(expandedTopic === topic.id ? null : topic.id)}
+                                                        <div
                                                             className="w-full flex items-center justify-between p-5 text-left group transition-colors hover:bg-indigo-50/30"
                                                         >
-                                                            <div className="flex items-center gap-4">
+                                                            <div
+                                                                className="flex items-center gap-4 cursor-pointer flex-1"
+                                                                onClick={() => {
+                                                                    if (topic.subtopics.length > 0) {
+                                                                        setExpandedTopic(expandedTopic === topic.id ? null : topic.id)
+                                                                    }
+                                                                }}
+                                                            >
                                                                 <div className={`w-10 h-10 rounded-xl flex items-center justify-center font-black transition-all shadow-sm ${expandedTopic === topic.id ? 'bg-indigo-600 text-white' : ((topic.mcqCount || 0) > 0 ? 'bg-indigo-100 text-indigo-700' : 'bg-rose-50 text-rose-400')}`}>
                                                                     {topic.mcqCount || 0}
                                                                 </div>
                                                                 <div>
                                                                     <h4 className="font-bold text-slate-800">{topic.name}</h4>
-                                                                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mt-0.5">{topic.subtopics.length} Learning Modules Available</p>
+                                                                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mt-0.5">
+                                                                        {topic.subtopics.length > 0
+                                                                            ? `${topic.subtopics.length} Learning Modules Available`
+                                                                            : 'Direct Knowledge Module'}
+                                                                    </p>
                                                                 </div>
                                                             </div>
-                                                            {expandedTopic === topic.id ? <ChevronUp className="w-5 h-5 text-indigo-600" /> : <ChevronDown className="w-5 h-5 text-slate-400 group-hover:text-indigo-500" />}
-                                                        </button>
+
+                                                            {topic.subtopics.length > 0 ? (
+                                                                <div onClick={() => setExpandedTopic(expandedTopic === topic.id ? null : topic.id)} className="cursor-pointer">
+                                                                    {expandedTopic === topic.id ? <ChevronUp className="w-5 h-5 text-indigo-600" /> : <ChevronDown className="w-5 h-5 text-slate-400 group-hover:text-indigo-500" />}
+                                                                </div>
+                                                            ) : (
+                                                                <div className="flex items-center gap-2">
+                                                                    <button
+                                                                        onClick={() => router.push(`/university/${uniId}/lesson/topic/${topic.id}`)}
+                                                                        className="px-4 py-2 bg-white text-slate-600 rounded-xl text-[9px] font-black uppercase tracking-widest hover:bg-slate-50 transition-all border border-slate-200 shadow-sm"
+                                                                    >
+                                                                        Read
+                                                                    </button>
+                                                                    {(topic.mcqCount || 0) > 0 && (
+                                                                        <button
+                                                                            onClick={() => router.push(`/university/${uniId}/practice/topic/${topic.id}`)}
+                                                                            className="px-4 py-2 bg-indigo-600 text-white rounded-xl text-[9px] font-black uppercase tracking-widest hover:bg-indigo-700 transition-all shadow-sm"
+                                                                        >
+                                                                            Practice
+                                                                        </button>
+                                                                    )}
+                                                                </div>
+                                                            )}
+                                                        </div>
 
                                                         {expandedTopic === topic.id && (
                                                             <div className="px-5 pb-5 pt-0 space-y-2 animate-slide-down">

@@ -129,6 +129,7 @@ const Header: React.FC<HeaderProps> = ({ userName, userEmail, userAvatar, avatar
                 subs?.forEach(s => {
                     let link = `/university?search=${encodeURIComponent(s.name)}`;
                     if (isSuperAdmin) link = `/admin/content-editor?subject=${s.id}`;
+                    else if (isInstitutionAdmin) link = `/institution-admin/content-editor?subject=${s.id}`;
 
                     results.push({
                         id: s.id,
@@ -143,6 +144,7 @@ const Header: React.FC<HeaderProps> = ({ userName, userEmail, userAvatar, avatar
                 topics?.forEach(t => {
                     let link = `/university?search=${encodeURIComponent(t.name)}`;
                     if (isSuperAdmin) link = `/admin/content-editor?topic=${t.id}`;
+                    else if (isInstitutionAdmin) link = `/institution-admin/content-editor?topic=${t.id}`;
 
                     results.push({
                         id: t.id,
@@ -157,6 +159,7 @@ const Header: React.FC<HeaderProps> = ({ userName, userEmail, userAvatar, avatar
                 subtopics?.forEach(st => {
                     let link = `/university?search=${encodeURIComponent(st.name)}`;
                     if (isSuperAdmin) link = `/admin/content-editor?subtopic=${st.id}`;
+                    else if (isInstitutionAdmin) link = `/institution-admin/content-editor?subtopic=${st.id}`;
 
                     results.push({
                         id: st.id,
