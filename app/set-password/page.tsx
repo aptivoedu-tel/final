@@ -7,7 +7,7 @@ import { supabase } from '@/lib/supabase/client';
 import { AuthService } from '@/lib/services/authService';
 import { toast } from 'sonner';
 
-export default function SetPasswordPage() {
+function SetPasswordContent() {
     const router = useRouter();
     const searchParams = useSearchParams();
     const [password, setPassword] = useState('');
@@ -190,5 +190,17 @@ export default function SetPasswordPage() {
                 </p>
             </div>
         </div>
+    );
+}
+
+export default function SetPasswordPage() {
+    return (
+        <React.Suspense fallback={
+            <div className="min-h-screen bg-[#F8FAFC] flex items-center justify-center">
+                <div className="w-10 h-10 border-4 border-primary border-t-transparent rounded-full animate-spin" />
+            </div>
+        }>
+            <SetPasswordContent />
+        </React.Suspense>
     );
 }

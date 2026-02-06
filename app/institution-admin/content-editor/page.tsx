@@ -4,5 +4,13 @@ import React from 'react';
 import ContentEditor from '@/components/features/ContentEditor';
 
 export default function InstitutionContentEditorPage() {
-    return <ContentEditor />;
+    return (
+        <React.Suspense fallback={
+            <div className="flex-1 flex items-center justify-center min-h-screen">
+                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600"></div>
+            </div>
+        }>
+            <ContentEditor />
+        </React.Suspense>
+    );
 }

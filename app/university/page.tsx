@@ -29,7 +29,7 @@ type University = {
     logo_url?: string;
 };
 
-export default function UniversityPortalPage() {
+function UniversityPortalContent() {
     const { isSidebarCollapsed } = useUI();
     const router = useRouter();
     const [loading, setLoading] = useState(true);
@@ -326,5 +326,17 @@ export default function UniversityPortalPage() {
                 </main>
             </div>
         </div>
+    );
+}
+
+export default function UniversityPortalPage() {
+    return (
+        <React.Suspense fallback={
+            <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+                <div className="w-10 h-10 border-4 border-indigo-600 border-t-transparent rounded-full animate-spin" />
+            </div>
+        }>
+            <UniversityPortalContent />
+        </React.Suspense>
     );
 }

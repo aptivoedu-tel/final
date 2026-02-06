@@ -23,7 +23,7 @@ type SearchResult = {
     metadata?: any;
 };
 
-export default function SearchPage() {
+function SearchContent() {
     const searchParams = useSearchParams();
     const query = searchParams.get('q') || '';
     const [results, setResults] = useState<SearchResult[]>([]);
@@ -223,5 +223,17 @@ export default function SearchPage() {
                 </main>
             </div>
         </div>
+    );
+}
+
+export default function SearchPage() {
+    return (
+        <React.Suspense fallback={
+            <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+                <Loader2 className="w-10 h-10 text-indigo-600 animate-spin" />
+            </div>
+        }>
+            <SearchContent />
+        </React.Suspense>
     );
 }
