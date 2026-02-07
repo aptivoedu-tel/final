@@ -2,6 +2,9 @@ import { supabase } from '../supabase/client';
 import * as XLSX from 'xlsx';
 
 export interface MCQRow {
+    subject?: string;
+    topic?: string;
+    subtopic?: string;
     question: string;
     image_url?: string;
     option_a: string;
@@ -27,6 +30,14 @@ export interface UploadResult {
     failedRows: number;
     errors: ValidationError[];
     uploadId?: number;
+}
+
+export interface AutoAssignResult {
+    success: boolean;
+    subjectId?: number;
+    topicId?: number;
+    subtopicId?: number | null;
+    message: string;
 }
 
 export class ExcelUploadService {
@@ -191,6 +202,9 @@ export class ExcelUploadService {
 
             if (rowErrors.length === 0) {
                 validData.push({
+                    subject: normalizedRow.subject?.trim(),
+                    topic: normalizedRow.topic?.trim(),
+                    subtopic: normalizedRow.subtopic?.trim(),
                     question: normalizedRow.question.trim(),
                     image_url: normalizedRow.image_url?.trim(),
                     option_a: normalizedRow.option_a.trim(),
@@ -255,7 +269,194 @@ export class ExcelUploadService {
     }
 
     /**
-     * Upload MCQs to database
+     * Find or create subject by name
+     */
+    private static async findOrCreateSubject(subjectName: string): Promise<number | null> {
+        try {
+            const normalizedName = subjectName.trim();
+
+            // First, try to find existing subject (case-insensitive)
+            const { data: existing } = await supabase
+                .from('subjects')
+                .select('id')
+                .ilike('name', normalizedName)
+                .limit(1)
+                .single();
+
+            if (existing) {
+                return existing.id;
+            }
+
+            // If not found, create new subject
+            const { data: newSubject, error } = await supabase
+                .from('subjects')
+                .insert([{
+                    name: normalizedName,
+                    description: `Auto-created from bulk upload`,
+                    is_active: true
+                }])
+                .select('id')
+                .single();
+
+            if (error || !newSubject) {
+                console.error('Failed to create subject:', error);
+                return null;
+            }
+
+            return newSubject.id;
+        } catch (error) {
+            console.error('Error in findOrCreateSubject:', error);
+            return null;
+        }
+    }
+
+    /**
+     * Find or create topic by name under a subject
+     */
+    private static async findOrCreateTopic(topicName: string, subjectId: number): Promise<number | null> {
+        try {
+            const normalizedName = topicName.trim();
+
+            // First, try to find existing topic (case-insensitive, under this subject)
+            const { data: existing } = await supabase
+                .from('topics')
+                .select('id')
+                .eq('subject_id', subjectId)
+                .ilike('name', normalizedName)
+                .limit(1)
+                .single();
+
+            if (existing) {
+                return existing.id;
+            }
+
+            // If not found, create new topic
+            const { data: newTopic, error } = await supabase
+                .from('topics')
+                .insert([{
+                    name: normalizedName,
+                    subject_id: subjectId,
+                    description: `Auto-created from bulk upload`,
+                    is_active: true
+                }])
+                .select('id')
+                .single();
+
+            if (error || !newTopic) {
+                console.error('Failed to create topic:', error);
+                return null;
+            }
+
+            return newTopic.id;
+        } catch (error) {
+            console.error('Error in findOrCreateTopic:', error);
+            return null;
+        }
+    }
+
+    /**
+     * Find or create subtopic by name under a topic
+     */
+    private static async findOrCreateSubtopic(subtopicName: string | null | undefined, topicId: number): Promise<number | null> {
+        try {
+            // If no subtopic name provided, return null (will use topic directly)
+            if (!subtopicName || subtopicName.trim() === '') {
+                return null;
+            }
+
+            const normalizedName = subtopicName.trim();
+
+            // First, try to find existing subtopic (case-insensitive, under this topic)
+            const { data: existing } = await supabase
+                .from('subtopics')
+                .select('id')
+                .eq('topic_id', topicId)
+                .ilike('name', normalizedName)
+                .limit(1)
+                .single();
+
+            if (existing) {
+                return existing.id;
+            }
+
+            // If not found, create new subtopic
+            const { data: newSubtopic, error } = await supabase
+                .from('subtopics')
+                .insert([{
+                    name: normalizedName,
+                    topic_id: topicId,
+                    content_markdown: `Auto-created from bulk upload`,
+                    is_active: true
+                }])
+                .select('id')
+                .single();
+
+            if (error || !newSubtopic) {
+                console.error('Failed to create subtopic:', error);
+                return null;
+            }
+
+            return newSubtopic.id;
+        } catch (error) {
+            console.error('Error in findOrCreateSubtopic:', error);
+            return null;
+        }
+    }
+
+    /**
+     * Auto-assign question to subject/topic/subtopic based on MCQ data
+     */
+    static async autoAssignHierarchy(mcq: MCQRow): Promise<AutoAssignResult> {
+        try {
+            // Validate that we have at least subject and topic
+            if (!mcq.subject || !mcq.topic) {
+                return {
+                    success: false,
+                    message: 'Subject and Topic are required for auto-assignment'
+                };
+            }
+
+            // Step 1: Find or create subject
+            const subjectId = await this.findOrCreateSubject(mcq.subject);
+            if (!subjectId) {
+                return {
+                    success: false,
+                    message: `Failed to find or create subject: ${mcq.subject}`
+                };
+            }
+
+            // Step 2: Find or create topic
+            const topicId = await this.findOrCreateTopic(mcq.topic, subjectId);
+            if (!topicId) {
+                return {
+                    success: false,
+                    message: `Failed to find or create topic: ${mcq.topic} under subject ${mcq.subject}`
+                };
+            }
+
+            // Step 3: Find or create subtopic (optional)
+            const subtopicId = await this.findOrCreateSubtopic(mcq.subtopic, topicId);
+
+            return {
+                success: true,
+                subjectId,
+                topicId,
+                subtopicId,
+                message: subtopicId
+                    ? `Assigned to ${mcq.subject} > ${mcq.topic} > ${mcq.subtopic}`
+                    : `Assigned to ${mcq.subject} > ${mcq.topic} (no subtopic)`
+            };
+        } catch (error) {
+            console.error('Error in autoAssignHierarchy:', error);
+            return {
+                success: false,
+                message: `System error during auto-assignment: ${error}`
+            };
+        }
+    }
+
+    /**
+     * Upload MCQs to database (original method - for backward compatibility)
      */
     static async uploadMCQs(
         mcqs: MCQRow[],
@@ -400,6 +601,127 @@ export class ExcelUploadService {
                 processedRows: 0,
                 failedRows: mcqs.length,
                 errors: [{ row: 0, field: 'system', message: 'System error during upload' }]
+            };
+        }
+    }
+
+    /**
+     * Upload MCQs with auto-detection and assignment
+     */
+    static async uploadMCQsWithAutoDetect(
+        mcqs: MCQRow[],
+        userId: string,
+        fileName: string
+    ): Promise<UploadResult> {
+        try {
+            let processedCount = 0;
+            let failedCount = 0;
+            const errors: ValidationError[] = [];
+
+            // Group MCQs by hierarchy to minimize database calls
+            const hierarchyCache = new Map<string, { subjectId: number; topicId: number; subtopicId: number | null }>();
+
+            for (let i = 0; i < mcqs.length; i++) {
+                const mcq = mcqs[i];
+                const hierarchyKey = `${mcq.subject}|${mcq.topic}|${mcq.subtopic || 'NO_SUBTOPIC'}`;
+
+                let hierarchy = hierarchyCache.get(hierarchyKey);
+
+                if (!hierarchy) {
+                    // Auto-assign hierarchy
+                    const assignResult = await this.autoAssignHierarchy(mcq);
+
+                    if (!assignResult.success || !assignResult.subjectId || !assignResult.topicId) {
+                        failedCount++;
+                        errors.push({
+                            row: i + 2,
+                            field: 'hierarchy',
+                            message: assignResult.message
+                        });
+                        continue;
+                    }
+
+                    hierarchy = {
+                        subjectId: assignResult.subjectId!,
+                        topicId: assignResult.topicId!,
+                        subtopicId: assignResult.subtopicId ?? null
+                    };
+                    hierarchyCache.set(hierarchyKey, hierarchy);
+                }
+
+                // Ensure hierarchy is defined
+                if (!hierarchy) {
+                    failedCount++;
+                    errors.push({
+                        row: i + 2,
+                        field: 'hierarchy',
+                        message: 'Failed to resolve hierarchy'
+                    });
+                    continue;
+                }
+
+                // Insert MCQ
+                try {
+                    const mcqData: any = {
+                        question: mcq.question,
+                        question_image_url: mcq.image_url,
+                        option_a: mcq.option_a,
+                        option_b: mcq.option_b,
+                        option_c: mcq.option_c,
+                        option_d: mcq.option_d,
+                        correct_option: mcq.correct_option,
+                        explanation: mcq.explanation,
+                        explanation_url: mcq.explanation_url,
+                        difficulty: mcq.difficulty || 'medium',
+                        is_active: true
+                    };
+
+                    // Assign to subtopic if available, otherwise to topic
+                    if (hierarchy.subtopicId) {
+                        mcqData.subtopic_id = hierarchy.subtopicId;
+                    } else {
+                        mcqData.topic_id = hierarchy.topicId;
+                    }
+
+                    const { error: insertError } = await supabase
+                        .from('mcqs')
+                        .insert([mcqData]);
+
+                    if (insertError) {
+                        failedCount++;
+                        errors.push({
+                            row: i + 2,
+                            field: 'insert',
+                            message: `Failed to insert MCQ: ${insertError.message}`
+                        });
+                    } else {
+                        processedCount++;
+                    }
+                } catch (insertErr) {
+                    failedCount++;
+                    errors.push({
+                        row: i + 2,
+                        field: 'insert',
+                        message: `Error inserting MCQ: ${insertErr}`
+                    });
+                }
+            }
+
+            return {
+                success: failedCount === 0,
+                totalRows: mcqs.length,
+                processedRows: processedCount,
+                failedRows: failedCount,
+                errors
+            };
+        } catch (error) {
+            console.error('Auto-detect upload error:', error);
+            return {
+                success: false,
+                totalRows: mcqs.length,
+                processedRows: 0,
+                failedRows: mcqs.length,
+                errors: [{ row: 0, field: 'system', message: 'System error during auto-detect upload' }]
             };
         }
     }

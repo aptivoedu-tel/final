@@ -28,6 +28,7 @@ export default function UniversalUploader() {
     // Excel Specific State
     const [parsedMCQs, setParsedMCQs] = useState<MCQRow[]>([]);
     const [validationErrors, setValidationErrors] = useState<any[]>([]);
+    const [autoDetectMode, setAutoDetectMode] = useState(false);
 
     // Markdown Specific State
     const [markdownContent, setMarkdownContent] = useState('');
@@ -102,14 +103,28 @@ export default function UniversalUploader() {
     };
 
     const handleUpload = async () => {
-        if (!selectedSubtopic) {
-            alert('Please select a subtopic');
-            return;
-        }
-
         const user = AuthService.getCurrentUser();
         if (!user) {
             alert('Please login to upload content');
+            return;
+        }
+
+        // For auto-detect mode (Excel only)
+        if (activeTab === 'excel' && autoDetectMode) {
+            setUploadStatus('uploading');
+            const result = await ExcelUploadService.uploadMCQsWithAutoDetect(
+                parsedMCQs,
+                user.id,
+                file?.name || 'unknown.xlsx'
+            );
+            setUploadResult(result);
+            setUploadStatus(result.success ? 'success' : 'error');
+            return;
+        }
+
+        // For manual mode, require subtopic selection
+        if (!selectedSubtopic) {
+            alert('Please select a subtopic');
             return;
         }
 
@@ -151,7 +166,11 @@ export default function UniversalUploader() {
 
     const downloadTemplate = () => {
         if (activeTab === 'excel') {
-            const template = `question,image_url,option_a,option_b,option_c,option_d,correct_option,explanation,explanation_url,difficulty
+            const template = autoDetectMode
+                ? `subject,topic,subtopic,question,image_url,option_a,option_b,option_c,option_d,correct_option,explanation,explanation_url,difficulty
+English,Grammar,Tenses,What is the past tense of "go"?,https://example.com/image.jpg,go,went,gone,going,B,The past tense of 'go' is 'went',,easy
+Mathematics,Algebra,,What is 2+2?,,2,3,4,5,C,Two plus two equals four,https://example.com/explain,easy`
+                : `question,image_url,option_a,option_b,option_c,option_d,correct_option,explanation,explanation_url,difficulty
 What is 2+2?,https://example.com/image.jpg,2,3,4,5,C,Two plus two equals four,https://example.com/explain,easy
 Which planet is closest to the Sun?,,Mercury,Venus,Earth,Mars,A,Mercury is the first planet from the Sun,,medium`;
 
@@ -224,10 +243,45 @@ Conclusion here...`;
                     </button>
                 </div>
 
+                {/* Auto-Detect Mode Toggle (Excel Only) */}
+                {activeTab === 'excel' && uploadStatus === 'idle' && (
+                    <div className="mb-6 p-4 bg-indigo-50/50 rounded-xl border border-indigo-100">
+                        <div className="flex items-center justify-between">
+                            <div className="flex-1">
+                                <div className="flex items-center gap-3 mb-1">
+                                    <div className="w-2 h-2 bg-indigo-600 rounded-full"></div>
+                                    <h3 className="text-base font-bold text-gray-900">Auto-Detect Mode</h3>
+                                </div>
+                                <p className="text-sm text-gray-600 ml-5">
+                                    Automatically detect and assign questions to subjects, topics, and subtopics from your Excel file.
+                                    {autoDetectMode ? ' Download the template to see the required format.' : ' Enable this to use bulk upload without manual selection.'}
+                                </p>
+                            </div>
+                            <button
+                                onClick={() => {
+                                    setAutoDetectMode(!autoDetectMode);
+                                    if (!autoDetectMode) {
+                                        setSelectedSubject(null);
+                                        setSelectedTopic(null);
+                                        setSelectedSubtopic(null);
+                                    }
+                                }}
+                                className={`ml-4 relative inline-flex h-8 w-14 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 ${autoDetectMode ? 'bg-indigo-600' : 'bg-gray-200'
+                                    }`}
+                            >
+                                <span
+                                    className={`inline-block h-6 w-6 transform rounded-full bg-white shadow-lg transition-transform ${autoDetectMode ? 'translate-x-7' : 'translate-x-1'
+                                        }`}
+                                />
+                            </button>
+                        </div>
+                    </div>
+                )}
+
                 {/* Content Hierarchy Selection */}
-                {uploadStatus === 'idle' && (
+                {uploadStatus === 'idle' && !autoDetectMode && (
                     <div className="mb-8 p-6 bg-gray-50/50 rounded-xl border border-gray-100">
-                        <h3 className="text-lg font-semibold text-gray-900 mb-4">1. Select Target Subtopic</h3>
+                        <h3 className="text-lg font-semibold text-gray-900 mb-4">1. Select Target {activeTab === 'excel' ? 'Subtopic' : 'Subtopic'}</h3>
                         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                             {/* Subject */}
                             <div>
