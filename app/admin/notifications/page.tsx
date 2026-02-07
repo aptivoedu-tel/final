@@ -138,18 +138,9 @@ export default function AdminNotificationsPage() {
 
             // 1. Upload Image if present
             if (imageFile) {
-                const fileName = `${Date.now()}_${imageFile.name}`;
-                const { data: uploadData, error: uploadError } = await supabase.storage
-                    .from('notifications')
-                    .upload(fileName, imageFile);
-
-                if (uploadError) throw new Error(`Upload failed: ${uploadError.message}`);
-
-                const { data: { publicUrl } } = supabase.storage
-                    .from('notifications')
-                    .getPublicUrl(fileName);
-
-                imageUrl = publicUrl;
+                const { url, error: uploadError } = await NotificationService.uploadNotificationImage(imageFile);
+                if (uploadError) throw new Error(`Upload failed: ${uploadError}`);
+                imageUrl = url || '';
             }
 
             let res;

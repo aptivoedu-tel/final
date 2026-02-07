@@ -376,4 +376,33 @@ export class NotificationService {
             return { history: [], error: error.message };
         }
     }
+
+    /**
+     * Upload notification attachment image
+     */
+    static async uploadNotificationImage(file: File): Promise<{ url: string | null; error?: string }> {
+        try {
+            const fileExt = file.name.split('.').pop();
+            const fileName = `${Date.now()}-${Math.random().toString(36).substring(2)}.${fileExt}`;
+            const filePath = `announcements/${fileName}`;
+
+            const { data, error: uploadError } = await supabase.storage
+                .from('notifications')
+                .upload(filePath, file, {
+                    cacheControl: '3600',
+                    upsert: true
+                });
+
+            if (uploadError) throw uploadError;
+
+            const { data: { publicUrl } } = supabase.storage
+                .from('notifications')
+                .getPublicUrl(filePath);
+
+            return { url: publicUrl };
+        } catch (error: any) {
+            console.error('Error uploading notification image:', error);
+            return { url: null, error: error.message };
+        }
+    }
 }
