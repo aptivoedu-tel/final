@@ -6,54 +6,54 @@
 
 @layer theme {
   :root {
-    /* Primary Colors - Modern Teal Theme */
+
+    /* Primary Green Theme */
     --primary: #0D9488;
     --primary-light: #5EEAD4;
     --primary-dark: #115E59;
-    --primary-glow: rgba(13, 148, 136, 0.15);
+    --primary-glow: rgba(13, 148, 136, 0.18);
 
-    /* Secondary Colors - Teal Accents (Replacing Indigo) */
+    /* Secondary Green */
     --secondary: #115E59;
-    /* Using Dark Teal as Secondary */
     --secondary-light: #2DD4BF;
-    /* Teal 400 */
-    --secondary-dark: #134e4a;
-    /* Teal 900 */
+    --secondary-dark: #134E4A;
 
-    /* Neutral Palette */
-    --background: #F8FAFC;
-    --foreground: #1E293B;
+    /* Neutral Backgrounds (Green-tinted) */
+    --background: #F8FFFE;
+    --foreground: #0F172A;
     --surface: #FFFFFF;
-    --surface-hover: #F0FDFA;
-    /* Teal-tinted surface hover */
-    --border: #E2E8F0;
-    --border-light: #F1F5F9;
+    --surface-hover: #ECFEF9;
 
-    /* Text Colors */
+    /* Borders */
+    --border: #D1FAE5;
+    --border-light: #E6FFFA;
+
+    /* Text */
     --text-primary: #0F172A;
-    --text-secondary: #64748B;
-    --text-tertiary: #94A3B8;
-    --text-muted: #CBD5E1;
+    --text-secondary: #475569;
+    --text-tertiary: #64748B;
+    --text-muted: #94A3B8;
 
-    /* Status Colors */
+    /* Status (All Theme Green) */
     --success: #0D9488;
-    /* Using Primary Teal for Success to match theme */
-    --warning: #F59E0B;
-    --error: #EF4444;
+    --warning: #2DD4BF;
+    /* Teal instead of orange */
+    --error: #0F766E;
+    /* Dark green instead of red */
     --info: #0D9488;
-    /* Using Primary Teal for Info */
 
-    /* Shadows - Soft & Subtle */
-    --shadow-sm: 0 2px 8px rgba(13, 148, 136, 0.1);
-    --shadow-md: 0 4px 16px rgba(13, 148, 136, 0.15);
-    --shadow-lg: 0 10px 30px rgba(13, 148, 136, 0.2);
-    --shadow-xl: 0 20px 50px rgba(13, 148, 136, 0.25);
-    --shadow-glow: 0 8px 24px var(--primary-glow);
+    /* Shadows */
+    --shadow-sm: 0 2px 8px rgba(13, 148, 136, 0.12);
+    --shadow-md: 0 4px 18px rgba(13, 148, 136, 0.18);
+    --shadow-lg: 0 12px 32px rgba(13, 148, 136, 0.22);
+    --shadow-xl: 0 24px 60px rgba(13, 148, 136, 0.28);
+    --shadow-glow: 0 0 20px rgba(13, 148, 136, 0.35);
 
     /* Glassmorphism */
-    --glass-bg: rgba(255, 255, 255, 0.7);
-    --glass-border: rgba(255, 255, 255, 0.3);
-    --glass-blur: blur(10px);
+    --glass-bg: rgba(255, 255, 255, 0.75);
+    --glass-border: rgba(13, 148, 136, 0.25);
+    --glass-blur: blur(12px);
+
 
     /* Border Radius */
     --radius-sm: 8px;
