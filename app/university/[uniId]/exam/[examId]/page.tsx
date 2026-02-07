@@ -18,6 +18,8 @@ interface Exam {
     allow_continue_after_time_up: boolean;
     auto_submit: boolean;
     negative_marking?: number;
+    start_time?: string;
+    end_time?: string;
 }
 
 interface Section {
@@ -138,15 +140,30 @@ export default function StudentExamPage() {
     };
 
     const handleAttemptSession = async (userId: string, ex: Exam) => {
+        // Time Window Check
+        const now = new Date();
+        if (ex.start_time && new Date(ex.start_time) > now) {
+            toast.error("This exam has not started yet.");
+            throw new Error(`Exam starts at ${new Date(ex.start_time).toLocaleString()}`);
+        }
+
         const { data: existing } = await supabase
             .from('exam_attempts')
             .select('*')
             .eq('student_id', userId)
             .eq('exam_id', ex.id)
-            .eq('status', 'in_progress')
-            .single();
+            .single(); // Get any attempt (completed or in_progress)
 
-        if (existing) {
+        // Check End Time compliance
+        if (ex.end_time && new Date(ex.end_time) < now) {
+            // Exam window has passed
+            if (!existing || existing.status === 'completed') {
+                throw new Error(`Exam ended at ${new Date(ex.end_time).toLocaleString()}`);
+            }
+            // If in_progress, allow them to continue/finish
+        }
+
+        if (existing && existing.status === 'in_progress') {
             setAttemptId(existing.id);
             const { data: ans } = await supabase.from('exam_answers').select('*').eq('attempt_id', existing.id);
             const ansMap: any = {};
@@ -154,8 +171,8 @@ export default function StudentExamPage() {
             setAnswers(ansMap);
 
             const startTime = new Date(existing.start_time).getTime();
-            const now = new Date().getTime();
-            const elapsed = Math.floor((now - startTime) / 1000);
+            const currentTime = new Date().getTime();
+            const elapsed = Math.floor((currentTime - startTime) / 1000);
             const remaining = (ex.total_duration * 60) - elapsed;
 
             if (remaining <= 0 && !ex.allow_continue_after_time_up) {

@@ -111,6 +111,18 @@ export default function LoginPage() {
             if (result.user) {
                 const user = result.user;
 
+                // Role Validation: Prevent cross-login
+                if (role === 'student' && (user.role === 'super_admin' || user.role === 'institution_admin')) {
+                    setError('This account is an administrator account. Please use the Institution login option.');
+                    setLoading(false);
+                    return;
+                }
+                if (role === 'admin' && user.role === 'student') {
+                    setError('This account is a student account. Please use the Student login option.');
+                    setLoading(false);
+                    return;
+                }
+
                 // Handle Remember Me
                 if (rememberMe) {
                     localStorage.setItem('aptivo_remembered_email', email);

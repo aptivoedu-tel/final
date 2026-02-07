@@ -328,64 +328,142 @@ export default function UniversityDetailPage() {
                             </div>
 
                             {activeTab === 'exams' ? (
-                                <div className="space-y-6">
-                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                        {exams.length === 0 ? (
-                                            <div className="col-span-full py-20 bg-white rounded-[2.5rem] border border-dashed border-slate-200 text-center">
-                                                <FileText className="w-16 h-16 mx-auto mb-4 text-slate-100" />
-                                                <h3 className="text-xl font-bold text-slate-900">No Exams Scheduled</h3>
-                                                <p className="text-slate-500 font-medium">Check back later for mock tests and final examinations.</p>
-                                            </div>
-                                        ) : (
-                                            exams.map(exam => (
-                                                <div
-                                                    key={exam.id}
-                                                    className="group relative bg-white rounded-[2.5rem] border border-slate-100 overflow-hidden shadow-xl shadow-slate-100/50 hover:shadow-2xl hover:shadow-teal-100/20 transition-all duration-500"
-                                                >
-                                                    <div className="bg-gradient-to-br from-teal-900 via-teal-800 to-emerald-950 p-8 pb-12 relative overflow-hidden">
-                                                        <div className="absolute top-0 right-0 w-48 h-48 bg-teal-500/10 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2" />
-                                                        <div className="relative z-10 flex justify-between items-start mb-6">
-                                                            <div className="px-5 py-2 bg-white/10 backdrop-blur-md rounded-full border border-white/20 text-white font-black text-[10px] uppercase tracking-widest flex items-center gap-2">
-                                                                <Clock className="w-3.5 h-3.5 text-teal-300" /> {exam.total_duration} MINS
-                                                            </div>
-                                                            <div className="w-12 h-12 bg-white/10 backdrop-blur-md rounded-2xl flex items-center justify-center border border-white/20">
-                                                                <FileText className="w-6 h-6 text-teal-400" />
-                                                            </div>
-                                                        </div>
-                                                        <h3 className="relative z-10 text-3xl font-black text-white tracking-tighter mb-2 group-hover:translate-x-1 transition-transform">{exam.name}</h3>
-                                                        <span className="relative z-10 text-teal-300/80 text-[10px] font-black uppercase tracking-[0.2em]">Session ID: #AX-{exam.id.toString().padStart(4, '0')}</span>
-                                                    </div>
-
-                                                    <div className="p-8 -mt-6 relative z-20">
-                                                        <div className="bg-white rounded-[2rem] p-6 shadow-xl shadow-slate-200/50 border border-slate-50 space-y-6">
-                                                            <p className="text-slate-500 text-sm font-medium leading-relaxed">
-                                                                Formal evaluation aligned with your current academic session objectives. Ensuring proper calibration of knowledge.
-                                                            </p>
-
-                                                            <div className="grid grid-cols-2 gap-4">
-                                                                <div className="p-5 bg-slate-50 rounded-2xl border border-slate-100 flex flex-col gap-1">
-                                                                    <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Attempt Policy</span>
-                                                                    <span className="text-xs font-black text-slate-700 uppercase">{exam.allow_reattempt ? 'UNRESTRICTED' : 'SINGLE ATTEMPT'}</span>
-                                                                </div>
-                                                                <div className="p-5 bg-slate-50 rounded-2xl border border-slate-100 flex flex-col gap-1">
-                                                                    <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Result Delivery</span>
-                                                                    <span className="text-xs font-black text-slate-700 uppercase">{exam.result_release_setting === 'instant' ? 'IMMEDIATE' : 'DEFERRED'}</span>
-                                                                </div>
-                                                            </div>
-
-                                                            <button
-                                                                onClick={() => router.push(`/university/${uniId}/exam/${exam.id}`)}
-                                                                className="w-full py-5 bg-teal-800 text-white rounded-[1.5rem] text-[11px] font-black uppercase tracking-[0.25em] hover:bg-teal-700 transition-all shadow-2xl shadow-teal-900/20 active:scale-[0.98] flex items-center justify-center gap-3 group/btn"
-                                                            >
-                                                                Initialize Examination
-                                                                <ArrowRight className="w-4 h-4 group-hover/btn:translate-x-2 transition-transform" />
-                                                            </button>
-                                                        </div>
-                                                    </div>
+                                <div className="space-y-8">
+                                    {/* Institution Exams Section */}
+                                    {exams.filter(e => e.institution_id !== null).length > 0 && (
+                                        <div>
+                                            <div className="flex items-center gap-3 mb-6">
+                                                <div className="w-10 h-10 bg-amber-100 rounded-2xl flex items-center justify-center">
+                                                    <GraduationCap className="w-5 h-5 text-amber-600" />
                                                 </div>
-                                            ))
-                                        )}
+                                                <div>
+                                                    <h3 className="text-xl font-black text-slate-900">Institution Tests</h3>
+                                                    <p className="text-xs text-slate-500 font-medium">Created by your institution</p>
+                                                </div>
+                                            </div>
+                                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                                {exams.filter(e => e.institution_id !== null).map(exam => (
+                                                    <div
+                                                        key={exam.id}
+                                                        className="group relative bg-white rounded-[2.5rem] border border-amber-100 overflow-hidden shadow-xl shadow-amber-100/50 hover:shadow-2xl hover:shadow-amber-100/30 transition-all duration-500"
+                                                    >
+                                                        <div className="bg-gradient-to-br from-amber-600 via-amber-500 to-orange-600 p-8 pb-12 relative overflow-hidden">
+                                                            <div className="absolute top-0 right-0 w-48 h-48 bg-white/10 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2" />
+                                                            <div className="relative z-10 flex justify-between items-start mb-6">
+                                                                <div className="flex gap-2">
+                                                                    <div className="px-4 py-2 bg-white/20 backdrop-blur-md rounded-full border border-white/20 text-white font-black text-[10px] uppercase tracking-widest flex items-center gap-2">
+                                                                        <GraduationCap className="w-3.5 h-3.5" /> Institution
+                                                                    </div>
+                                                                    <div className="px-4 py-2 bg-white/10 backdrop-blur-md rounded-full border border-white/20 text-white font-black text-[10px] uppercase tracking-widest flex items-center gap-2">
+                                                                        <Clock className="w-3.5 h-3.5" /> {exam.total_duration} MINS
+                                                                    </div>
+                                                                </div>
+                                                            </div>
+                                                            <h3 className="relative z-10 text-3xl font-black text-white tracking-tighter mb-2">{exam.name}</h3>
+                                                        </div>
+                                                        <div className="p-8 -mt-6 relative z-20">
+                                                            <div className="bg-white rounded-[2rem] p-6 shadow-xl shadow-slate-200/50 border border-slate-50 space-y-6">
+                                                                <div className="grid grid-cols-2 gap-4">
+                                                                    <div className="p-5 bg-amber-50 rounded-2xl border border-amber-100 flex flex-col gap-1">
+                                                                        <span className="text-[9px] font-black text-amber-600 uppercase tracking-widest">Attempt Policy</span>
+                                                                        <span className="text-xs font-black text-slate-700 uppercase">{exam.allow_reattempt ? 'UNRESTRICTED' : 'SINGLE'}</span>
+                                                                    </div>
+                                                                    <div className="p-5 bg-amber-50 rounded-2xl border border-amber-100 flex flex-col gap-1">
+                                                                        <span className="text-[9px] font-black text-amber-600 uppercase tracking-widest">Result</span>
+                                                                        <span className="text-xs font-black text-slate-700 uppercase">{exam.result_release_setting === 'instant' ? 'IMMEDIATE' : 'DEFERRED'}</span>
+                                                                    </div>
+                                                                </div>
+                                                                <button
+                                                                    onClick={() => router.push(`/university/${uniId}/exam/${exam.id}`)}
+                                                                    className="w-full py-5 bg-amber-600 text-white rounded-[1.5rem] text-[11px] font-black uppercase tracking-[0.25em] hover:bg-amber-700 transition-all shadow-2xl shadow-amber-900/20 flex items-center justify-center gap-3"
+                                                                >
+                                                                    Start Test <ArrowRight className="w-4 h-4" />
+                                                                </button>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        </div>
+                                    )}
+
+                                    {/* Global/University Exams Section */}
+                                    <div>
+                                        <div className="flex items-center gap-3 mb-6">
+                                            <div className="w-10 h-10 bg-teal-100 rounded-2xl flex items-center justify-center">
+                                                <FileText className="w-5 h-5 text-teal-600" />
+                                            </div>
+                                            <div>
+                                                <h3 className="text-xl font-black text-slate-900">University Official Exams</h3>
+                                                <p className="text-xs text-slate-500 font-medium">Standard university assessments</p>
+                                            </div>
+                                        </div>
+                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                            {exams.filter(e => e.institution_id === null).length === 0 ? (
+                                                <div className="col-span-full py-20 bg-white rounded-[2.5rem] border border-dashed border-slate-200 text-center">
+                                                    <FileText className="w-16 h-16 mx-auto mb-4 text-slate-100" />
+                                                    <h3 className="text-xl font-bold text-slate-900">No Official Exams Scheduled</h3>
+                                                    <p className="text-slate-500 font-medium">Check back later for university examinations.</p>
+                                                </div>
+                                            ) : (
+                                                exams.filter(e => e.institution_id === null).map(exam => (
+                                                    <div
+                                                        key={exam.id}
+                                                        className="group relative bg-white rounded-[2.5rem] border border-slate-100 overflow-hidden shadow-xl shadow-slate-100/50 hover:shadow-2xl hover:shadow-teal-100/20 transition-all duration-500"
+                                                    >
+                                                        <div className="bg-gradient-to-br from-teal-900 via-teal-800 to-emerald-950 p-8 pb-12 relative overflow-hidden">
+                                                            <div className="absolute top-0 right-0 w-48 h-48 bg-teal-500/10 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2" />
+                                                            <div className="relative z-10 flex justify-between items-start mb-6">
+                                                                <div className="px-5 py-2 bg-white/10 backdrop-blur-md rounded-full border border-white/20 text-white font-black text-[10px] uppercase tracking-widest flex items-center gap-2">
+                                                                    <Clock className="w-3.5 h-3.5 text-teal-300" /> {exam.total_duration} MINS
+                                                                </div>
+                                                                <div className="w-12 h-12 bg-white/10 backdrop-blur-md rounded-2xl flex items-center justify-center border border-white/20">
+                                                                    <FileText className="w-6 h-6 text-teal-400" />
+                                                                </div>
+                                                            </div>
+                                                            <h3 className="relative z-10 text-3xl font-black text-white tracking-tighter mb-2 group-hover:translate-x-1 transition-transform">{exam.name}</h3>
+                                                            <span className="relative z-10 text-teal-300/80 text-[10px] font-black uppercase tracking-[0.2em]">Session ID: #AX-{exam.id.toString().padStart(4, '0')}</span>
+                                                        </div>
+
+                                                        <div className="p-8 -mt-6 relative z-20">
+                                                            <div className="bg-white rounded-[2rem] p-6 shadow-xl shadow-slate-200/50 border border-slate-50 space-y-6">
+                                                                <p className="text-slate-500 text-sm font-medium leading-relaxed">
+                                                                    Formal evaluation aligned with your current academic session objectives.
+                                                                </p>
+
+                                                                <div className="grid grid-cols-2 gap-4">
+                                                                    <div className="p-5 bg-slate-50 rounded-2xl border border-slate-100 flex flex-col gap-1">
+                                                                        <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Attempt Policy</span>
+                                                                        <span className="text-xs font-black text-slate-700 uppercase">{exam.allow_reattempt ? 'UNRESTRICTED' : 'SINGLE ATTEMPT'}</span>
+                                                                    </div>
+                                                                    <div className="p-5 bg-slate-50 rounded-2xl border border-slate-100 flex flex-col gap-1">
+                                                                        <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Result Delivery</span>
+                                                                        <span className="text-xs font-black text-slate-700 uppercase">{exam.result_release_setting === 'instant' ? 'IMMEDIATE' : 'DEFERRED'}</span>
+                                                                    </div>
+                                                                </div>
+
+                                                                <button
+                                                                    onClick={() => router.push(`/university/${uniId}/exam/${exam.id}`)}
+                                                                    className="w-full py-5 bg-teal-800 text-white rounded-[1.5rem] text-[11px] font-black uppercase tracking-[0.25em] hover:bg-teal-700 transition-all shadow-2xl shadow-teal-900/20 active:scale-[0.98] flex items-center justify-center gap-3 group/btn"
+                                                                >
+                                                                    Initialize Examination
+                                                                    <ArrowRight className="w-4 h-4 group-hover/btn:translate-x-1 transition-transform" />
+                                                                </button>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                ))
+                                            )}
+                                        </div>
                                     </div>
+
+                                    {exams.length === 0 && (
+                                        <div className="py-20 bg-white rounded-[2.5rem] border border-dashed border-slate-200 text-center">
+                                            <FileText className="w-16 h-16 mx-auto mb-4 text-slate-100" />
+                                            <h3 className="text-xl font-bold text-slate-900">No Exams Available</h3>
+                                            <p className="text-slate-500 font-medium">Check back later for mock tests and examinations.</p>
+                                        </div>
+                                    )}
                                 </div>
                             ) : activeTab === 'library' ? (
                                 <div className="grid grid-cols-1 gap-8">
@@ -561,8 +639,8 @@ export default function UniversityDetailPage() {
                                     </div>
                                 </div>
                             ) : null}
-                        </div>
-                    </div>
+                        </div >
+                    </div >
                 </main >
             </div >
         </div >
