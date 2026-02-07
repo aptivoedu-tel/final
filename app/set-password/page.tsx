@@ -6,6 +6,7 @@ import { Lock, Eye, EyeOff, ShieldCheck, ArrowRight, CheckCircle2 } from 'lucide
 import { supabase } from '@/lib/supabase/client';
 import { AuthService } from '@/lib/services/authService';
 import { toast } from 'sonner';
+import { useLoading } from '@/lib/context/LoadingContext';
 
 function SetPasswordContent() {
     const router = useRouter();
@@ -13,7 +14,7 @@ function SetPasswordContent() {
     const [password, setPassword] = useState('');
     const [confirmPassword, setConfirmPassword] = useState('');
     const [showPassword, setShowPassword] = useState(false);
-    const [loading, setLoading] = useState(false);
+    const { setLoading: setGlobalLoading, isLoading: loading } = useLoading();
     const [user, setUser] = useState<any>(null);
     const next = searchParams.get('next') || '/dashboard';
 
@@ -47,7 +48,7 @@ function SetPasswordContent() {
             return;
         }
 
-        setLoading(true);
+        setGlobalLoading(true, 'Hardening Your Security...');
 
         try {
             // 1. Update password in Supabase Auth
@@ -78,7 +79,7 @@ function SetPasswordContent() {
         } catch (error: any) {
             toast.error(error.message || 'Failed to set password');
         } finally {
-            setLoading(false);
+            setGlobalLoading(false);
         }
     };
 
@@ -171,10 +172,7 @@ function SetPasswordContent() {
                             className={`btn btn-primary w-full h-12 flex items-center justify-center gap-2 shadow-lg shadow-primary/20 transition-all active:scale-[0.98] ${loading ? 'opacity-70 cursor-not-allowed' : ''}`}
                         >
                             {loading ? (
-                                <>
-                                    <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                                    <span>Securing Account...</span>
-                                </>
+                                <span>Save Password...</span>
                             ) : (
                                 <>
                                     <span>Save Password</span>
@@ -195,11 +193,7 @@ function SetPasswordContent() {
 
 export default function SetPasswordPage() {
     return (
-        <React.Suspense fallback={
-            <div className="min-h-screen bg-[#F8FAFC] flex items-center justify-center">
-                <div className="w-10 h-10 border-4 border-primary border-t-transparent rounded-full animate-spin" />
-            </div>
-        }>
+        <React.Suspense fallback={null}>
             <SetPasswordContent />
         </React.Suspense>
     );

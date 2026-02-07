@@ -25,26 +25,27 @@ export default function Loader({ size = 'md', text, fullScreen = false }: Loader
     };
 
     const content = (
-        <div className="flex flex-col items-center justify-center gap-6 animate-in fade-in duration-500">
+        <div className="flex flex-col items-center justify-center gap-6 animate-in fade-in duration-500" aria-busy="true" role="status">
             <div className={`relative ${sizeMap[size]} flex items-center justify-center`}>
                 {/* Revolving Circle */}
-                <div className="absolute inset-0 border-4 border-slate-100 rounded-full" />
-                <div className="absolute inset-0 border-4 border-indigo-600 rounded-full border-t-transparent animate-spin" />
+                <div className="absolute inset-0 border-4 border-emerald-50 rounded-full" />
+                <div className="absolute inset-0 border-4 border-emerald-500 rounded-full border-t-transparent animate-spin" />
 
                 {/* Mortarboard Logo */}
-                <div className="relative z-10 text-indigo-600">
+                <div className="relative z-10 text-emerald-600">
                     <GraduationCap className={iconSizeMap[size]} />
                 </div>
 
                 {/* Pulsing Glow */}
-                <div className="absolute inset-0 bg-indigo-400/20 rounded-full blur-xl animate-pulse" />
+                <div className="absolute inset-0 bg-emerald-400/20 rounded-full blur-xl animate-pulse" />
             </div>
 
             {text && (
-                <p className="text-slate-500 font-black text-[10px] lg:text-xs uppercase tracking-[0.2em] animate-pulse">
+                <p className="text-emerald-800 font-black text-[10px] lg:text-xs uppercase tracking-[0.2em] animate-pulse">
                     {text}
                 </p>
             )}
+            <span className="sr-only">Loading...</span>
         </div>
     );
 

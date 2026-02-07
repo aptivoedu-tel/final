@@ -6,10 +6,11 @@ import { Plus, Upload, Search, Trash2, Ban, CheckCircle, RefreshCw, Eye, EyeOff,
 import { toast } from 'sonner';
 import { AuthService } from '@/lib/services/authService';
 import * as XLSX from 'xlsx';
+import { useLoading } from '@/lib/context/LoadingContext';
 
 export default function StudentManagerPage() {
     const [students, setStudents] = useState<any[]>([]);
-    const [loading, setLoading] = useState(true);
+    const { setLoading: setGlobalLoading, isLoading: loading } = useLoading();
     const [search, setSearch] = useState('');
     const [showAddModal, setShowAddModal] = useState(false);
     const [adminInstitutionId, setAdminInstitutionId] = useState<number | null>(null);
@@ -23,15 +24,15 @@ export default function StudentManagerPage() {
         password: '',
     });
 
-    const [creating, setCreating] = useState(false);
-    const [uploading, setUploading] = useState(false);
+    const creating = loading;
+    const uploading = loading;
 
     useEffect(() => {
         loadStudents();
     }, []);
 
     const loadStudents = async () => {
-        setLoading(true);
+        setGlobalLoading(true, 'Accessing Student Directory...');
         try {
             const { data: { user } } = await supabase.auth.getUser();
             if (!user) return;
@@ -58,7 +59,7 @@ export default function StudentManagerPage() {
             console.error(err);
             toast.error("Failed to load students: " + err.message);
         } finally {
-            setLoading(false);
+            setGlobalLoading(false);
         }
     };
 
@@ -81,9 +82,9 @@ export default function StudentManagerPage() {
             return;
         }
 
-        setCreating(true);
+        setGlobalLoading(true, 'Enrolling Student...');
         await createSingleStudent(newStudent.name, newStudent.studentId, newStudent.password, currentInstId);
-        setCreating(false);
+        setGlobalLoading(false);
         setShowAddModal(false);
         setNewStudent({ studentId: '', name: '', password: '' });
         loadStudents(); // Refresh list
@@ -138,7 +139,7 @@ export default function StudentManagerPage() {
         const file = e.target.files?.[0];
         if (!file) return;
 
-        setUploading(true);
+        setGlobalLoading(true, 'Consulting Pedagogical Records...');
         const reader = new FileReader();
 
         reader.onload = async (evt) => {
@@ -151,7 +152,7 @@ export default function StudentManagerPage() {
 
                 if (data.length === 0) {
                     toast.error("Excel file is empty");
-                    setUploading(false);
+                    setGlobalLoading(false);
                     return;
                 }
 
@@ -170,7 +171,7 @@ export default function StudentManagerPage() {
 
                 if (!currentInstId) {
                     toast.error("Institution ID missing. Cannot process bulk upload.");
-                    setUploading(false);
+                    setGlobalLoading(false);
                     return;
                 }
 
@@ -194,7 +195,7 @@ export default function StudentManagerPage() {
             } catch (error: any) {
                 toast.error("Failed to parse Excel: " + error.message);
             } finally {
-                setUploading(false);
+                setGlobalLoading(false);
                 if (fileInputRef.current) fileInputRef.current.value = ''; // Reset
             }
         };
@@ -273,7 +274,7 @@ export default function StudentManagerPage() {
                         disabled={uploading}
                         className="flex items-center justify-center gap-2 px-3 lg:px-4 py-2 bg-white border border-gray-200 text-slate-700 rounded-xl hover:bg-gray-50 font-bold transition-all shadow-sm text-xs sm:text-sm"
                     >
-                        {uploading ? <RefreshCw className="w-4 h-4 animate-spin" /> : <FileSpreadsheet className="w-4 h-4" />}
+                        <FileSpreadsheet className="w-4 h-4" />
                         <span className="whitespace-nowrap">{uploading ? 'Processing...' : 'Bulk Upload'}</span>
                     </button>
                     <button
@@ -320,7 +321,7 @@ export default function StudentManagerPage() {
                     </thead>
                     <tbody className="divide-y divide-gray-100">
                         {loading && students.length === 0 ? (
-                            <tr><td colSpan={6} className="p-8 text-center text-gray-400">Loading directory...</td></tr>
+                            <tr><td colSpan={6} className="p-8 text-center text-gray-400 font-bold uppercase tracking-widest text-[10px]">Consulting Database...</td></tr>
                         ) : filteredStudents.length === 0 ? (
                             <tr><td colSpan={6} className="p-12 text-center text-gray-400">
                                 {adminInstitutionId ? "No students found." : "Waiting for connection..."}
@@ -450,7 +451,6 @@ export default function StudentManagerPage() {
                                     disabled={creating}
                                     className="flex-1 py-3 bg-indigo-600 text-white font-bold rounded-xl hover:bg-indigo-700 transition-colors disabled:opacity-50 flex justify-center items-center gap-2"
                                 >
-                                    {creating ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Plus className="w-5 h-5" />}
                                     {creating ? 'Creating...' : 'Create'}
                                 </button>
                             </div>

@@ -5,6 +5,7 @@ import { Plus, ChevronRight, ChevronDown, Edit2, Trash2, GripVertical, Layers, H
 import Sidebar from '@/components/layout/Sidebar';
 import Header from '@/components/layout/Header';
 import { useUI } from '@/lib/context/UIContext';
+import { useLoading } from '@/lib/context/LoadingContext';
 import { AuthService } from '@/lib/services/authService';
 import { supabase } from '@/lib/supabase/client';
 import {
@@ -129,7 +130,7 @@ const DraggableItem = ({ item, level, children, onExpand, onDelete }: {
 export default function HierarchyManagerPage() {
     const [user, setUser] = useState<any>(null);
     const [data, setData] = useState<HierarchyItem[]>([]);
-    const [loading, setLoading] = useState(true);
+    const { setLoading: setGlobalLoading, isLoading: loading } = useLoading();
     const [activeDragItem, setActiveDragItem] = useState<HierarchyItem | null>(null);
     const [mounted, setMounted] = useState(false);
     const { isSidebarCollapsed } = useUI();
@@ -147,7 +148,7 @@ export default function HierarchyManagerPage() {
     );
 
     const loadHierarchy = async () => {
-        setLoading(true);
+        setGlobalLoading(true, 'Architecting Content Hierarchy...');
         const { data: subjects } = await supabase.from('subjects').select('*').order('id');
         const { data: topics } = await supabase.from('topics').select('*').order('id');
         const { data: subtopics } = await supabase.from('subtopics').select('*').order('id');
@@ -175,7 +176,7 @@ export default function HierarchyManagerPage() {
             }));
             setData(tree);
         }
-        setLoading(false);
+        setGlobalLoading(false);
     };
 
     useEffect(() => {
@@ -216,7 +217,7 @@ export default function HierarchyManagerPage() {
         if (validItems.length === 0) return;
 
         try {
-            setLoading(true);
+            setGlobalLoading(true, 'Committing structural changes...');
             for (const item of validItems) {
                 if (addType === 'subject') {
                     const { error } = await supabase.from('subjects').insert({ name: item });
@@ -236,7 +237,7 @@ export default function HierarchyManagerPage() {
         } catch (e: any) {
             console.error(e);
             alert(`Error adding item: ${e.message || e}`);
-            setLoading(false);
+            setGlobalLoading(false);
         }
     };
 
@@ -373,6 +374,8 @@ export default function HierarchyManagerPage() {
             </div>
         ));
     };
+
+    if (loading) return null;
 
     if (!mounted) return null;
 

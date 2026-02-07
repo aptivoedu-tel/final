@@ -2,7 +2,7 @@
 
 import React from 'react';
 import {
-    Save, FileText, Eye, ChevronDown, Loader2, BookOpen,
+    Save, FileText, Eye, ChevronDown, BookOpen,
     Bold, Italic, List, Heading1, Heading2, Quote, Code, Link as LinkIcon,
     Table as TableIcon, Image as ImageIcon, Minus, Braces, AlertCircle,
     Plus, Search, ChevronRight
@@ -10,9 +10,8 @@ import {
 import { AuthService } from '@/lib/services/authService';
 import { supabase } from '@/lib/supabase/client';
 import MarkdownRenderer from '@/components/shared/MarkdownRenderer';
-
-
 import { useSearchParams } from 'next/navigation';
+import { useLoading } from '@/lib/context/LoadingContext';
 
 export default function ContentEditor() {
     const searchParams = useSearchParams();
@@ -20,9 +19,7 @@ export default function ContentEditor() {
     const [userRole, setUserRole] = React.useState<string>('student');
     const [viewMode, setViewMode] = React.useState<'edit' | 'split' | 'preview'>('preview');
     const [content, setContent] = React.useState<string>('');
-    const [loading, setLoading] = React.useState(false);
-    const [saving, setSaving] = React.useState(false);
-    const [imageUploading, setImageUploading] = React.useState(false);
+    const { setLoading: setGlobalLoading, isLoading: loading } = useLoading();
 
     const isReadOnly = userRole === 'institution_admin';
 
@@ -98,7 +95,7 @@ export default function ContentEditor() {
             return;
         }
 
-        setImageUploading(true);
+        setGlobalLoading(true, 'Optimizing Media Asset...');
         try {
             const fileExt = file.name.split('.').pop();
             const fileName = `${Math.random().toString(36).substring(2)}-${Date.now()}.${fileExt}`;
@@ -135,8 +132,8 @@ export default function ContentEditor() {
         } catch (error: any) {
             alert('Error uploading image: ' + error.message);
         } finally {
-            setImageUploading(false);
-            e.target.value = '';
+            setGlobalLoading(false);
+            if (e.target) e.target.value = '';
         }
     };
 
@@ -156,7 +153,6 @@ export default function ContentEditor() {
         const subtId = searchParams.get('subtopic');
 
         if (subtId) {
-            // If subtopic is provided, we need to find its topic and subject
             const fetchHierarchy = async () => {
                 const { data: st } = await supabase
                     .from('subtopics')
@@ -235,23 +231,26 @@ export default function ContentEditor() {
     }, [selectedSubtopic]);
 
     const loadContent = async (subId: string) => {
-        setLoading(true);
-        if (subId === 'no_subtopic') {
-            const { data } = await supabase
-                .from('topics')
-                .select('content_markdown')
-                .eq('id', parseInt(selectedTopic))
-                .single();
-            setContent(data?.content_markdown || '');
-        } else {
-            const { data } = await supabase
-                .from('subtopics')
-                .select('content_markdown')
-                .eq('id', parseInt(subId))
-                .single();
-            setContent(data?.content_markdown || '');
+        setGlobalLoading(true, 'Retrieving Intellectual Property...');
+        try {
+            if (subId === 'no_subtopic') {
+                const { data } = await supabase
+                    .from('topics')
+                    .select('content_markdown')
+                    .eq('id', parseInt(selectedTopic))
+                    .single();
+                setContent(data?.content_markdown || '');
+            } else {
+                const { data } = await supabase
+                    .from('subtopics')
+                    .select('content_markdown')
+                    .eq('id', parseInt(subId))
+                    .single();
+                setContent(data?.content_markdown || '');
+            }
+        } finally {
+            setGlobalLoading(false);
         }
-        setLoading(false);
     };
 
     const handleSave = async () => {
@@ -260,53 +259,49 @@ export default function ContentEditor() {
             return;
         }
 
-        setSaving(true);
-        let targetSubtopicId = selectedSubtopic;
+        setGlobalLoading(true, 'Committing Changes to Repository...');
+        try {
+            let targetSubtopicId = selectedSubtopic;
 
-        if (selectedSubtopic === 'no_subtopic') {
+            if (selectedSubtopic === 'no_subtopic') {
+                const { error } = await supabase
+                    .from('topics')
+                    .update({ content_markdown: content })
+                    .eq('id', parseInt(selectedTopic));
+
+                if (error) alert('Failed to save topic content: ' + error.message);
+                else alert('Topic content saved successfully!');
+                return;
+            }
+
+            if (!targetSubtopicId) {
+                alert('Target subtopic not found.');
+                return;
+            }
+
             const { error } = await supabase
-                .from('topics')
+                .from('subtopics')
                 .update({ content_markdown: content })
-                .eq('id', parseInt(selectedTopic));
+                .eq('id', parseInt(targetSubtopicId));
 
-            if (error) alert('Failed to save topic content: ' + error.message);
-            else alert('Topic content saved successfully!');
-            setSaving(false);
-            return;
+            if (error) alert('Failed to save: ' + error.message);
+            else alert('Content saved successfully!');
+        } finally {
+            setGlobalLoading(false);
         }
-
-        if (!targetSubtopicId) {
-            alert('Target subtopic not found.');
-            setSaving(false);
-            return;
-        }
-
-        const { error } = await supabase
-            .from('subtopics')
-            .update({ content_markdown: content })
-            .eq('id', parseInt(targetSubtopicId));
-
-        if (error) alert('Failed to save: ' + error.message);
-        else alert('Content saved successfully!');
-        setSaving(false);
     };
 
     if (isReadOnly) {
         return (
             <div className="flex-1 flex flex-col h-full space-y-8 animate-in fade-in duration-700">
-                {/* Library Header */}
                 <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
                     <div>
                         <h1 className="text-4xl font-black text-slate-900 tracking-tighter">Global Content Library</h1>
                         <p className="text-slate-500 font-medium mt-1">Platform-wide overview of educational material and structure.</p>
                     </div>
-                    <button className="px-6 py-3 bg-white border border-slate-200 rounded-2xl flex items-center gap-2 text-[10px] font-black uppercase tracking-widest text-slate-900 hover:bg-slate-50 transition-all shadow-sm">
-                        <Plus className="w-4 h-4" /> Structure
-                    </button>
                 </div>
 
                 <div className="flex-1 flex gap-8 min-h-0">
-                    {/* Sidebar Tree */}
                     <div className="w-80 bg-white rounded-[2.5rem] border border-slate-100 shadow-xl shadow-slate-200/50 flex flex-col overflow-hidden">
                         <div className="p-6 border-b border-slate-50">
                             <div className="relative">
@@ -336,13 +331,11 @@ export default function ContentEditor() {
                         </div>
                     </div>
 
-                    {/* Main Content Area */}
                     <div className="flex-1 bg-white rounded-[2.5rem] border border-slate-100 shadow-xl shadow-slate-200/50 overflow-hidden flex flex-col relative">
                         {selectedSubtopic ? (
                             <div className="flex-1 overflow-y-auto custom-scrollbar pt-32 pb-12 px-12">
                                 <div className="prose prose-slate max-w-none">
                                     <MarkdownRenderer content={content} />
-
                                 </div>
                             </div>
                         ) : (
@@ -358,7 +351,6 @@ export default function ContentEditor() {
                             </div>
                         )}
 
-                        {/* If subject selected, show topics/subtopics selector */}
                         {selectedSubject && (
                             <div className="absolute inset-x-0 top-0 p-6 bg-white/95 backdrop-blur-md border-b border-slate-50 z-20 shadow-sm">
                                 <div className="flex gap-4">
@@ -425,11 +417,11 @@ export default function ContentEditor() {
 
                     <button
                         onClick={handleSave}
-                        disabled={saving || !selectedTopic || (!selectedSubtopic && selectedSubtopic !== 'no_subtopic')}
+                        disabled={loading || !selectedTopic || (!selectedSubtopic && selectedSubtopic !== 'no_subtopic')}
                         className="w-full sm:w-auto flex items-center justify-center gap-2 px-6 py-2.5 bg-teal-600 text-white font-black uppercase tracking-wider text-[11px] rounded-xl hover:bg-slate-900 transition-all shadow-lg shadow-teal-100 active:scale-95 disabled:opacity-50"
                     >
-                        <Save className={`${saving ? 'animate-spin' : 'w-4 h-4'}`} />
-                        {saving ? 'Saving...' : 'Save Content'}
+                        <Save className="w-4 h-4" />
+                        Save Content
                     </button>
                 </div>
             </div>
@@ -485,12 +477,6 @@ export default function ContentEditor() {
             </div>
 
             <div className="flex-1 min-h-0 bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden flex relative">
-                {loading && (
-                    <div className="absolute inset-0 bg-white/50 z-10 flex items-center justify-center backdrop-blur-[2px]">
-                        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-teal-600"></div>
-                    </div>
-                )}
-
                 {!selectedSubtopic && !loading && (
                     <div className="absolute inset-0 z-10 flex items-center justify-center bg-gray-50/10">
                         <p className="text-slate-400 font-medium">Please select a topic or subtopic above to start editing content</p>
@@ -532,9 +518,8 @@ export default function ContentEditor() {
                                     onClick={() => document.getElementById('image-upload')?.click()}
                                     className="p-1.5 hover:bg-slate-100 rounded text-slate-500 hover:text-teal-600 flex items-center gap-1"
                                     title="Upload Image"
-                                    disabled={imageUploading}
                                 >
-                                    {imageUploading ? <Loader2 className="w-4 h-4 animate-spin" /> : <ImageIcon className="w-4 h-4" />}
+                                    <ImageIcon className="w-4 h-4" />
                                 </button>
                                 <div className="absolute top-10 left-0 w-64 p-3 bg-slate-900 text-white rounded-xl text-[9px] font-bold opacity-0 group-hover/upload:opacity-100 transition-opacity pointer-events-none z-50 shadow-2xl">
                                     <p className="text-teal-400 uppercase tracking-widest mb-1">✨ Image Resizing Pro-Tip</p>
@@ -572,7 +557,6 @@ export default function ContentEditor() {
                         <div className="flex-1 p-8 overflow-y-auto custom-scrollbar prose max-w-none">
                             {content ? (
                                 <MarkdownRenderer content={content} />
-
                             ) : (
                                 <p className="text-slate-300 italic">Preview will appear here</p>
                             )}

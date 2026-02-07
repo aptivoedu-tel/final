@@ -14,11 +14,12 @@ import Sidebar from '@/components/layout/Sidebar';
 import Header from '@/components/layout/Header';
 import { useUI } from '@/lib/context/UIContext';
 import { AuthService } from '@/lib/services/authService';
+import { useLoading } from '@/lib/context/LoadingContext';
 import { AnalyticsService, TotalStats, GrowthData, WeakTopic } from '@/lib/services/analyticsService';
 
 export default function AnalyticsPage() {
     const [user, setUser] = useState<any>(null);
-    const [loading, setLoading] = useState(true);
+    const { setLoading: setGlobalLoading, isLoading: loading } = useLoading();
     const [dateRange, setDateRange] = useState<'7d' | '30d' | '90d'>('30d');
     const { isSidebarCollapsed } = useUI();
 
@@ -35,6 +36,7 @@ export default function AnalyticsPage() {
     }, [dateRange]);
 
     const loadAnalytics = async () => {
+        setGlobalLoading(true, 'Consulting Academic Intelligence...');
         const currentUser = AuthService.getCurrentUser();
         // Fallback for dev
         const storedUser = typeof window !== 'undefined' ? localStorage.getItem('aptivo_user') : null;
@@ -69,7 +71,7 @@ export default function AnalyticsPage() {
         } catch (error) {
             console.error("Error loading analytics:", error);
         } finally {
-            setLoading(false);
+            setGlobalLoading(false);
         }
     };
 

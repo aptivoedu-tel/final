@@ -9,10 +9,11 @@ import {
     Star, RefreshCw, Check
 } from 'lucide-react';
 import { useUI } from '@/lib/context/UIContext';
+import { useLoading } from '@/lib/context/LoadingContext';
 
 export default function AdminFeedbacksPage() {
     const [feedbacks, setFeedbacks] = useState<any[]>([]);
-    const [loading, setLoading] = useState(true);
+    const { setLoading: setGlobalLoading, isLoading: loading } = useLoading();
     const [user, setUser] = useState<any>(null);
     const { isSidebarCollapsed } = useUI();
 
@@ -26,7 +27,7 @@ export default function AdminFeedbacksPage() {
     }, []);
 
     const loadFeedbacks = async () => {
-        setLoading(true);
+        setGlobalLoading(true, 'Reviewing Academic Testimonials...');
         try {
             const { data, error } = await supabase
                 .from('feedbacks')
@@ -41,7 +42,7 @@ export default function AdminFeedbacksPage() {
         } catch (error) {
             console.error("Error loading feedbacks:", error);
         } finally {
-            setLoading(false);
+            setGlobalLoading(false);
         }
     };
 
@@ -75,11 +76,7 @@ export default function AdminFeedbacksPage() {
                             <p className="text-sm sm:text-base text-slate-500 mt-1 font-medium">Review student feedback and select features for the home page.</p>
                         </div>
 
-                        {loading ? (
-                            <div className="py-20 text-center">
-                                <RefreshCw className="w-6 h-6 text-teal-600 animate-spin mx-auto" />
-                            </div>
-                        ) : (
+                        {loading ? null : (
                             <div className="grid gap-4">
                                 {feedbacks.map((f) => (
                                     <div key={f.id} className="bg-white border border-gray-100 rounded-2xl p-5 sm:p-6 hover:shadow-xl hover:shadow-slate-200/50 transition-all group active:scale-[0.99]">

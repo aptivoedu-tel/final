@@ -4,8 +4,10 @@ import React, { useEffect, useState, useRef } from 'react';
 import {
     User, Mail, Camera, Save, Lock, MapPin,
     Building2, Shield, Activity, Phone,
-    CheckCircle, XCircle, Loader2
+    CheckCircle, XCircle
 } from 'lucide-react';
+import { useLoading } from '@/lib/context/LoadingContext';
+
 import Sidebar from '@/components/layout/Sidebar';
 import Header from '@/components/layout/Header';
 import { AuthService } from '@/lib/services/authService';
@@ -16,9 +18,8 @@ export default function AdminProfilePage() {
     const [user, setUser] = useState<any>(null);
     const [profile, setProfile] = useState<ProfileData | null>(null);
     const [institutions, setInstitutions] = useState<any[]>([]);
-    const [loading, setLoading] = useState(true);
-    const [saving, setSaving] = useState(false);
-    const [uploading, setUploading] = useState(false);
+    const { setLoading: setGlobalLoading, isLoading: loading } = useLoading();
+
     const { isSidebarCollapsed } = useUI();
 
     // Form States
@@ -34,6 +35,8 @@ export default function AdminProfilePage() {
     }, []);
 
     const loadProfile = async () => {
+        setGlobalLoading(true, 'Accessing security clearance...');
+
         const currentUser = AuthService.getCurrentUser();
         const storedUser = typeof window !== 'undefined' ? localStorage.getItem('aptivo_user') : null;
         const activeUser = currentUser || (storedUser ? JSON.parse(storedUser) : null);
@@ -60,14 +63,16 @@ export default function AdminProfilePage() {
         } catch (error) {
             console.error("Error loading profile:", error);
         } finally {
-            setLoading(false);
+            setTimeout(() => setGlobalLoading(false), 800);
         }
     };
 
+
     const handleUpdateProfile = async (e: React.FormEvent) => {
         e.preventDefault();
-        setSaving(true);
+        setGlobalLoading(true, 'Updating System Records...');
         setMessage(null);
+
 
         if (!profile) return;
 
@@ -83,15 +88,17 @@ export default function AdminProfilePage() {
         } else {
             setMessage({ type: 'error', text: error || 'Failed to update profile' });
         }
-        setSaving(false);
+        setGlobalLoading(false);
     };
+
 
     const handleAvatarUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
         if (!file || !profile) return;
 
-        setUploading(true);
+        setGlobalLoading(true, 'Publishing Identity Image...');
         setMessage(null);
+
 
         const { avatarUrl, error } = await ProfileService.uploadAvatar(profile.id, file);
 
@@ -104,14 +111,15 @@ export default function AdminProfilePage() {
         } else {
             setMessage({ type: 'error', text: error || 'Failed to upload avatar' });
         }
-        setUploading(false);
+        setGlobalLoading(false);
     };
+
 
     const handleChangePassword = async (e: React.FormEvent) => {
         e.preventDefault();
         if (!newPassword || !currentPassword || !profile) return;
 
-        setSaving(true);
+        setGlobalLoading(true, 'Synchronizing Security Credentials...');
         setMessage(null);
 
         const { success, error } = await ProfileService.changePassword(profile.id, {
@@ -126,16 +134,10 @@ export default function AdminProfilePage() {
         } else {
             setMessage({ type: 'error', text: error || 'Failed to change password' });
         }
-        setSaving(false);
+        setGlobalLoading(false);
     };
 
-    if (loading) {
-        return (
-            <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-                <Loader2 className="w-8 h-8 text-teal-600 animate-spin" />
-            </div>
-        );
-    }
+    if (loading) return null;
 
     return (
         <div className="min-h-screen bg-gray-50 font-sans">
@@ -176,17 +178,11 @@ export default function AdminProfilePage() {
                                                         <User className="w-16 h-16" />
                                                     </div>
                                                 )}
-                                                {uploading && (
-                                                    <div className="absolute inset-0 bg-black/50 flex items-center justify-center">
-                                                        <Loader2 className="w-8 h-8 text-white animate-spin" />
-                                                    </div>
-                                                )}
                                             </div>
                                             <button
                                                 type="button"
                                                 onClick={() => fileInputRef.current?.click()}
                                                 className="absolute bottom-0 right-0 bg-teal-600 text-white p-2.5 rounded-full shadow-lg hover:bg-teal-700 transition-colors"
-                                                disabled={uploading}
                                             >
                                                 <Camera className="w-5 h-5" />
                                             </button>
@@ -235,14 +231,9 @@ export default function AdminProfilePage() {
                                     <div className="mt-8 flex justify-end">
                                         <button
                                             type="submit"
-                                            disabled={saving}
                                             className="px-6 py-2.5 bg-teal-600 text-white rounded-lg font-medium hover:bg-teal-700 transition-colors flex items-center gap-2 disabled:opacity-50"
                                         >
-                                            {saving ? (
-                                                <Loader2 className="w-4 h-4 animate-spin" />
-                                            ) : (
-                                                <Save className="w-4 h-4" />
-                                            )}
+                                            <Save className="w-4 h-4" />
                                             Save Changes
                                         </button>
                                     </div>
@@ -281,10 +272,9 @@ export default function AdminProfilePage() {
                                     <div className="mt-6 flex justify-end">
                                         <button
                                             type="submit"
-                                            disabled={saving || !newPassword || !currentPassword}
+                                            disabled={!newPassword || !currentPassword}
                                             className="px-6 py-2.5 bg-white border border-gray-200 text-slate-700 rounded-lg font-medium hover:bg-gray-50 transition-colors flex items-center gap-2 disabled:opacity-50"
                                         >
-                                            {saving && <Loader2 className="w-4 h-4 animate-spin text-teal-600" />}
                                             Change Password
                                         </button>
                                     </div>

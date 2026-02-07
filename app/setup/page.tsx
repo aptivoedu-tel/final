@@ -3,17 +3,21 @@
 import React, { useState } from 'react';
 import { supabase } from '@/lib/supabase/client';
 import { Database } from '@/lib/supabase/client';
-import { Loader2, CheckCircle, XCircle, Play, Database as DbIcon, Shield, Users, Building2, Trash2 } from 'lucide-react';
+import { CheckCircle, XCircle, Play, Database as DbIcon, Shield, Users, Building2, Trash2 } from 'lucide-react';
+import { useLoading } from '@/lib/context/LoadingContext';
+
 
 export default function SetupPage() {
     const [logs, setLogs] = useState<string[]>([]);
-    const [loading, setLoading] = useState(false);
+    const { setLoading: setGlobalLoading, isLoading: loading } = useLoading();
     const [status, setStatus] = useState<'idle' | 'running' | 'success' | 'error'>('idle');
+
 
     const addLog = (msg: string) => setLogs(prev => [...prev, `[${new Date().toLocaleTimeString()}] ${msg}`]);
 
     const runSetup = async () => {
-        setLoading(true);
+        setGlobalLoading(true, 'Initializing Application Database...');
+
         setStatus('running');
         setLogs([]);
         addLog("Starting database initialization...");
@@ -232,14 +236,16 @@ export default function SetupPage() {
             addLog(`CRITICAL ERROR: ${error.message}`);
             setStatus('error');
         } finally {
-            setLoading(false);
+            setGlobalLoading(false);
         }
     };
 
+
     const resetDatabase = async () => {
         if (!confirm("WARNING: ALL DATA WILL BE DELETED. Continue?")) return;
-        setLoading(true);
+        setGlobalLoading(true, 'Wiping Database Content...');
         addLog("Wiping Database...");
+
         try {
             // Delete child tables first
             await supabase.from('mcqs').delete().neq('id', 0);
@@ -266,9 +272,10 @@ export default function SetupPage() {
         } catch (e: any) {
             addLog(`Wipe Failed: ${e.message}`);
         } finally {
-            setLoading(false);
+            setGlobalLoading(false);
         }
     };
+
 
     return (
         <div className="min-h-screen bg-gray-50 flex items-center justify-center p-8 font-sans">
@@ -314,9 +321,9 @@ export default function SetupPage() {
                                     disabled={loading}
                                     className="flex items-center gap-2 px-8 py-4 bg-indigo-600 text-white rounded-xl font-bold text-lg hover:bg-indigo-700 transition-all shadow-lg hover:shadow-indigo-200 disabled:opacity-50 disabled:cursor-not-allowed"
                                 >
-                                    {loading ? <Loader2 className="w-6 h-6 animate-spin" /> : <Play className="w-6 h-6" />}
-                                    {loading ? 'Initializing...' : 'Run Setup Script'}
+                                    {loading ? 'Initializing Application...' : 'Run Setup Script'}
                                 </button>
+
 
                                 <button
                                     onClick={resetDatabase}

@@ -7,8 +7,10 @@ import {
     Search, RefreshCw, BookOpen,
     Eye, Edit3, Type, Bold, Italic,
     List, ListOrdered, Code, Terminal,
-    Sigma, Heading2, Quote, Image as ImageIcon, Loader2
+    Sigma, Heading2, Quote, Image as ImageIcon
 } from 'lucide-react';
+import { useLoading } from '@/lib/context/LoadingContext';
+
 import Sidebar from '@/components/layout/Sidebar';
 import Header from '@/components/layout/Header';
 import { AuthService } from '@/lib/services/authService';
@@ -34,16 +36,14 @@ type HierarchyItem = {
 export default function SuperAdminContentLibraryPage() {
     const [user, setUser] = useState<any>(null);
     const [data, setData] = useState<HierarchyItem[]>([]);
-    const [loading, setLoading] = useState(true);
+    const { setLoading: setGlobalLoading, isLoading: loading } = useLoading();
     const [searchQuery, setSearchQuery] = useState('');
     const [selectedItem, setSelectedItem] = useState<HierarchyItem | null>(null);
 
     // Content Editor Modal State
     const [isEditModalOpen, setIsEditModalOpen] = useState(false);
     const [editContent, setEditContent] = useState('');
-    const [isSaving, setIsSaving] = useState(false);
-    const [isImageUploading, setIsImageUploading] = useState(false);
-
+    const { isSidebarCollapsed } = useUI();
 
     // Editor Ref
     const textareaRef = React.useRef<HTMLTextAreaElement>(null);
@@ -73,16 +73,13 @@ export default function SuperAdminContentLibraryPage() {
             case 'mathblock': before = '\n$$\n'; after = '\n$$\n'; break;
         }
 
-        // If something was selected, wrap it. If not, insert placeholder if needed? 
-        // For simplicity, just wrap/insert.
         const newText = text.substring(0, start) + before + selected + after + text.substring(end);
         setEditContent(newText);
 
         setTimeout(() => {
             textarea.focus();
             const newCursorPos = start + before.length + selected.length + after.length;
-            // Or ideally put cursor inside?
-            // textarea.setSelectionRange(start + before.length, start + before.length + selected.length);
+            textarea.setSelectionRange(newCursorPos, newCursorPos);
         }, 0);
     };
 
@@ -95,7 +92,7 @@ export default function SuperAdminContentLibraryPage() {
             return;
         }
 
-        setIsImageUploading(true);
+        setGlobalLoading(true, 'Processing Media Asset...');
         try {
             const fileExt = file.name.split('.').pop();
             const fileName = `${Math.random().toString(36).substring(2)}-${Date.now()}.${fileExt}`;
@@ -130,17 +127,14 @@ export default function SuperAdminContentLibraryPage() {
         } catch (error: any) {
             toast.error('Error uploading image: ' + error.message);
         } finally {
-            setIsImageUploading(false);
-            e.target.value = '';
+            setGlobalLoading(false);
+            if (e.target) e.target.value = '';
         }
     };
 
-
-
     const loadHierarchy = async () => {
-        setLoading(true);
+        setGlobalLoading(true, 'Indexing Academic Curricula...');
         try {
-            // Fetch all subjects, topics, subtopics for global view
             const { data: subjects } = await supabase.from('subjects').select('*').order('name');
             const { data: topics } = await supabase.from('topics').select('*').order('name');
             const { data: subtopics } = await supabase.from('subtopics').select('*').order('name');
@@ -170,7 +164,6 @@ export default function SuperAdminContentLibraryPage() {
                 }));
                 setData(tree);
 
-                // Update selectedItem if it exists
                 if (selectedItem) {
                     const findInItems = (items: HierarchyItem[]): HierarchyItem | null => {
                         for (const item of items) {
@@ -190,7 +183,7 @@ export default function SuperAdminContentLibraryPage() {
             console.error("Error loading library:", error);
             toast.error("Failed to load hierarchy");
         } finally {
-            setLoading(false);
+            setTimeout(() => setGlobalLoading(false), 800);
         }
     };
 
@@ -203,7 +196,7 @@ export default function SuperAdminContentLibraryPage() {
 
     const handleSaveContent = async () => {
         if (!selectedItem) return;
-        setIsSaving(true);
+        setGlobalLoading(true, 'Committing Intellectual Capital...');
         try {
             const table = selectedItem.type === 'subtopic' ? 'subtopics' : 'topics';
             const { error } = await supabase
@@ -220,7 +213,7 @@ export default function SuperAdminContentLibraryPage() {
             console.error("Save error:", err);
             toast.error(err.message || "Failed to save content");
         } finally {
-            setIsSaving(false);
+            setGlobalLoading(false);
         }
     };
 
@@ -264,19 +257,15 @@ export default function SuperAdminContentLibraryPage() {
                         if (item.type === 'subject' || item.type === 'topic') {
                             handleExpandCallback(item.id);
                         }
-
-                        // Select if topic or subtopic
                         if (item.type === 'topic' || item.type === 'subtopic') {
                             setSelectedItem(item);
                         }
                     }}
                 >
-                    {/* Expand Toggle */}
                     <div className={`p-1 rounded ${selectedItem?.id === item.id ? 'text-white' : 'text-slate-500'} ${!item.children || item.children.length === 0 ? 'invisible' : ''}`}>
                         {item.expanded ? <ChevronDown className="w-3 h-3" /> : <ChevronRight className="w-3 h-3" />}
                     </div>
 
-                    {/* Icon */}
                     <div className={`
                         w-6 h-6 rounded flex items-center justify-center
                         ${selectedItem?.id === item.id ? 'bg-white/20 text-white' :
@@ -289,7 +278,6 @@ export default function SuperAdminContentLibraryPage() {
                         {item.type === 'subtopic' && <FileText className="w-3 h-3" />}
                     </div>
 
-                    {/* Content */}
                     <div className={`flex-1 text-xs font-bold truncate ${selectedItem?.id === item.id ? 'text-white' : 'text-slate-300'}`}>
                         {item.title}
                     </div>
@@ -299,7 +287,6 @@ export default function SuperAdminContentLibraryPage() {
                     )}
                 </div>
 
-                {/* Recursively render children */}
                 {item.expanded && item.children && (
                     <div className="animate-in fade-in slide-in-from-top-1 duration-200">
                         {renderTree(item.children, level + 1)}
@@ -309,7 +296,7 @@ export default function SuperAdminContentLibraryPage() {
         ));
     };
 
-    const { isSidebarCollapsed } = useUI();
+    if (loading) return null;
 
     return (
         <div className="min-h-screen bg-gray-50 flex font-sans">
@@ -333,7 +320,6 @@ export default function SuperAdminContentLibraryPage() {
                     </div>
 
                     <div className="flex-1 flex flex-col lg:flex-row gap-8 min-h-0">
-                        {/* Left: Global Hierarchy Sidebar */}
                         <div className="w-full lg:w-80 flex flex-col bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden min-h-[300px] lg:min-h-0">
                             <div className="p-4 border-b border-slate-100 bg-slate-50/50">
                                 <div className="relative">
@@ -349,12 +335,7 @@ export default function SuperAdminContentLibraryPage() {
                             </div>
 
                             <div className="flex-1 overflow-y-auto custom-scrollbar">
-                                {loading ? (
-                                    <div className="p-8 text-center text-slate-400">
-                                        <RefreshCw className="w-6 h-6 animate-spin mx-auto mb-2 text-indigo-200" />
-                                        <p className="text-[10px] font-black uppercase tracking-widest text-indigo-400">Loading ecosystem...</p>
-                                    </div>
-                                ) : data.length > 0 ? (
+                                {data.length > 0 ? (
                                     renderTree(data)
                                 ) : (
                                     <div className="p-8 text-center text-slate-400">
@@ -365,7 +346,6 @@ export default function SuperAdminContentLibraryPage() {
                             </div>
                         </div>
 
-                        {/* Right: Content Viewer */}
                         <div className="flex-1 bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden flex flex-col min-h-[500px] lg:min-h-0">
                             {selectedItem ? (
                                 <>
@@ -393,7 +373,6 @@ export default function SuperAdminContentLibraryPage() {
                                         <div className="prose max-w-none">
                                             {selectedItem.content ? (
                                                 <MarkdownRenderer content={selectedItem.content} />
-
                                             ) : (
                                                 <div className="h-full flex flex-col items-center justify-center text-center opacity-40">
                                                     <FileText className="w-16 h-16 text-slate-200 mb-4" />
@@ -417,7 +396,6 @@ export default function SuperAdminContentLibraryPage() {
                         </div>
                     </div>
 
-                    {/* Content Editor Modal */}
                     {isEditModalOpen && (
                         <div className="fixed inset-0 z-[60] flex items-center justify-center bg-slate-900/60 backdrop-blur-sm p-4">
                             <div className="bg-white rounded-3xl shadow-2xl w-full max-w-5xl h-[85vh] overflow-hidden flex flex-col animate-in fade-in zoom-in duration-200">
@@ -432,10 +410,8 @@ export default function SuperAdminContentLibraryPage() {
                                 </div>
 
                                 <div className="flex-1 overflow-hidden flex bg-slate-50">
-                                    {/* Editor */}
                                     <div className="flex-1 flex flex-col border-r border-gray-100">
                                         <div className="px-4 py-2 bg-white border-b border-gray-100 flex items-center justify-between">
-                                            {/* Toolbar */}
                                             <div className="flex items-center gap-1">
                                                 <button onClick={() => insertFormat('bold')} className="p-1.5 hover:bg-slate-100 rounded text-slate-500 hover:text-indigo-600" title="Bold">
                                                     <Bold className="w-3.5 h-3.5" />
@@ -472,28 +448,26 @@ export default function SuperAdminContentLibraryPage() {
                                                     <div className="flex text-[10px] font-bold">$$</div>
                                                 </button>
                                                 <div className="w-px h-4 bg-slate-200 mx-1"></div>
-                                                <div className="relative group/upload">
-                                                    <button
-                                                        onClick={() => document.getElementById('lib-image-upload')?.click()}
-                                                        className="p-1.5 hover:bg-slate-100 rounded text-slate-500 hover:text-indigo-600 flex items-center gap-1"
-                                                        title="Upload Image"
-                                                        disabled={isImageUploading}
-                                                    >
-                                                        {isImageUploading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <ImageIcon className="w-3.5 h-3.5" />}
-                                                    </button>
-                                                    <input
-                                                        id="lib-image-upload"
-                                                        type="file"
-                                                        className="hidden"
-                                                        accept="image/*"
-                                                        onChange={handleImageUpload}
-                                                    />
-                                                </div>
-                                            </div>
+                                                <button
+                                                    onClick={() => document.getElementById('lib-image-upload')?.click()}
+                                                    className="p-1.5 hover:bg-slate-100 rounded text-slate-500 hover:text-indigo-600 flex items-center gap-1"
+                                                    title="Upload Image"
+                                                >
+                                                    <ImageIcon className="w-3.5 h-3.5" />
+                                                </button>
 
-                                            <div className="px-3 py-1 bg-slate-100 rounded text-[9px] font-black uppercase text-indigo-600">
-                                                Markdown
+                                                <input
+                                                    id="lib-image-upload"
+                                                    type="file"
+                                                    className="hidden"
+                                                    accept="image/*"
+                                                    onChange={handleImageUpload}
+                                                />
                                             </div>
+                                        </div>
+
+                                        <div className="px-3 py-1 bg-slate-100 rounded text-[9px] font-black uppercase text-indigo-600">
+                                            Markdown
                                         </div>
                                         <textarea
                                             ref={textareaRef}
@@ -504,18 +478,11 @@ export default function SuperAdminContentLibraryPage() {
                                                 lineHeight: '1.8',
                                                 fontFamily: "'JetBrains Mono', 'Fira Code', 'Consolas', monospace"
                                             }}
-                                            placeholder="Enter educational content in markdown format...
-
-## Example Heading
-Your content here...
-
-Math: $E=mc^2$
-"
+                                            placeholder="Enter educational content in markdown format..."
                                             spellCheck={false}
                                         />
                                     </div>
 
-                                    {/* Preview */}
                                     <div className="flex-1 flex flex-col bg-white">
                                         <div className="px-4 py-2 bg-slate-50 border-b border-gray-100 flex items-center justify-between">
                                             <span className="text-[10px] font-black uppercase text-slate-400">Live Preview</span>
@@ -524,7 +491,6 @@ Math: $E=mc^2$
                                             <div className="prose max-w-none bg-white">
                                                 {editContent ? (
                                                     <MarkdownRenderer content={editContent} />
-
                                                 ) : (
                                                     <p className="text-slate-400 italic">No content to preview</p>
                                                 )}
@@ -542,11 +508,11 @@ Math: $E=mc^2$
                                     </button>
                                     <button
                                         onClick={handleSaveContent}
-                                        disabled={isSaving}
+                                        disabled={loading}
                                         className="flex items-center gap-2 px-8 py-2.5 bg-indigo-600 text-white font-black rounded-xl hover:bg-indigo-700 transition-all shadow-lg shadow-indigo-600/20 text-sm disabled:opacity-50"
                                     >
-                                        {isSaving ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
-                                        {isSaving ? 'Processing...' : 'Sync Content'}
+                                        <Save className="w-4 h-4" />
+                                        Sync Content
                                     </button>
                                 </div>
                             </div>

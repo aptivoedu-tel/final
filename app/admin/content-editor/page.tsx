@@ -26,11 +26,7 @@ export default function ContentEditorPage() {
             <div className={`flex-1 flex flex-col min-h-screen transition-all duration-300 ${isSidebarCollapsed ? 'lg:ml-28' : 'lg:ml-80'}`}>
                 <Header userName={user?.full_name || 'Admin'} userEmail={user?.email || 'admin@aptivo.edu'} />
                 <main className="flex-1 pt-28 lg:pt-24 pb-12 px-4 sm:px-8 flex flex-col min-h-0">
-                    <React.Suspense fallback={
-                        <div className="flex-1 flex items-center justify-center">
-                            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-teal-600"></div>
-                        </div>
-                    }>
+                    <React.Suspense fallback={null}>
                         <ContentEditor />
                     </React.Suspense>
                 </main>

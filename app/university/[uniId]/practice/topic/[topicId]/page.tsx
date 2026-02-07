@@ -20,6 +20,7 @@ import {
 import { supabase } from '@/lib/supabase/client';
 import { PracticeService, MCQ } from '@/lib/services/practiceService';
 import { toast } from 'sonner';
+import { useLoading } from '@/lib/context/LoadingContext';
 
 export default function TopicPracticeSessionPage() {
     const router = useRouter();
@@ -27,7 +28,7 @@ export default function TopicPracticeSessionPage() {
     const uniId = parseInt(params.uniId as string);
     const topicId = parseInt(params.topicId as string);
 
-    const [loading, setLoading] = useState(true);
+    const { setLoading: setGlobalLoading, isLoading: loading } = useLoading();
     const [questions, setQuestions] = useState<MCQ[]>([]);
     const [currentIndex, setCurrentIndex] = useState(0);
     const [answers, setAnswers] = useState<Record<number, string>>({});
@@ -43,6 +44,7 @@ export default function TopicPracticeSessionPage() {
 
     useEffect(() => {
         const initSession = async () => {
+            setGlobalLoading(true, 'Initialising Topic Practice...');
             try {
                 const { data: { user } } = await supabase.auth.getUser();
                 if (!user) {
@@ -88,7 +90,7 @@ export default function TopicPracticeSessionPage() {
                 if (error) throw new Error(error);
                 setSession(session);
 
-                setLoading(false);
+                setGlobalLoading(false);
 
                 // 3. Start Timer
                 timerRef.current = setInterval(() => {
@@ -188,15 +190,7 @@ export default function TopicPracticeSessionPage() {
         return `${mins}:${secs.toString().padStart(2, '0')}`;
     };
 
-    if (loading) {
-        return (
-            <div className="min-h-screen bg-[#F8FAFC] flex flex-col items-center justify-center p-8">
-                <div className="w-20 h-20 border-4 border-teal-100 border-t-teal-600 rounded-full animate-spin mb-6" />
-                <h2 className="text-xl font-black text-slate-900 animate-pulse">Initializing Topic Practice...</h2>
-                <p className="text-slate-500 mt-2">Loading core module questions</p>
-            </div>
-        );
-    }
+    if (loading || (!isCompleted && questions.length === 0)) return null;
 
     if (isCompleted && results) {
         return (

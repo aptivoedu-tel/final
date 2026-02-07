@@ -17,6 +17,7 @@ import MarkdownRenderer from '@/components/shared/MarkdownRenderer';
 
 import Link from 'next/link';
 import { useUI } from '@/lib/context/UIContext';
+import { useLoading } from '@/lib/context/LoadingContext';
 
 export default function LessonReaderPage() {
     const { isSidebarCollapsed } = useUI();
@@ -25,7 +26,7 @@ export default function LessonReaderPage() {
     const uniId = params.uniId as string;
     const subtopicId = params.subtopicId as string;
 
-    const [loading, setLoading] = useState(true);
+    const { setLoading: setGlobalLoading, isLoading: loading } = useLoading();
     const [user, setUser] = useState<any>(null);
     const [userRole, setUserRole] = useState<string>('student');
     const [subtopic, setSubtopic] = useState<any>(null);
@@ -50,6 +51,7 @@ export default function LessonReaderPage() {
     }, [subtopicId]);
 
     const loadLessonData = async () => {
+        setGlobalLoading(true, 'Retrieving Curriculum Content...');
         try {
             // 1. Fetch subtopic
             const { data: st, error: stError } = await supabase
@@ -84,7 +86,7 @@ export default function LessonReaderPage() {
             console.error('Error loading lesson:', e);
             setError(e.message);
         } finally {
-            setLoading(false);
+            setGlobalLoading(false);
         }
     };
 
@@ -116,14 +118,7 @@ export default function LessonReaderPage() {
     }, [user, subtopicId]);
 
 
-    if (loading) return (
-        <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-            <div className="flex flex-col items-center gap-4">
-                <div className="w-12 h-12 border-4 border-indigo-600 border-t-transparent rounded-full animate-spin" />
-                <p className="text-slate-500 font-medium tracking-wide">Retrieving curriculum content...</p>
-            </div>
-        </div>
-    );
+    if (loading) return null;
 
     if (error) return (
         <div className="min-h-screen bg-gray-50 flex items-center justify-center p-8">

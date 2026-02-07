@@ -5,6 +5,7 @@ import { Mail, Lock, User, GraduationCap, Building2, Eye, EyeOff, AlertCircle, C
 import { AuthService } from '@/lib/services/authService';
 import { supabase } from '@/lib/supabase/client';
 import Link from 'next/link';
+import { useLoading } from '@/lib/context/LoadingContext';
 
 export default function RegisterPage() {
     const [formData, setFormData] = useState({
@@ -22,7 +23,7 @@ export default function RegisterPage() {
     const [institutions, setInstitutions] = useState<any[]>([]);
     const [showPassword, setShowPassword] = useState(false);
     const [showConfirmPassword, setShowConfirmPassword] = useState(false);
-    const [loading, setLoading] = useState(false);
+    const { setLoading: setGlobalLoading, isLoading: loading } = useLoading();
     const [error, setError] = useState('');
     const [success, setSuccess] = useState(false);
     const [passwordStrength, setPasswordStrength] = useState(0);
@@ -81,29 +82,29 @@ export default function RegisterPage() {
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         setError('');
-        setLoading(true);
+        setGlobalLoading(true, 'Architecting Your Credentials...');
 
         if (!formData.fullName || !formData.email || !formData.password) {
             setError('Please fill in all required fields');
-            setLoading(false);
+            setGlobalLoading(false);
             return;
         }
 
         if (formData.password !== formData.confirmPassword) {
             setError('Passwords do not match');
-            setLoading(false);
+            setGlobalLoading(false);
             return;
         }
 
         if (formData.role === 'institution_admin') {
             if (formData.isNewInstitution && !formData.institutionName) {
                 setError('Please provide your institution name');
-                setLoading(false);
+                setGlobalLoading(false);
                 return;
             }
             if (!formData.isNewInstitution && !formData.institutionId) {
                 setError('Please select an existing institution');
-                setLoading(false);
+                setGlobalLoading(false);
                 return;
             }
         }
@@ -121,14 +122,14 @@ export default function RegisterPage() {
 
             if (registerError) {
                 setError(registerError);
-                setLoading(false);
+                setGlobalLoading(false);
                 return;
             }
 
             if (user) setSuccess(true);
         } catch (err) {
             setError('An unexpected error occurred during registration');
-            setLoading(false);
+            setGlobalLoading(false);
         }
     };
 
@@ -220,7 +221,7 @@ export default function RegisterPage() {
 
                 {/* Registration Content (Right) */}
                 <div className="flex-1 p-6 sm:p-10 lg:p-14 flex flex-col items-center bg-white overflow-y-auto custom-scrollbar">
-                    <div className="w-full max-w-xl space-y-8">
+                    <div className="w-full max-w-[520px] space-y-8">
 
                         {/* Header Section */}
                         <div className="text-center space-y-3">
@@ -358,7 +359,7 @@ export default function RegisterPage() {
                                 className="w-full py-5 bg-[#1B3A3A] text-white text-[13px] font-black rounded-[1.25rem] hover:bg-black hover:scale-[1.01] active:scale-[0.98] transition-all shadow-2xl shadow-slate-200 flex items-center justify-center gap-3 mt-4"
                             >
                                 {loading ? (
-                                    <div className="w-5 h-5 border-[3px] border-white/20 border-t-white rounded-full animate-spin"></div>
+                                    <span>Architecting Account...</span>
                                 ) : (
                                     <>
                                         <Check className="w-5 h-5" />

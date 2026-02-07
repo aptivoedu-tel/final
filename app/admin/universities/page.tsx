@@ -11,6 +11,7 @@ import Link from 'next/link';
 import MarkdownRenderer from '@/components/shared/MarkdownRenderer';
 
 import { toast } from 'sonner';
+import { useLoading } from '@/lib/context/LoadingContext';
 
 type University = {
     id: number;
@@ -25,16 +26,14 @@ type University = {
 };
 
 export default function UniversitiesPage() {
-    const [loading, setLoading] = React.useState(true);
+    const { setLoading: setGlobalLoading, isLoading: loading } = useLoading();
     const [universities, setUniversities] = React.useState<University[]>([]);
     const [searchTerm, setSearchTerm] = React.useState('');
     const [isModalOpen, setIsModalOpen] = React.useState(false);
-    const [uploading, setUploading] = React.useState(false);
     const [logoFile, setLogoFile] = React.useState<File | null>(null);
     const [editingUniversity, setEditingUniversity] = React.useState<University | null>(null);
     const [isTestPatternModalOpen, setIsTestPatternModalOpen] = React.useState(false);
     const [testPatternData, setTestPatternData] = React.useState({ id: 0, name: '', markdown: '' });
-    const [isSavingPattern, setIsSavingPattern] = React.useState(false);
 
     // Form State
     const [formData, setFormData] = React.useState({
@@ -51,7 +50,7 @@ export default function UniversitiesPage() {
     }, []);
 
     const fetchUniversities = async () => {
-        setLoading(true);
+        setGlobalLoading(true, 'Consulting University Directory...');
         const { data, error } = await supabase
             .from('universities')
             .select('*')
@@ -59,12 +58,12 @@ export default function UniversitiesPage() {
 
         if (data) setUniversities(data);
         if (error) console.error(error);
-        setLoading(false);
+        setGlobalLoading(false);
     };
 
     const handleSave = async (e: React.FormEvent) => {
         e.preventDefault();
-        setUploading(true);
+        setGlobalLoading(true, 'Synchronizing Academic Assets...');
         try {
             let logo_url = formData.logo_url;
 
@@ -117,7 +116,7 @@ export default function UniversitiesPage() {
         } catch (error: any) {
             alert(`Error saving university: ${error.message}`);
         } finally {
-            setUploading(false);
+            setGlobalLoading(false);
         }
     };
 
@@ -134,7 +133,7 @@ export default function UniversitiesPage() {
     };
 
     const handleSaveTestPattern = async () => {
-        setIsSavingPattern(true);
+        setGlobalLoading(true, 'Codifying Pedagogical Patterns...');
         try {
             const { error } = await supabase
                 .from('universities')
@@ -148,7 +147,7 @@ export default function UniversitiesPage() {
         } catch (error: any) {
             toast.error(`Error: ${error.message}`);
         } finally {
-            setIsSavingPattern(false);
+            setGlobalLoading(false);
         }
     };
 
@@ -192,11 +191,8 @@ export default function UniversitiesPage() {
                             />
                         </div>
 
-                        {/* List */}
                         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                            {loading ? (
-                                <div className="col-span-full py-12 text-center text-slate-400">Loading...</div>
-                            ) : filteredUnis.length === 0 ? (
+                            {loading ? null : filteredUnis.length === 0 ? (
                                 <div className="col-span-full py-12 text-center text-slate-400">No universities found.</div>
                             ) : (
                                 filteredUnis.map(u => (
@@ -391,15 +387,10 @@ export default function UniversitiesPage() {
                                     <div className="pt-4">
                                         <button
                                             type="submit"
-                                            disabled={uploading}
+                                            disabled={loading}
                                             className="w-full py-4 bg-teal-600 text-white font-bold rounded-xl hover:bg-teal-700 transition-colors shadow-lg shadow-teal-200 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
                                         >
-                                            {uploading ? (
-                                                <>
-                                                    <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                                                    Processing...
-                                                </>
-                                            ) : (editingUniversity ? 'Update University' : 'Create University')}
+                                            {editingUniversity ? 'Update University' : 'Create University'}
                                         </button>
                                     </div>
                                 </form>
@@ -427,15 +418,10 @@ export default function UniversitiesPage() {
                                     <div className="flex items-center gap-3">
                                         <button
                                             onClick={handleSaveTestPattern}
-                                            disabled={isSavingPattern}
+                                            disabled={loading}
                                             className="flex-1 sm:flex-none flex items-center justify-center gap-2 px-6 py-2.5 bg-teal-600 text-white font-black rounded-xl hover:bg-teal-700 transition-all shadow-lg shadow-teal-200 disabled:opacity-50 text-xs sm:text-sm"
                                         >
-                                            {isSavingPattern ? (
-                                                <div className="w-4 h-4 border-2 border-white/20 border-t-white rounded-full animate-spin" />
-                                            ) : (
-                                                <Save className="w-4 h-4" />
-                                            )}
-                                            Save
+                                            <Save className="w-4 h-4" /> Save
                                         </button>
                                         <button
                                             onClick={() => setIsTestPatternModalOpen(false)}

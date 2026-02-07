@@ -5,14 +5,15 @@ import Link from 'next/link';
 import { Users, Building2, BarChart3, ArrowRight, RefreshCw, FileText } from 'lucide-react';
 import { supabase } from '@/lib/supabase/client';
 import { AnalyticsService } from '@/lib/services/analyticsService';
+import { useLoading } from '@/lib/context/LoadingContext';
 
 export default function InstitutionAdminDashboard() {
     const [stats, setStats] = useState<any>(null);
-    const [loading, setLoading] = useState(true);
+    const { setLoading: setGlobalLoading, isLoading: loading } = useLoading();
     const [instId, setInstId] = useState<number | null>(null);
 
     const loadStats = async () => {
-        setLoading(true);
+        setGlobalLoading(true, 'Connecting to Live Servers...');
         try {
             const { data: { user } } = await supabase.auth.getUser();
             if (!user) return;
@@ -50,7 +51,7 @@ export default function InstitutionAdminDashboard() {
         } catch (err) {
             console.error(err);
         } finally {
-            setLoading(false);
+            setGlobalLoading(false);
         }
     };
 
@@ -169,7 +170,6 @@ export default function InstitutionAdminDashboard() {
                     <div>
                         <h2 className="text-2xl font-bold mb-2 flex items-center gap-2">
                             Live Activity
-                            {loading && <RefreshCw className="w-4 h-4 animate-spin text-indigo-300" />}
                         </h2>
                         {loading ? (
                             <p className="text-indigo-200">Connecting to live servers...</p>

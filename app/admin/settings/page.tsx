@@ -6,16 +6,17 @@ import Sidebar from '@/components/layout/Sidebar';
 import Header from '@/components/layout/Header';
 import { AuthService } from '@/lib/services/authService';
 import { useUI } from '@/lib/context/UIContext';
+import { useLoading } from '@/lib/context/LoadingContext';
 
 export default function SettingsPage() {
     const [activeTab, setActiveTab] = useState('general');
-    const [loading, setLoading] = useState(false);
+    const { setLoading: setGlobalLoading, isLoading: loading } = useLoading();
     const { isSidebarCollapsed } = useUI();
 
     const handleSave = () => {
-        setLoading(true);
+        setGlobalLoading(true, 'Synchronizing System Configuration...');
         setTimeout(() => {
-            setLoading(false);
+            setGlobalLoading(false);
             alert('Settings saved successfully!');
         }, 1000);
     };
@@ -37,7 +38,7 @@ export default function SettingsPage() {
                             disabled={loading}
                             className="w-full sm:w-auto flex items-center justify-center gap-2 px-6 py-2.5 bg-indigo-600 text-white font-black uppercase tracking-wider text-[11px] rounded-xl hover:bg-slate-900 transition-all shadow-lg shadow-indigo-100 active:scale-95"
                         >
-                            {loading ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
+                            {loading ? null : <Save className="w-4 h-4" />}
                             Save Changes
                         </button>
                     </div>

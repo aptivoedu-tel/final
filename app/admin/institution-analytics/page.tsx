@@ -17,14 +17,15 @@ import { AuthService } from '@/lib/services/authService';
 import { AnalyticsService } from '@/lib/services/analyticsService';
 import { ProfileService } from '@/lib/services/profileService';
 import { useUI } from '@/lib/context/UIContext';
+import { useLoading } from '@/lib/context/LoadingContext';
 
 export default function InstitutionAnalyticsPage() {
     const [user, setUser] = useState<any>(null);
-    const [loading, setLoading] = useState(true);
+    const { setLoading: setGlobalLoading, isLoading: loading } = useLoading();
     const [stats, setStats] = useState<any>(null);
     const [institutions, setInstitutions] = useState<any[]>([]);
     const [selectedInstId, setSelectedInstId] = useState<number | null>(null);
-    const [dataLoading, setDataLoading] = useState(false);
+    const dataLoading = loading;
     const { isSidebarCollapsed } = useUI();
 
     useEffect(() => {
@@ -56,37 +57,27 @@ export default function InstitutionAnalyticsPage() {
             if (instList && instList.length > 0) {
                 setSelectedInstId(instList[0].institutions.id);
             } else {
-                setLoading(false);
+                setGlobalLoading(false);
             }
         } catch (error) {
             console.error("Error loading initial data:", error);
-            setLoading(false);
+            setGlobalLoading(false);
         }
     };
 
     const loadInstitutionStats = async (id: number) => {
-        setDataLoading(true);
+        setGlobalLoading(true, 'Consulting Administrative Metrics...');
         try {
             const { stats: instStats } = await AnalyticsService.getInstitutionStats(id);
             setStats(instStats);
         } catch (error) {
             console.error("Error loading institution stats:", error);
         } finally {
-            setDataLoading(false);
-            setLoading(false);
+            setGlobalLoading(false);
         }
     };
 
-    if (loading) {
-        return (
-            <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-                <div className="flex flex-col items-center gap-4">
-                    <div className="w-12 h-12 border-4 border-indigo-600 border-t-transparent rounded-full animate-spin"></div>
-                    <p className="text-slate-500 font-medium">Loading analytics...</p>
-                </div>
-            </div>
-        );
-    }
+    if (loading) return null;
 
     const currentInst = institutions.find(i => i.institutions.id === selectedInstId)?.institutions;
 

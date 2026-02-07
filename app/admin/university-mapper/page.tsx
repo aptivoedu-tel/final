@@ -23,7 +23,8 @@ export default function UniversityContentMapperPage() {
     const [institutions, setInstitutions] = useState<any[]>([]);
     const [selectedInstId, setSelectedInstId] = useState<number | 'none'>('none');
     const [globalSessionLimit, setGlobalSessionLimit] = useState(10);
-    const [globalDifficultyLevel, setGlobalDifficultyLevel] = useState<'all' | 'easy' | 'medium' | 'hard'>('all');
+    const [selectedDifficulties, setSelectedDifficulties] = useState<string[]>(['all']);
+    const [isDifficultyOpen, setIsDifficultyOpen] = useState(false);
     const [hierarchy, setHierarchy] = useState<HierarchyNode[]>([]);
     const [saving, setSaving] = useState(false);
     const [statusMsg, setStatusMsg] = useState<{ type: 'success' | 'error', text: string } | null>(null);
@@ -108,7 +109,10 @@ export default function UniversityContentMapperPage() {
                         setGlobalSessionLimit(mappings[0].session_limit);
                     }
                     if (mappings.length > 0 && mappings[0].difficulty_level) {
-                        setGlobalDifficultyLevel(mappings[0].difficulty_level as any);
+                        const level = mappings[0].difficulty_level as string;
+                        setSelectedDifficulties(level.includes(',') ? level.split(',') : [level]);
+                    } else {
+                        setSelectedDifficulties(['all']);
                     }
 
                     setHierarchy(prev => prev.map(sub => {
@@ -123,9 +127,6 @@ export default function UniversityContentMapperPage() {
                                 isSelected: selectedSubtopics.has(st.id)
                             }));
 
-                            // Auto-select topic if ANY subtopic is selected (Visual only? OR logic?)
-                            // Better: check if topic is implicitly selected.
-                            // Let's rely on the explicit selection state.
                             const isTopicSelected = updatedSubtopics.some(st => st.isSelected);
 
                             return {
@@ -222,10 +223,39 @@ export default function UniversityContentMapperPage() {
         });
     };
 
+    const toggleDifficulty = (value: string) => {
+        if (value === 'all') {
+            setSelectedDifficulties(['all']);
+        } else {
+            let newSelection = [...selectedDifficulties];
+            if (newSelection.includes('all')) {
+                newSelection = [value];
+            } else {
+                if (newSelection.includes(value)) {
+                    newSelection = newSelection.filter(v => v !== value);
+                    if (newSelection.length === 0) newSelection = ['all'];
+                } else {
+                    newSelection.push(value);
+                }
+            }
+
+            // Check if all specific levels are selected
+            const allSpecific = ['easy', 'medium', 'hard'];
+            const hasAll = allSpecific.every(l => newSelection.includes(l));
+            if (hasAll) {
+                setSelectedDifficulties(['all']);
+            } else {
+                setSelectedDifficulties(newSelection);
+            }
+        }
+    };
+
     const handleSave = async () => {
         if (!selectedUniId) return;
         setSaving(true);
         setStatusMsg(null);
+
+        const difficultyString = selectedDifficulties.join(',');
 
         try {
             // 1. Delete existing mappings for this specific scope
@@ -257,7 +287,7 @@ export default function UniversityContentMapperPage() {
                                 subtopic_id: subtopic.id,
                                 is_active: true,
                                 session_limit: globalSessionLimit,
-                                difficulty_level: globalDifficultyLevel
+                                difficulty_level: difficultyString
                             });
                         }
                     });
@@ -275,7 +305,7 @@ export default function UniversityContentMapperPage() {
                             subtopic_id: null,
                             is_active: true,
                             session_limit: globalSessionLimit,
-                            difficulty_level: globalDifficultyLevel
+                            difficulty_level: difficultyString
                         });
                     }
                 });
@@ -363,18 +393,55 @@ export default function UniversityContentMapperPage() {
                                             />
                                         </div>
 
-                                        <div className="flex items-center justify-between gap-3 bg-white px-4 py-2 rounded-xl border border-slate-200">
-                                            <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Difficulty</span>
-                                            <select
-                                                value={globalDifficultyLevel}
-                                                onChange={(e) => setGlobalDifficultyLevel(e.target.value as any)}
-                                                className="bg-transparent outline-none font-bold text-indigo-600 text-xs cursor-pointer"
+                                        <div className="relative z-50">
+                                            <div
+                                                className="flex items-center justify-between gap-3 bg-white px-4 py-2 rounded-xl border border-slate-200 cursor-pointer min-w-[150px] hover:border-indigo-300 transition-colors"
+                                                onClick={() => setIsDifficultyOpen(!isDifficultyOpen)}
                                             >
-                                                <option value="all">All Levels</option>
-                                                <option value="easy">Basic</option>
-                                                <option value="medium">Intermediate</option>
-                                                <option value="hard">Advanced</option>
-                                            </select>
+                                                <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Difficulty</span>
+                                                <div className="flex items-center gap-2">
+                                                    <span className="text-xs font-black text-indigo-600">
+                                                        {selectedDifficulties.includes('all') ? 'All Levels' : `${selectedDifficulties.length} Selected`}
+                                                    </span>
+                                                    <ChevronDown className={`w-3 h-3 text-indigo-600 transition-transform ${isDifficultyOpen ? 'rotate-180' : ''}`} />
+                                                </div>
+                                            </div>
+
+                                            {isDifficultyOpen && (
+                                                <>
+                                                    <div className="fixed inset-0 z-40" onClick={() => setIsDifficultyOpen(false)} />
+                                                    <div className="absolute top-full right-0 mt-2 w-48 bg-white rounded-xl shadow-xl border border-gray-100 overflow-hidden z-50 animate-fade-in">
+                                                        <div
+                                                            className="flex items-center justify-between p-3 hover:bg-slate-50 cursor-pointer border-b border-gray-50"
+                                                            onClick={() => toggleDifficulty('all')}
+                                                        >
+                                                            <span className="text-xs font-bold text-slate-700">All Levels</span>
+                                                            {selectedDifficulties.includes('all') && <CheckCircle className="w-4 h-4 text-indigo-600" />}
+                                                        </div>
+                                                        <div
+                                                            className="flex items-center justify-between p-3 hover:bg-slate-50 cursor-pointer border-b border-gray-50"
+                                                            onClick={() => toggleDifficulty('easy')}
+                                                        >
+                                                            <span className="text-xs font-bold text-slate-700">Basic</span>
+                                                            {selectedDifficulties.includes('easy') && <CheckCircle className="w-4 h-4 text-indigo-600" />}
+                                                        </div>
+                                                        <div
+                                                            className="flex items-center justify-between p-3 hover:bg-slate-50 cursor-pointer border-b border-gray-50"
+                                                            onClick={() => toggleDifficulty('medium')}
+                                                        >
+                                                            <span className="text-xs font-bold text-slate-700">Intermediate</span>
+                                                            {selectedDifficulties.includes('medium') && <CheckCircle className="w-4 h-4 text-indigo-600" />}
+                                                        </div>
+                                                        <div
+                                                            className="flex items-center justify-between p-3 hover:bg-slate-50 cursor-pointer"
+                                                            onClick={() => toggleDifficulty('hard')}
+                                                        >
+                                                            <span className="text-xs font-bold text-slate-700">Advanced</span>
+                                                            {selectedDifficulties.includes('hard') && <CheckCircle className="w-4 h-4 text-indigo-600" />}
+                                                        </div>
+                                                    </div>
+                                                </>
+                                            )}
                                         </div>
 
                                         <button

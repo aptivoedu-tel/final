@@ -8,11 +8,12 @@ import Header from '@/components/layout/Header';
 import { AuthService } from '@/lib/services/authService';
 import { supabase } from '@/lib/supabase/client';
 import { useUI } from '@/lib/context/UIContext';
+import { useLoading } from '@/lib/context/LoadingContext';
 
 export default function UserManagementPage() {
     const [currentUser, setCurrentUser] = useState<any>(null);
     const [users, setUsers] = useState<any[]>([]);
-    const [loading, setLoading] = useState(true);
+    const { setLoading: setGlobalLoading, isLoading: loading } = useLoading();
     const [searchQuery, setSearchQuery] = useState('');
     const [filterRole, setFilterRole] = useState<'all' | 'student' | 'admin'>('all');
     const { isSidebarCollapsed } = useUI();
@@ -61,6 +62,7 @@ export default function UserManagementPage() {
     }, []);
 
     const loadUsers = async () => {
+        setGlobalLoading(true, 'Acquiring User Database...');
         try {
             const { data, error } = await supabase
                 .from('users')
@@ -96,8 +98,7 @@ export default function UserManagementPage() {
                 { id: '2', full_name: 'Sarah Jones', email: 'sarah@demo.com', role: 'student', status: 'active', created_at: new Date().toISOString() },
                 { id: '3', full_name: 'Admin User', email: 'admin@aptivo.com', role: 'super_admin', status: 'active', created_at: new Date().toISOString() },
             ]);
-        } finally {
-            setLoading(false);
+            setGlobalLoading(false);
         }
     };
 
@@ -185,13 +186,7 @@ export default function UserManagementPage() {
         }
     };
 
-    if (loading) {
-        return (
-            <div className="flex items-center justify-center min-h-screen">
-                <div className="spinner w-12 h-12"></div>
-            </div>
-        );
-    }
+    if (loading) return null;
 
     return (
         <div className="min-h-screen bg-background flex font-sans">

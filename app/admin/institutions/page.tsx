@@ -8,6 +8,7 @@ import Header from '@/components/layout/Header';
 import { useUI } from '@/lib/context/UIContext';
 import { Plus, Search, Building2, Trash2, Edit2, X, CheckCircle, Globe, Mail, Phone, MapPin, AlertCircle, Ban, UserCheck, ShieldAlert } from 'lucide-react';
 import { toast } from 'sonner';
+import { useLoading } from '@/lib/context/LoadingContext';
 
 type Institution = {
     id: number;
@@ -28,7 +29,7 @@ function InstitutionsContent() {
     const searchParams = useSearchParams();
     const searchParam = searchParams.get('search');
 
-    const [loading, setLoading] = useState(true);
+    const { setLoading: setGlobalLoading, isLoading: loading } = useLoading();
     const [institutions, setInstitutions] = useState<Institution[]>([]);
     const [searchTerm, setSearchTerm] = useState(searchParam || '');
     const [isModalOpen, setIsModalOpen] = useState(false);
@@ -62,7 +63,7 @@ function InstitutionsContent() {
     }, []);
 
     const fetchInstitutions = async () => {
-        setLoading(true);
+        setGlobalLoading(true, 'Accessing Institutional Directory...');
         const { data, error } = await supabase
             .from('institutions')
             .select('*')
@@ -70,7 +71,7 @@ function InstitutionsContent() {
 
         if (data) setInstitutions(data);
         if (error) console.error(error);
-        setLoading(false);
+        setGlobalLoading(false);
     };
 
     const handleUpdateStatus = async (id: number, newStatus: string) => {
@@ -276,12 +277,7 @@ function InstitutionsContent() {
                         </div>
 
                         {/* Loading State */}
-                        {loading ? (
-                            <div className="py-20 flex flex-col items-center justify-center text-slate-400">
-                                <div className="w-8 h-8 border-4 border-teal-600 border-t-transparent rounded-full animate-spin mb-4"></div>
-                                <p className="font-medium">Refreshing directory...</p>
-                            </div>
-                        ) : filteredInstitutions.length === 0 ? (
+                        {loading ? null : filteredInstitutions.length === 0 ? (
                             <div className="py-20 text-center bg-white rounded-3xl border border-dashed border-gray-200">
                                 <Building2 className="w-12 h-12 text-slate-200 mx-auto mb-4" />
                                 <p className="text-slate-400 font-medium italic">No institutions match your current filter.</p>

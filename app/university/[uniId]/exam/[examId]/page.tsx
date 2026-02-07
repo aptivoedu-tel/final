@@ -9,6 +9,8 @@ import {
     CheckCircle, Flag, Info, Maximize2, ZoomIn, Search, Layers, GraduationCap, ChevronDown
 } from 'lucide-react';
 import { toast } from 'sonner';
+import { useLoading } from '@/lib/context/LoadingContext';
+
 
 interface Exam {
     id: number;
@@ -54,7 +56,8 @@ interface Passage {
 export default function StudentExamPage() {
     const { uniId, examId } = useParams();
     const router = useRouter();
-    const [loading, setLoading] = useState(true);
+    const { setLoading: setGlobalLoading } = useLoading();
+
     const [user, setUser] = useState<any>(null);
 
     // Data
@@ -99,8 +102,10 @@ export default function StudentExamPage() {
                 return;
             }
             setUser(u);
+            setGlobalLoading(true, 'Initializing Exam Session...');
             await loadExamData(u.id);
         };
+
         init();
     }, []);
 
@@ -135,13 +140,14 @@ export default function StudentExamPage() {
             }
 
             await handleAttemptSession(userId, ex);
-            setLoading(false);
+            setGlobalLoading(false);
         } catch (err: any) {
             console.error('Exam initialization failed:', err);
             toast.error(`Session Error: ${err.message || JSON.stringify(err)}`);
-            setLoading(false);
+            setGlobalLoading(false);
         }
     };
+
 
     const handleAttemptSession = async (userId: string, ex: Exam) => {
         // Time Window Check
@@ -281,7 +287,8 @@ export default function StudentExamPage() {
     };
 
     const finalizeAttempt = async (attId: number) => {
-        setLoading(true);
+        setGlobalLoading(true, 'Calculating Results & Finalizing Session...');
+
         try {
             let score = 0;
             let total = 0;
@@ -318,19 +325,14 @@ export default function StudentExamPage() {
         } catch (err: any) {
             toast.error(err.message);
         } finally {
-            setLoading(false);
+            setTimeout(() => setGlobalLoading(false), 1500);
         }
     };
 
-    if (loading) return (
-        <div className="h-screen flex flex-col items-center justify-center bg-[#0a0f1d] text-white">
-            <div className="w-16 h-16 border-4 border-teal-500/20 border-t-teal-500 rounded-full animate-spin mb-6"></div>
-            <h2 className="text-sm font-black uppercase tracking-[0.4em] text-teal-500">System Initializing</h2>
-            <p className="text-slate-500 text-xs mt-4 font-bold uppercase tracking-widest">Securing Examination Environment...</p>
-        </div>
-    );
+
 
     if (status === 'completed') {
+
         const scorePercentage = results ? Math.round((results.score / results.total) * 100) : 0;
         return (
             <div className="min-h-screen bg-slate-50 flex flex-col p-8 md:p-12 overflow-y-auto custom-scrollbar">

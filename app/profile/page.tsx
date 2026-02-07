@@ -3,9 +3,10 @@
 import React, { useEffect, useState, useRef } from 'react';
 import {
     User, Mail, Camera, Save, Lock, MapPin,
-    Calendar, GraduationCap, Shield, Activity,
-    CheckCircle, XCircle, Loader2, Star
+    Calendar, GraduationCap, Activity,
+    CheckCircle, XCircle, Star
 } from 'lucide-react';
+import { useLoading } from '@/lib/context/LoadingContext';
 import { useUI } from '@/lib/context/UIContext';
 import { supabase } from '@/lib/supabase/client';
 import Sidebar from '@/components/layout/Sidebar';
@@ -19,9 +20,7 @@ export default function ProfilePage() {
     const [universities, setUniversities] = useState<any[]>([]);
     const [activity, setActivity] = useState<any[]>([]);
     const [learningStats, setLearningStats] = useState<any>(null);
-    const [loading, setLoading] = useState(true);
-    const [saving, setSaving] = useState(false);
-    const [uploading, setUploading] = useState(false);
+    const { setLoading: setGlobalLoading, isLoading: loading } = useLoading();
     const { isSidebarCollapsed } = useUI();
 
     // Form States
@@ -30,7 +29,6 @@ export default function ProfilePage() {
     const [newPassword, setNewPassword] = useState('');
     const [feedbackRating, setFeedbackRating] = useState(5);
     const [feedbackText, setFeedbackText] = useState('');
-    const [submittingFeedback, setSubmittingFeedback] = useState(false);
     const [message, setMessage] = useState<{ type: 'success' | 'error', text: string } | null>(null);
 
     const fileInputRef = useRef<HTMLInputElement>(null);
@@ -40,10 +38,9 @@ export default function ProfilePage() {
     }, []);
 
     const loadProfile = async () => {
+        setGlobalLoading(true, 'Fetching Profile Statistics...');
         const currentUser = AuthService.getCurrentUser();
-        // Fallback for dev if needed
         const storedUser = typeof window !== 'undefined' ? localStorage.getItem('aptivo_user') : null;
-
         const activeUser = currentUser || (storedUser ? JSON.parse(storedUser) : null);
 
         if (!activeUser) {
@@ -72,13 +69,13 @@ export default function ProfilePage() {
         } catch (error) {
             console.error("Error loading profile:", error);
         } finally {
-            setLoading(false);
+            setTimeout(() => setGlobalLoading(false), 800);
         }
     };
 
     const handleUpdateProfile = async (e: React.FormEvent) => {
         e.preventDefault();
-        setSaving(true);
+        setGlobalLoading(true, 'Updating Profile Information...');
         setMessage(null);
 
         if (!profile) return;
@@ -89,21 +86,20 @@ export default function ProfilePage() {
 
         if (success) {
             setMessage({ type: 'success', text: 'Profile updated successfully!' });
-            // Update local storage user if needed
             const updatedUser = { ...user, full_name: fullName };
             localStorage.setItem('aptivo_user', JSON.stringify(updatedUser));
             setUser(updatedUser);
         } else {
             setMessage({ type: 'error', text: error || 'Failed to update profile' });
         }
-        setSaving(false);
+        setGlobalLoading(false);
     };
 
     const handleAvatarUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
         if (!file || !profile) return;
 
-        setUploading(true);
+        setGlobalLoading(true, 'Uploading Profile Image...');
         setMessage(null);
 
         const { avatarUrl, error } = await ProfileService.uploadAvatar(profile.id, file);
@@ -117,14 +113,14 @@ export default function ProfilePage() {
         } else {
             setMessage({ type: 'error', text: error || 'Failed to upload avatar' });
         }
-        setUploading(false);
+        setGlobalLoading(false);
     };
 
     const handleChangePassword = async (e: React.FormEvent) => {
         e.preventDefault();
         if (!newPassword || !currentPassword || !profile) return;
 
-        setSaving(true);
+        setGlobalLoading(true, 'Securing Account...');
         setMessage(null);
 
         const { success, error } = await ProfileService.changePassword(profile.id, {
@@ -139,14 +135,14 @@ export default function ProfilePage() {
         } else {
             setMessage({ type: 'error', text: error || 'Failed to change password' });
         }
-        setSaving(false);
+        setGlobalLoading(false);
     };
 
     const handleSubmitFeedback = async (e: React.FormEvent) => {
         e.preventDefault();
         if (!user || !feedbackText.trim()) return;
 
-        setSubmittingFeedback(true);
+        setGlobalLoading(true, 'Publishing Feedback...');
         try {
             const { error } = await supabase.from('feedbacks').insert({
                 user_id: user.id,
@@ -162,17 +158,9 @@ export default function ProfilePage() {
         } catch (err: any) {
             setMessage({ type: 'error', text: err.message || 'Failed to submit feedback' });
         } finally {
-            setSubmittingFeedback(false);
+            setGlobalLoading(false);
         }
     };
-
-    if (loading) {
-        return (
-            <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-                <Loader2 className="w-8 h-8 text-indigo-600 animate-spin" />
-            </div>
-        );
-    }
 
     return (
         <div className="min-h-screen bg-gray-50 font-sans">
@@ -181,7 +169,6 @@ export default function ProfilePage() {
 
             <main className={`transition-all duration-300 pt-28 lg:pt-24 p-4 lg:p-8 ${isSidebarCollapsed ? 'lg:ml-24' : 'lg:ml-72'}`}>
                 <div className="max-w-6xl mx-auto">
-                    {/* Header */}
                     <div className="mb-8">
                         <h1 className="text-2xl font-bold text-slate-800">My Profile</h1>
                         <p className="text-slate-500">Manage your account settings and preferences</p>
@@ -196,14 +183,10 @@ export default function ProfilePage() {
                     )}
 
                     <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-                        {/* Center Column: Profile & Settings */}
                         <div className="lg:col-span-2 space-y-8">
-
-                            {/* Profile Card */}
                             <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-4 md:p-8">
                                 <form onSubmit={handleUpdateProfile}>
                                     <div className="flex flex-col sm:flex-row items-center sm:items-start gap-8 mb-8">
-                                        {/* Avatar Section */}
                                         <div className="relative group">
                                             <div className="w-32 h-32 rounded-full overflow-hidden border-4 border-white shadow-lg bg-gray-100">
                                                 {profile?.avatar_url ? (
@@ -213,17 +196,12 @@ export default function ProfilePage() {
                                                         <User className="w-16 h-16" />
                                                     </div>
                                                 )}
-                                                {uploading && (
-                                                    <div className="absolute inset-0 bg-black/50 flex items-center justify-center">
-                                                        <Loader2 className="w-8 h-8 text-white animate-spin" />
-                                                    </div>
-                                                )}
                                             </div>
                                             <button
                                                 type="button"
                                                 onClick={() => fileInputRef.current?.click()}
                                                 className="absolute bottom-0 right-0 bg-indigo-600 text-white p-2.5 rounded-full shadow-lg hover:bg-indigo-700 transition-colors"
-                                                disabled={uploading}
+                                                disabled={loading}
                                             >
                                                 <Camera className="w-5 h-5" />
                                             </button>
@@ -236,7 +214,6 @@ export default function ProfilePage() {
                                             />
                                         </div>
 
-                                        {/* Name & Email Display */}
                                         <div className="flex-1 text-center sm:text-left">
                                             <h2 className="text-2xl font-bold text-slate-800 mb-1">{profile?.full_name}</h2>
                                             <div className="flex items-center justify-center sm:justify-start gap-2 text-slate-500 mb-4">
@@ -267,21 +244,16 @@ export default function ProfilePage() {
                                     <div className="mt-8 flex justify-end">
                                         <button
                                             type="submit"
-                                            disabled={saving}
-                                            className="px-6 py-2.5 bg-indigo-600 text-white rounded-lg font-medium hover:bg-indigo-700 transition-colors flex items-center gap-2 disabled:opacity-50"
+                                            disabled={loading}
+                                            className="px-6 py-2.5 bg-teal-600 text-white rounded-lg font-medium hover:bg-teal-700 transition-colors flex items-center gap-2 disabled:opacity-50"
                                         >
-                                            {saving ? (
-                                                <Loader2 className="w-4 h-4 animate-spin" />
-                                            ) : (
-                                                <Save className="w-4 h-4" />
-                                            )}
+                                            <Save className="w-4 h-4" />
                                             Save Changes
                                         </button>
                                     </div>
                                 </form>
                             </div>
 
-                            {/* Security Section */}
                             <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-4 md:p-8">
                                 <h3 className="text-lg font-bold text-slate-800 mb-6 flex items-center gap-2">
                                     <Lock className="w-5 h-5 text-slate-400" />
@@ -313,17 +285,15 @@ export default function ProfilePage() {
                                     <div className="mt-6 flex justify-end">
                                         <button
                                             type="submit"
-                                            disabled={saving || !newPassword || !currentPassword}
-                                            className="px-6 py-2.5 bg-white border border-gray-200 text-slate-700 rounded-lg font-medium hover:bg-gray-50 transition-colors flex items-center gap-2 disabled:opacity-50"
+                                            disabled={loading || !newPassword || !currentPassword}
+                                            className="px-6 py-2.5 bg-white border border-gray-200 text-slate-700 rounded-lg font-medium hover:bg-gray-50 transition-colors disabled:opacity-50"
                                         >
-                                            {saving && <Loader2 className="w-4 h-4 animate-spin text-indigo-600" />}
                                             Change Password
                                         </button>
                                     </div>
                                 </form>
                             </div>
 
-                            {/* Feedback Section */}
                             <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-4 md:p-8">
                                 <h3 className="text-lg font-bold text-slate-800 mb-2 flex items-center gap-2">
                                     <Star className="w-5 h-5 text-teal-600 fill-teal-600" />
@@ -366,20 +336,17 @@ export default function ProfilePage() {
                                     <div className="flex justify-end">
                                         <button
                                             type="submit"
-                                            disabled={submittingFeedback || !feedbackText.trim()}
+                                            disabled={loading || !feedbackText.trim()}
                                             className="px-6 py-2.5 bg-teal-700 text-white rounded-lg font-bold text-sm tracking-tight hover:bg-teal-800 transition-all disabled:opacity-50"
                                         >
-                                            {submittingFeedback ? 'Submitting...' : 'Submit'}
+                                            Sync Feedback
                                         </button>
                                     </div>
                                 </form>
                             </div>
                         </div>
 
-                        {/* Right Column: Stats & Info */}
                         <div className="space-y-8">
-
-                            {/* Learning Stats */}
                             <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
                                 <h3 className="text-lg font-bold text-slate-800 mb-6 flex items-center gap-2">
                                     <Activity className="w-5 h-5 text-indigo-500" />
@@ -411,7 +378,7 @@ export default function ProfilePage() {
                                     <div className="flex items-center justify-between p-4 bg-gray-50 rounded-xl">
                                         <div className="flex items-center gap-3">
                                             <div className="w-10 h-10 rounded-lg bg-green-100 flex items-center justify-center text-green-600">
-                                                <Trophy className="w-5 h-5" />
+                                                <TrophyIcon className="w-5 h-5" />
                                             </div>
                                             <div>
                                                 <p className="text-sm text-slate-500">Average Score</p>
@@ -422,7 +389,6 @@ export default function ProfilePage() {
                                 </div>
                             </div>
 
-                            {/* Enrolled Universities */}
                             <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
                                 <h3 className="text-lg font-bold text-slate-800 mb-6 flex items-center gap-2">
                                     <GraduationCap className="w-5 h-5 text-slate-400" />
@@ -458,7 +424,6 @@ export default function ProfilePage() {
                                 )}
                             </div>
 
-                            {/* Recent Activity */}
                             <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
                                 <h3 className="text-lg font-bold text-slate-800 mb-6 flex items-center gap-2">
                                     <Activity className="w-5 h-5 text-slate-400" />
@@ -480,7 +445,6 @@ export default function ProfilePage() {
                                     <p className="text-sm text-slate-400">No recent activity</p>
                                 )}
                             </div>
-
                         </div>
                     </div>
                 </div>
@@ -489,8 +453,7 @@ export default function ProfilePage() {
     );
 }
 
-// Icon component helper
-function Trophy(props: any) {
+function TrophyIcon(props: any) {
     return (
         <svg
             {...props}

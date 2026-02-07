@@ -1,7 +1,9 @@
 'use client';
 
 import React, { useState } from 'react';
-import { Download, FileSpreadsheet, Upload, Folder, BookOpen, Layers, CheckCircle, AlertTriangle, Save, Loader2, X } from 'lucide-react';
+import { Download, FileSpreadsheet, Upload, Folder, BookOpen, Layers, CheckCircle, AlertTriangle, Save, X } from 'lucide-react';
+import { useLoading } from '@/lib/context/LoadingContext';
+
 import Sidebar from '@/components/layout/Sidebar';
 import Header from '@/components/layout/Header';
 import { AuthService } from '@/lib/services/authService';
@@ -25,9 +27,10 @@ export default function ExcelUploaderPage() {
     const [dragActive, setDragActive] = useState(false);
     const [selectedFile, setSelectedFile] = useState<File | null>(null);
     const [previewData, setPreviewData] = useState<any[]>([]);
-    const [loading, setLoading] = useState(false);
-    const [saving, setSaving] = useState(false);
+    const { setLoading: setGlobalLoading, isLoading: loading } = useLoading();
     const { isSidebarCollapsed } = useUI();
+
+
 
     React.useEffect(() => {
         const currentUser = AuthService.getCurrentUser();
@@ -93,7 +96,8 @@ export default function ExcelUploaderPage() {
 
     const processFile = (file: File) => {
         setSelectedFile(file);
-        setLoading(true);
+        setGlobalLoading(true, 'Parsing Academic Content Data...');
+
 
         const reader = new FileReader();
         reader.onload = (e: any) => {
@@ -108,9 +112,10 @@ export default function ExcelUploaderPage() {
                 alert('Error parsing Excel file. Please use the template.');
                 setSelectedFile(null);
             } finally {
-                setLoading(false);
+                setGlobalLoading(false);
             }
         };
+
         reader.readAsBinaryString(file);
     };
 
@@ -144,8 +149,9 @@ export default function ExcelUploaderPage() {
             return;
         }
 
-        setSaving(true);
+        setGlobalLoading(true, 'Ingesting Content into Central Repository...');
         try {
+
             let targetSubtopicId = subtopic;
 
             // Handle "No Subtopic" case
@@ -249,9 +255,10 @@ export default function ExcelUploaderPage() {
             console.error(err);
             alert('Upload failed: ' + err.message);
         } finally {
-            setSaving(false);
+            setGlobalLoading(false);
         }
     };
+
 
     const handleDownloadTemplate = () => {
         const ws = XLSX.utils.json_to_sheet([
@@ -277,6 +284,8 @@ export default function ExcelUploaderPage() {
         setSelectedFile(null);
         setPreviewData([]);
     };
+
+    if (loading) return null;
 
     return (
         <div className="min-h-screen bg-gray-50 flex font-sans">
@@ -393,13 +402,13 @@ export default function ExcelUploaderPage() {
                                         {previewData.length > 0 && (
                                             <button
                                                 onClick={handleSaveToDatabase}
-                                                disabled={saving || (!subtopic && subtopic !== 'no_subtopic')}
-                                                className="w-full mt-4 py-3 bg-green-600 text-white font-bold rounded-xl hover:bg-green-700 transition-all flex items-center justify-center gap-2 shadow-lg shadow-green-200 disabled:opacity-50"
+                                                className="w-full mt-4 py-3 bg-teal-600 text-white font-bold rounded-xl hover:bg-teal-700 transition-all flex items-center justify-center gap-2 shadow-lg shadow-teal-100"
                                             >
-                                                {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
-                                                {saving ? 'Saving...' : 'Commit to Database'}
+                                                <Save className="w-4 h-4" />
+                                                Commit to Database
                                             </button>
                                         )}
+
                                     </div>
                                 )}
                             </div>
@@ -415,11 +424,13 @@ export default function ExcelUploaderPage() {
 
                                 <div className="flex-1 overflow-auto custom-scrollbar">
                                     {loading ? (
-                                        <div className="h-full flex flex-col items-center justify-center py-20">
-                                            <Loader2 className="w-10 h-10 text-primary animate-spin mb-4" />
-                                            <p className="text-slate-500 font-medium">Parsing Excel Data...</p>
+                                        <div className="h-full flex flex-col items-center justify-center py-20 animate-pulse">
+                                            <FileSpreadsheet className="w-10 h-10 text-teal-400 mb-4" />
+                                            <p className="text-slate-500 font-medium">Data Analysis in Progress...</p>
                                         </div>
                                     ) : previewData.length > 0 ? (
+
+
                                         <table className="w-full text-left border-collapse">
                                             <thead className="bg-white sticky top-0 z-10">
                                                 <tr className="border-b border-gray-100">

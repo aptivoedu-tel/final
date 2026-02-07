@@ -5,12 +5,13 @@ import { Lock, Eye, EyeOff, AlertCircle, CheckCircle, Shield, ArrowLeft } from '
 import { AuthService } from '@/lib/services/authService';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
+import { useLoading } from '@/lib/context/LoadingContext';
 
 export default function UpdatePasswordPage() {
     const [password, setPassword] = useState('');
     const [confirmPassword, setConfirmPassword] = useState('');
     const [showPassword, setShowPassword] = useState(false);
-    const [loading, setLoading] = useState(false);
+    const { setLoading: setGlobalLoading, isLoading: loading } = useLoading();
     const [error, setError] = useState('');
     const [success, setSuccess] = useState(false);
     const router = useRouter();
@@ -47,7 +48,7 @@ export default function UpdatePasswordPage() {
             return;
         }
 
-        setLoading(true);
+        setGlobalLoading(true, 'Updating Secure Credentials...');
 
         try {
             const { error } = await AuthService.updatePassword(password);
@@ -62,7 +63,7 @@ export default function UpdatePasswordPage() {
         } catch (err: any) {
             setError(err.message || 'An unexpected error occurred');
         } finally {
-            setLoading(false);
+            setGlobalLoading(false);
         }
     };
 
@@ -146,11 +147,7 @@ export default function UpdatePasswordPage() {
                             disabled={loading}
                             className="w-full py-4 bg-[#244D4D] text-white text-[12px] font-black rounded-2xl hover:bg-[#1B3A3A] hover:scale-[1.01] active:scale-[0.98] transition-all shadow-xl shadow-[#244D4D]/10 flex items-center justify-center gap-2"
                         >
-                            {loading ? (
-                                <div className="w-5 h-5 border-[3px] border-white/20 border-t-white rounded-full animate-spin"></div>
-                            ) : (
-                                'UPDATE PASSWORD'
-                            )}
+                            {loading ? 'PROCESSING...' : 'UPDATE PASSWORD'}
                         </button>
 
                         <div className="text-center">

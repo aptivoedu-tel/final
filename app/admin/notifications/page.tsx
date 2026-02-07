@@ -3,8 +3,10 @@
 import React, { useEffect, useState } from 'react';
 import {
     Send, Bell, Users, Building2, CheckCircle,
-    AlertTriangle, Info, Clock, Loader2, XCircle, Image as ImageIcon, Bold
+    AlertTriangle, Info, Clock, XCircle, Image as ImageIcon, Bold
 } from 'lucide-react';
+import { useLoading } from '@/lib/context/LoadingContext';
+
 import { supabase } from '@/lib/supabase/client';
 import Sidebar from '@/components/layout/Sidebar';
 import Header from '@/components/layout/Header';
@@ -17,9 +19,10 @@ export default function AdminNotificationsPage() {
     const [user, setUser] = useState<any>(null);
     const [institutions, setInstitutions] = useState<any[]>([]);
     const [history, setHistory] = useState<any[]>([]);
-    const [loading, setLoading] = useState(true);
+    const { setLoading: setGlobalLoading, isLoading: loading } = useLoading();
     const [sending, setSending] = useState(false);
     const { isSidebarCollapsed } = useUI();
+
 
     // Form State
     const [title, setTitle] = useState('');
@@ -39,6 +42,8 @@ export default function AdminNotificationsPage() {
     }, []);
 
     const loadData = async () => {
+        setGlobalLoading(true, 'Accessing Notification Archives...');
+
         const currentUser = AuthService.getCurrentUser();
         const storedUser = typeof window !== 'undefined' ? localStorage.getItem('aptivo_user') : null;
         const activeUser = currentUser || (storedUser ? JSON.parse(storedUser) : null);
@@ -73,9 +78,10 @@ export default function AdminNotificationsPage() {
         } catch (error) {
             console.error("Error loading data:", error);
         } finally {
-            setLoading(false);
+            setTimeout(() => setGlobalLoading(false), 800);
         }
     };
+
 
     const applyBold = () => {
         const textarea = document.getElementById('notification-message') as HTMLTextAreaElement;
@@ -123,8 +129,9 @@ export default function AdminNotificationsPage() {
     const handleSend = async (e: React.FormEvent) => {
         e.preventDefault();
         if (!user) return;
-        setSending(true);
+        setGlobalLoading(true, 'Broadcasting Announcement...');
         setStatusMsg(null);
+
 
         try {
             let imageUrl = '';
@@ -204,13 +211,16 @@ export default function AdminNotificationsPage() {
         } catch (err: any) {
             setStatusMsg({ type: 'error', text: err.message || 'Error sending notification' });
         } finally {
-            setSending(false);
+            setGlobalLoading(false);
         }
     };
+
+
 
     if (loading) return null;
 
     return (
+
         <div className="min-h-screen bg-gray-50 font-sans">
             <Sidebar userRole="super_admin" />
             <Header userName={user?.full_name} userEmail={user?.email} userAvatar={user?.avatar_url} />
@@ -399,12 +409,12 @@ export default function AdminNotificationsPage() {
                                     <div className="flex justify-end pt-4">
                                         <button
                                             type="submit"
-                                            disabled={sending}
-                                            className="px-8 py-3 bg-indigo-600 text-white rounded-xl font-bold hover:bg-indigo-700 transition-colors flex items-center gap-2 shadow-lg shadow-indigo-200"
+                                            className="px-8 py-3 bg-teal-600 text-white rounded-xl font-bold hover:bg-teal-700 transition-colors flex items-center gap-2 shadow-lg shadow-teal-100"
                                         >
-                                            {sending ? <Loader2 className="w-5 h-5 animate-spin" /> : <Send className="w-5 h-5" />}
+                                            <Send className="w-5 h-5" />
                                             Send Notification
                                         </button>
+
                                     </div>
                                 </form>
                             </div>

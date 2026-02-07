@@ -12,6 +12,7 @@ export const metadata: Metadata = {
   description: "Comprehensive Educational Platform",
 };
 
+import { LoadingProvider } from "@/lib/context/LoadingContext";
 import { UIProvider } from "@/lib/context/UIContext";
 
 export default function RootLayout({
@@ -22,9 +23,11 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body className={`${inter.variable} ${outfit.variable} font-sans antialiased bg-gray-50`}>
-        <UIProvider>
-          {children}
-        </UIProvider>
+        <LoadingProvider>
+          <UIProvider>
+            {children}
+          </UIProvider>
+        </LoadingProvider>
       </body>
     </html>
   );

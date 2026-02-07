@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { Search, Bell, User, ChevronDown, CheckCircle, AlertTriangle, Info, Book, GraduationCap, FileText, University as UniIcon, Loader2, ChevronRight, X, Menu } from 'lucide-react';
+import { Search, Bell, User, ChevronDown, CheckCircle, AlertTriangle, Info, Book, GraduationCap, FileText, University as UniIcon, ChevronRight, X, Menu } from 'lucide-react';
 import { useUI } from '@/lib/context/UIContext';
 import { AuthService } from '@/lib/services/authService';
 import { getInitials, getAvatarColor } from '@/lib/utils';
@@ -251,7 +251,9 @@ const Header: React.FC<HeaderProps> = ({ userName, userEmail, userAvatar, avatar
                             <div className="absolute top-full left-0 right-0 mt-2 bg-white rounded-2xl shadow-2xl border border-gray-100 overflow-hidden z-50 animate-in fade-in slide-in-from-top-2 duration-200">
                                 <div className="p-4 bg-gray-50 border-b border-gray-100 flex items-center justify-between">
                                     <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">Quick Results</span>
-                                    {isSearching && <Loader2 className="w-3 h-3 text-primary animate-spin" />}
+                                    {isSearching && (
+                                        <div className="w-3 h-3 border-2 border-indigo-500 border-t-transparent rounded-full animate-spin" />
+                                    )}
                                 </div>
                                 <div className="max-h-[400px] overflow-y-auto">
                                     {searchResults.length > 0 ? (

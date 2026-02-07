@@ -6,7 +6,8 @@ import { supabase } from '@/lib/supabase/client';
 import Sidebar from '@/components/layout/Sidebar';
 import Header from '@/components/layout/Header';
 import { AuthService } from '@/lib/services/authService';
-import { Search, Book, GraduationCap, FileText, ChevronRight, Loader2, University as UniIcon } from 'lucide-react';
+import { Search, Book, GraduationCap, FileText, ChevronRight, University as UniIcon } from 'lucide-react';
+import { useLoading } from '@/lib/context/LoadingContext';
 import Link from 'next/link';
 
 // Force this page to use SSR (required for useSearchParams)
@@ -27,7 +28,8 @@ function SearchContent() {
     const searchParams = useSearchParams();
     const query = searchParams.get('q') || '';
     const [results, setResults] = useState<SearchResult[]>([]);
-    const [loading, setLoading] = useState(true);
+    const { setLoading: setGlobalLoading, isLoading } = useLoading();
+
     const [user, setUser] = useState<any>(null);
 
     useEffect(() => {
@@ -36,12 +38,13 @@ function SearchContent() {
         if (query) {
             performSearch();
         } else {
-            setLoading(false);
+            setGlobalLoading(false);
         }
     }, [query]);
 
     const performSearch = async () => {
-        setLoading(true);
+        setGlobalLoading(true, 'Scanning Academic Library...');
+
         try {
             const searchResults: SearchResult[] = [];
             const isSuperAdmin = user?.role === 'super_admin';
@@ -133,7 +136,7 @@ function SearchContent() {
         } catch (error) {
             console.error('Search error:', error);
         } finally {
-            setLoading(false);
+            setGlobalLoading(false);
         }
     };
 
@@ -160,16 +163,11 @@ function SearchContent() {
                         <div className="mb-12">
                             <h1 className="text-3xl font-black text-slate-900 mb-2">Search Results</h1>
                             <p className="text-slate-500 font-medium">
-                                {loading ? 'Searching...' : `Found ${results.length} results for "${query}"`}
+                                {isLoading ? 'Searching...' : `Found ${results.length} results for "${query}"`}
                             </p>
                         </div>
 
-                        {loading ? (
-                            <div className="flex flex-col items-center justify-center py-20">
-                                <Loader2 className="w-10 h-10 text-indigo-600 animate-spin mb-4" />
-                                <p className="text-slate-500 font-bold animate-pulse">Scanning Academic Library...</p>
-                            </div>
-                        ) : results.length > 0 ? (
+                        {!isLoading && results.length > 0 ? (
                             <div className="space-y-4">
                                 {results.map((result, idx) => (
                                     <Link
@@ -202,7 +200,7 @@ function SearchContent() {
                                     </Link>
                                 ))}
                             </div>
-                        ) : (
+                        ) : !isLoading && (
                             <div className="bg-white rounded-[2.5rem] border border-gray-100 p-16 text-center shadow-sm">
                                 <div className="w-20 h-20 bg-gray-50 rounded-full flex items-center justify-center mx-auto mb-6">
                                     <Search className="w-10 h-10 text-gray-200" />
@@ -228,11 +226,7 @@ function SearchContent() {
 
 export default function SearchPage() {
     return (
-        <React.Suspense fallback={
-            <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-                <Loader2 className="w-10 h-10 text-indigo-600 animate-spin" />
-            </div>
-        }>
+        <React.Suspense fallback={null}>
             <SearchContent />
         </React.Suspense>
     );

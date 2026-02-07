@@ -15,6 +15,7 @@ import { supabase } from '@/lib/supabase/client';
 import { toast } from 'sonner';
 import { X, Save, Trash2 } from 'lucide-react';
 import { useUI } from '@/lib/context/UIContext';
+import { useLoading } from '@/lib/context/LoadingContext';
 
 // Data Type
 type HierarchyItem = {
@@ -30,11 +31,11 @@ type HierarchyItem = {
 export default function SuperAdminQuestionBankPage() {
     const [user, setUser] = useState<any>(null);
     const [data, setData] = useState<HierarchyItem[]>([]);
-    const [loading, setLoading] = useState(true);
+    const { setLoading: setGlobalLoading, isLoading: loading } = useLoading();
     const [searchQuery, setSearchQuery] = useState('');
     const [selectedItem, setSelectedItem] = useState<HierarchyItem | null>(null);
     const [questions, setQuestions] = useState<any[]>([]);
-    const [questionsLoading, setQuestionsLoading] = useState(false);
+    const questionsLoading = loading; // Map to global loading
 
     // MCQ Modal State
     const [isMcqModalOpen, setIsMcqModalOpen] = useState(false);
@@ -75,7 +76,7 @@ export default function SuperAdminQuestionBankPage() {
     };
 
     const loadHierarchy = async () => {
-        setLoading(true);
+        setGlobalLoading(true, 'Syncing Master Tree...');
         try {
             // Fetch ALL subjects, topics, subtopics
             const { data: subjects } = await supabase.from('subjects').select('*').order('name');
@@ -127,10 +128,8 @@ export default function SuperAdminQuestionBankPage() {
                 });
                 setData(tree);
             }
-        } catch (error) {
-            console.error("Error loading question bank hierarchy:", error);
         } finally {
-            setLoading(false);
+            setGlobalLoading(false);
         }
     };
 
@@ -171,7 +170,7 @@ export default function SuperAdminQuestionBankPage() {
     }, []);
 
     const loadQuestions = async (item: HierarchyItem) => {
-        setQuestionsLoading(true);
+        setGlobalLoading(true, 'Accessing Encrypted Archives...');
         try {
             let query = supabase.from('mcqs').select('*');
 
@@ -189,9 +188,8 @@ export default function SuperAdminQuestionBankPage() {
             if (data) setQuestions(data);
         } catch (error) {
             console.error("Error loading questions:", error);
-            toast.error("Failed to load questions");
         } finally {
-            setQuestionsLoading(false);
+            setGlobalLoading(false);
         }
     };
 
@@ -441,12 +439,7 @@ export default function SuperAdminQuestionBankPage() {
                             </div>
 
                             <div className="flex-1 overflow-y-auto custom-scrollbar">
-                                {loading ? (
-                                    <div className="p-8 text-center">
-                                        <RefreshCw className="w-6 h-6 animate-spin mx-auto mb-2 text-indigo-200" />
-                                        <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">Syncing Master tree...</p>
-                                    </div>
-                                ) : data.length > 0 ? (
+                                {loading ? null : data.length > 0 ? (
                                     renderTree(data)
                                 ) : (
                                     <div className="p-8 text-center text-slate-400">
@@ -486,12 +479,7 @@ export default function SuperAdminQuestionBankPage() {
                                         </div>
                                     </div>
                                     <div className="flex-1 overflow-y-auto p-6 space-y-6 bg-slate-50/50 custom-scrollbar">
-                                        {questionsLoading ? (
-                                            <div className="h-full flex flex-col items-center justify-center text-center">
-                                                <RefreshCw className="w-10 h-10 text-indigo-200 animate-spin mb-4" />
-                                                <p className="text-slate-400 font-medium">Accessing encrypted archives...</p>
-                                            </div>
-                                        ) : questions.length > 0 ? (
+                                        {questionsLoading ? null : questions.length > 0 ? (
                                             questions.map((q, idx) => (
                                                 <div key={q.id} className="bg-white p-6 rounded-xl border border-gray-100 shadow-sm hover:shadow-xl hover:shadow-indigo-500/5 transition-all group relative overflow-hidden">
                                                     <div className="absolute top-0 right-0 p-4 opacity-0 group-hover:opacity-100 transition-opacity">

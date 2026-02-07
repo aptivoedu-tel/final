@@ -20,14 +20,16 @@ import {
 import { supabase } from '@/lib/supabase/client';
 import { PracticeService, MCQ } from '@/lib/services/practiceService';
 import { toast } from 'sonner';
+import { useLoading } from '@/lib/context/LoadingContext';
+
 
 export default function PracticeSessionPage() {
     const router = useRouter();
     const params = useParams();
     const uniId = parseInt(params.uniId as string);
     const subtopicId = parseInt(params.subtopicId as string);
+    const { setLoading: setGlobalLoading } = useLoading();
 
-    const [loading, setLoading] = useState(true);
     const [questions, setQuestions] = useState<MCQ[]>([]);
     const [currentIndex, setCurrentIndex] = useState(0);
     const [answers, setAnswers] = useState<Record<number, string>>({});
@@ -45,7 +47,9 @@ export default function PracticeSessionPage() {
 
     useEffect(() => {
         const initSession = async () => {
+            setGlobalLoading(true, 'Initializing Practice Session...');
             try {
+
                 const { data: { user } } = await supabase.auth.getUser();
                 if (!user) {
                     router.push('/login');
@@ -87,17 +91,18 @@ export default function PracticeSessionPage() {
                 if (error) throw new Error(error);
                 setSession(session);
 
-                setLoading(false);
-
-                // 3. Start Timer
+                // Start Timer
                 timerRef.current = setInterval(() => {
                     setTimeElapsed(prev => prev + 1);
                 }, 1000);
 
+                setGlobalLoading(false);
             } catch (error: any) {
                 toast.error(error.message);
+                setGlobalLoading(false);
                 router.back();
             }
+
         };
 
         if (subtopicId && uniId) {
@@ -188,17 +193,11 @@ export default function PracticeSessionPage() {
         return `${mins}:${secs.toString().padStart(2, '0')}`;
     };
 
-    if (loading) {
-        return (
-            <div className="min-h-screen bg-[#F8FAFC] flex flex-col items-center justify-center p-8">
-                <div className="w-20 h-20 border-4 border-teal-100 border-t-teal-600 rounded-full animate-spin mb-6" />
-                <h2 className="text-xl font-black text-slate-900 animate-pulse">Initializing Practice Session...</h2>
-                <p className="text-slate-500 mt-2">Selecting questions based on university test pattern</p>
-            </div>
-        );
-    }
+
+    if (!isCompleted && questions.length === 0) return null;
 
     if (isCompleted && results) {
+
         return (
             <div className="min-h-screen bg-[#F8FAFC] flex flex-col items-center justify-center p-4">
                 <div className="w-full max-w-2xl bg-white rounded-[3rem] shadow-2xl overflow-hidden border border-slate-100 animate-scale-in">
