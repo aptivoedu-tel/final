@@ -7,13 +7,8 @@ import Sidebar from '@/components/layout/Sidebar';
 import Header from '@/components/layout/Header';
 import { AuthService } from '@/lib/services/authService';
 import { BookOpen, ChevronLeft, Play, GraduationCap, Clock, CheckCircle, BarChart, MoveRight } from 'lucide-react';
-import ReactMarkdown from 'react-markdown';
-import remarkGfm from 'remark-gfm';
-import remarkMath from 'remark-math';
-import remarkBreaks from 'remark-breaks';
-import rehypeKatex from 'rehype-katex';
-import rehypeRaw from 'rehype-raw';
-import 'katex/dist/katex.min.css';
+import MarkdownRenderer from '@/components/shared/MarkdownRenderer';
+
 import Link from 'next/link';
 import { useUI } from '@/lib/context/UIContext';
 
@@ -150,11 +145,11 @@ export default function LessonReaderPage() {
                     <div className="max-w-4xl mx-auto">
                         {/* Breadcrumbs */}
                         <nav className="flex items-center gap-2 text-sm font-bold text-slate-400 mb-8 overflow-x-auto whitespace-nowrap pb-2">
-                            <Link href="/university" className="hover:text-indigo-600 transition-colors">UNIVERSITY</Link>
+                            <Link href={`/university/${uniId}`} className="hover:text-indigo-600 transition-colors">UNIVERSITY</Link>
                             <ChevronLeft className="w-4 h-4 rotate-180 flex-shrink-0" />
-                            <span className="text-slate-600 truncate">{subject?.name?.toUpperCase()}</span>
+                            <Link href={`/university/${uniId}`} className="text-slate-600 truncate hover:text-indigo-600 transition-colors">{subject?.name?.toUpperCase()}</Link>
                             <ChevronLeft className="w-4 h-4 rotate-180 flex-shrink-0" />
-                            <span className="text-indigo-600 truncate">{topic?.name?.toUpperCase()}</span>
+                            <span className="text-indigo-600 truncate">{subtopic?.name?.toUpperCase()}</span>
                         </nav>
 
                         {/* Lesson Header */}
@@ -206,36 +201,8 @@ export default function LessonReaderPage() {
                                     [&_br]:block [&_br]:content-[''] [&_br]:my-2
                                 ">
                                     {subtopic?.content_markdown ? (
-                                        <ReactMarkdown
-                                            remarkPlugins={[remarkMath, remarkGfm, remarkBreaks]}
-                                            rehypePlugins={[rehypeKatex, rehypeRaw]}
-                                            components={{
-                                                img: ({ node, ...props }) => {
-                                                    const altParts = props.alt?.split('|') || [];
-                                                    const altText = altParts[0];
-                                                    const width = altParts[1];
+                                        <MarkdownRenderer content={subtopic?.content_markdown} />
 
-                                                    return (
-                                                        <span className="block my-8">
-                                                            <img
-                                                                {...props}
-                                                                alt={altText}
-                                                                style={{
-                                                                    width: width ? (width.includes('%') ? width : `${width}px`) : 'auto',
-                                                                    maxWidth: '100%',
-                                                                    display: 'block',
-                                                                    margin: '0 auto'
-                                                                }}
-                                                                className="rounded-2xl shadow-xl border border-slate-100"
-                                                            />
-                                                            {altText && <span className="block text-center text-xs text-slate-400 mt-3 font-medium">{altText}</span>}
-                                                        </span>
-                                                    );
-                                                }
-                                            }}
-                                        >
-                                            {subtopic?.content_markdown}
-                                        </ReactMarkdown>
                                     ) : (
                                         <div className="py-20 text-center">
                                             <div className="w-16 h-16 bg-gray-50 rounded-full flex items-center justify-center mx-auto mb-4 border border-dashed border-gray-200">
@@ -313,11 +280,11 @@ export default function LessonReaderPage() {
                         {/* Navigation Footer */}
                         <div className="mt-12 pt-8 border-t border-gray-200 flex items-center justify-between gap-4 flex-wrap">
                             <Link
-                                href="/university"
+                                href={`/university/${uniId}`}
                                 className="group flex items-center gap-3 text-sm font-bold text-slate-500 hover:text-indigo-600 transition-colors"
                             >
                                 <ChevronLeft className="w-5 h-5 group-hover:-translate-x-1 transition-transform" />
-                                BACK TO ALL MODULES
+                                BACK TO LIBRARY
                             </Link>
 
                             {mcqCount > 0 && (

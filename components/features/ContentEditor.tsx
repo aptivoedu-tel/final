@@ -7,15 +7,10 @@ import {
     Table as TableIcon, Image as ImageIcon, Minus, Braces, AlertCircle,
     Plus, Search, ChevronRight
 } from 'lucide-react';
-import ReactMarkdown from 'react-markdown';
-import remarkGfm from 'remark-gfm';
-import remarkMath from 'remark-math';
-import remarkBreaks from 'remark-breaks';
-import rehypeKatex from 'rehype-katex';
-import rehypeRaw from 'rehype-raw';
-import 'katex/dist/katex.min.css';
 import { AuthService } from '@/lib/services/authService';
 import { supabase } from '@/lib/supabase/client';
+import MarkdownRenderer from '@/components/shared/MarkdownRenderer';
+
 
 import { useSearchParams } from 'next/navigation';
 
@@ -362,12 +357,8 @@ export default function ContentEditor() {
                         {selectedSubtopic ? (
                             <div className="flex-1 overflow-y-auto custom-scrollbar p-12">
                                 <div className="prose prose-slate max-w-none">
-                                    <ReactMarkdown
-                                        remarkPlugins={[remarkMath, remarkGfm, remarkBreaks]}
-                                        rehypePlugins={[rehypeKatex, rehypeRaw]}
-                                    >
-                                        {content}
-                                    </ReactMarkdown>
+                                    <MarkdownRenderer content={content} />
+
                                 </div>
                             </div>
                         ) : (
@@ -596,35 +587,8 @@ export default function ContentEditor() {
                         </div>
                         <div className="flex-1 p-8 overflow-y-auto custom-scrollbar prose max-w-none">
                             {content ? (
-                                <ReactMarkdown
-                                    remarkPlugins={[remarkMath, remarkGfm, remarkBreaks]}
-                                    rehypePlugins={[rehypeKatex, rehypeRaw]}
-                                    components={{
-                                        img: ({ node, ...props }) => {
-                                            const altParts = props.alt?.split('|') || [];
-                                            const altText = altParts[0];
-                                            const width = altParts[1];
-                                            return (
-                                                <span className="block my-8 text-center">
-                                                    <img
-                                                        {...props}
-                                                        alt={altText}
-                                                        style={{
-                                                            width: width ? (width.includes('%') ? width : `${width}px`) : 'auto',
-                                                            maxWidth: '100%',
-                                                            display: 'block',
-                                                            margin: '0 auto'
-                                                        }}
-                                                        className="rounded-2xl shadow-xl border border-slate-100"
-                                                    />
-                                                    {altText && <span className="block text-center text-xs text-slate-400 mt-3 font-medium">{altText}</span>}
-                                                </span>
-                                            );
-                                        }
-                                    }}
-                                >
-                                    {content}
-                                </ReactMarkdown>
+                                <MarkdownRenderer content={content} />
+
                             ) : (
                                 <p className="text-slate-300 italic">Preview will appear here</p>
                             )}

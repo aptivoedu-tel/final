@@ -28,11 +28,8 @@ import {
 } from 'lucide-react';
 import { toast } from 'sonner';
 import Link from 'next/link';
-import ReactMarkdown from 'react-markdown';
-import remarkGfm from 'remark-gfm';
-import remarkMath from 'remark-math';
-import rehypeKatex from 'rehype-katex';
-import 'katex/dist/katex.min.css';
+import MarkdownRenderer from '@/components/shared/MarkdownRenderer';
+
 import { useUI } from '@/lib/context/UIContext';
 
 type ContentMap = {
@@ -58,6 +55,7 @@ export default function UniversityDetailPage() {
     const [enrollment, setEnrollment] = useState<any>(null);
     const [content, setContent] = useState<ContentMap[]>([]);
     const [expandedTopic, setExpandedTopic] = useState<number | null>(null);
+    const [expandedSubject, setExpandedSubject] = useState<number | null>(null);
     const [activeTab, setActiveTab] = useState<'library' | 'insights' | 'exams' | 'pattern'>('library');
     const [stats, setStats] = useState<any>(null);
     const [exams, setExams] = useState<any[]>([]);
@@ -393,110 +391,124 @@ export default function UniversityDetailPage() {
                                 <div className="grid grid-cols-1 gap-8">
                                     {content.length > 0 ? content.map((subjectItem) => (
                                         <div key={subjectItem.subject.id} className="bg-white rounded-[2.5rem] border border-slate-100 overflow-hidden shadow-xl shadow-slate-100/50 hover:shadow-2xl hover:shadow-indigo-100/20 transition-all duration-500">
-                                            <div className="bg-gradient-to-br from-slate-900 to-indigo-950 px-8 py-8 flex items-center justify-between relative overflow-hidden">
-                                                <div className="absolute top-0 right-0 w-64 h-64 bg-indigo-500/10 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2" />
-                                                <div className="relative z-10">
-                                                    <span className="text-indigo-400 text-[10px] font-black uppercase tracking-[0.25em] mb-2 block">Foundational Curriculum</span>
-                                                    <h3 className="text-2xl font-black text-white tracking-tight">{subjectItem.subject.name}</h3>
-                                                </div>
-                                                <div className="relative z-10 w-14 h-14 bg-white/10 backdrop-blur-md rounded-2xl flex items-center justify-center border border-white/10 shadow-inner">
-                                                    <BookOpen className="w-7 h-7 text-indigo-300" />
+                                            <div className="relative overflow-hidden bg-gradient-to-br from-slate-900 via-slate-800 to-indigo-950 rounded-t-[2.5rem] p-8 cursor-pointer group hover:from-slate-800 hover:via-slate-700 hover:to-indigo-900 transition-all duration-300"
+                                                onClick={() => setExpandedSubject(expandedSubject === subjectItem.subject.id ? null : subjectItem.subject.id)}
+                                            >
+                                                <div className="absolute inset-0 bg-gradient-to-r from-indigo-500/10 to-purple-500/10 opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+                                                <div className="flex items-start justify-between">
+                                                    <div className="relative z-10 flex-1">
+                                                        <span className="text-indigo-400 text-[10px] font-black uppercase tracking-[0.25em] mb-2 block">Foundational Curriculum</span>
+                                                        <h3 className="text-2xl font-black text-white tracking-tight">{subjectItem.subject.name}</h3>
+                                                    </div>
+                                                    <div className="relative z-10 flex items-center gap-3">
+                                                        <div className="w-14 h-14 bg-white/10 backdrop-blur-md rounded-2xl flex items-center justify-center border border-white/10 shadow-inner">
+                                                            <BookOpen className="w-7 h-7 text-indigo-300" />
+                                                        </div>
+                                                        {expandedSubject === subjectItem.subject.id ?
+                                                            <ChevronUp className="w-6 h-6 text-white/60 group-hover:text-white transition-colors" /> :
+                                                            <ChevronDown className="w-6 h-6 text-white/60 group-hover:text-white transition-colors" />
+                                                        }
+                                                    </div>
                                                 </div>
                                             </div>
-                                            <div className="p-4 bg-slate-50/50 border-b border-slate-100">
-                                                <div className="flex items-center justify-between px-6 text-[10px] font-black text-slate-400 uppercase tracking-[0.15em]">
-                                                    <span>Available Learning Modules</span>
-                                                    <span className="bg-indigo-600 text-white px-3 py-1 rounded-full text-xs">{subjectItem.topics.length} Topics</span>
-                                                </div>
-                                            </div>
-                                            <div className="p-8 space-y-4">
-                                                {subjectItem.topics.map(topic => (
-                                                    <div key={topic.id} className="border border-gray-100 rounded-2xl overflow-hidden bg-white shadow-sm transition-all hover:border-indigo-100">
-                                                        <div
-                                                            className="w-full flex items-center justify-between p-5 text-left group transition-colors hover:bg-indigo-50/30"
-                                                        >
-                                                            <div
-                                                                className="flex items-center gap-4 cursor-pointer flex-1"
-                                                                onClick={() => {
-                                                                    if (topic.subtopics.length > 0) {
-                                                                        setExpandedTopic(expandedTopic === topic.id ? null : topic.id)
-                                                                    }
-                                                                }}
-                                                            >
-                                                                <div className={`w-10 h-10 rounded-xl flex items-center justify-center font-black transition-all shadow-sm ${expandedTopic === topic.id ? 'bg-indigo-600 text-white' : ((topic.mcqCount || 0) > 0 ? 'bg-indigo-100 text-indigo-700' : 'bg-rose-50 text-rose-400')}`}>
-                                                                    {topic.mcqCount || 0}
-                                                                </div>
-                                                                <div>
-                                                                    <h4 className="font-bold text-slate-800">{topic.name}</h4>
-                                                                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mt-0.5">
-                                                                        {topic.subtopics.length > 0
-                                                                            ? `${topic.subtopics.length} Learning Modules Available`
-                                                                            : 'Direct Knowledge Module'}
-                                                                    </p>
-                                                                </div>
-                                                            </div>
-
-                                                            {topic.subtopics.length > 0 ? (
-                                                                <div onClick={() => setExpandedTopic(expandedTopic === topic.id ? null : topic.id)} className="cursor-pointer">
-                                                                    {expandedTopic === topic.id ? <ChevronUp className="w-5 h-5 text-indigo-600" /> : <ChevronDown className="w-5 h-5 text-slate-400 group-hover:text-indigo-500" />}
-                                                                </div>
-                                                            ) : (
-                                                                <div className="flex items-center gap-2">
-                                                                    <button
-                                                                        onClick={() => router.push(`/university/${uniId}/lesson/topic/${topic.id}`)}
-                                                                        className="px-4 py-2 bg-white text-slate-600 rounded-xl text-[9px] font-black uppercase tracking-widest hover:bg-slate-50 transition-all border border-slate-200 shadow-sm"
+                                            {expandedSubject === subjectItem.subject.id && (
+                                                <>
+                                                    <div className="p-4 bg-slate-50/50 border-b border-slate-100">
+                                                        <div className="flex items-center justify-between px-6 text-[10px] font-black text-slate-400 uppercase tracking-[0.15em]">
+                                                            <span>Available Learning Modules</span>
+                                                            <span className="bg-indigo-600 text-white px-3 py-1 rounded-full text-xs">{subjectItem.topics.length} Topics</span>
+                                                        </div>
+                                                    </div>
+                                                    <div className="p-8 space-y-4">
+                                                        {subjectItem.topics.map(topic => (
+                                                            <div key={topic.id} className="border border-gray-100 rounded-2xl overflow-hidden bg-white shadow-sm transition-all hover:border-indigo-100">
+                                                                <div
+                                                                    className="w-full flex items-center justify-between p-5 text-left group transition-colors hover:bg-indigo-50/30"
+                                                                >
+                                                                    <div
+                                                                        className="flex items-center gap-4 cursor-pointer flex-1"
+                                                                        onClick={() => {
+                                                                            if (topic.subtopics.length > 0) {
+                                                                                setExpandedTopic(expandedTopic === topic.id ? null : topic.id)
+                                                                            }
+                                                                        }}
                                                                     >
-                                                                        Read
-                                                                    </button>
-                                                                    {(topic.mcqCount || 0) > 0 && (
-                                                                        <button
-                                                                            onClick={() => router.push(`/university/${uniId}/practice/topic/${topic.id}`)}
-                                                                            className="px-4 py-2 bg-indigo-600 text-white rounded-xl text-[9px] font-black uppercase tracking-widest hover:bg-indigo-700 transition-all shadow-sm"
-                                                                        >
-                                                                            Practice
-                                                                        </button>
+                                                                        <div className={`w-10 h-10 rounded-xl flex items-center justify-center font-black transition-all shadow-sm ${expandedTopic === topic.id ? 'bg-indigo-600 text-white' : ((topic.mcqCount || 0) > 0 ? 'bg-indigo-100 text-indigo-700' : 'bg-rose-50 text-rose-400')}`}>
+                                                                            {topic.mcqCount || 0}
+                                                                        </div>
+                                                                        <div>
+                                                                            <h4 className="font-bold text-slate-800">{topic.name}</h4>
+                                                                            <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mt-0.5">
+                                                                                {topic.subtopics.length > 0
+                                                                                    ? `${topic.subtopics.length} Learning Modules Available`
+                                                                                    : 'Direct Knowledge Module'}
+                                                                            </p>
+                                                                        </div>
+                                                                    </div>
+
+                                                                    {topic.subtopics.length > 0 ? (
+                                                                        <div onClick={() => setExpandedTopic(expandedTopic === topic.id ? null : topic.id)} className="cursor-pointer">
+                                                                            {expandedTopic === topic.id ? <ChevronUp className="w-5 h-5 text-indigo-600" /> : <ChevronDown className="w-5 h-5 text-slate-400 group-hover:text-indigo-500" />}
+                                                                        </div>
+                                                                    ) : (
+                                                                        <div className="flex items-center gap-2">
+                                                                            <button
+                                                                                onClick={() => router.push(`/university/${uniId}/lesson/topic/${topic.id}`)}
+                                                                                className="px-4 py-2 bg-white text-slate-600 rounded-xl text-[9px] font-black uppercase tracking-widest hover:bg-slate-50 transition-all border border-slate-200 shadow-sm"
+                                                                            >
+                                                                                Read
+                                                                            </button>
+                                                                            {(topic.mcqCount || 0) > 0 && (
+                                                                                <button
+                                                                                    onClick={() => router.push(`/university/${uniId}/practice/topic/${topic.id}`)}
+                                                                                    className="px-4 py-2 bg-indigo-600 text-white rounded-xl text-[9px] font-black uppercase tracking-widest hover:bg-indigo-700 transition-all shadow-sm"
+                                                                                >
+                                                                                    Practice
+                                                                                </button>
+                                                                            )}
+                                                                        </div>
                                                                     )}
                                                                 </div>
-                                                            )}
-                                                        </div>
 
-                                                        {expandedTopic === topic.id && (
-                                                            <div className="px-5 pb-5 pt-0 space-y-2 animate-slide-down">
-                                                                {topic.subtopics.map(subtopic => {
-                                                                    const status = progressMap[subtopic.id] || { isRead: false, isMastered: false };
-                                                                    return (
-                                                                        <div key={subtopic.id} className="flex items-center justify-between p-4 rounded-2xl bg-slate-100/30 group hover:bg-white transition-all border border-transparent hover:border-indigo-100 shadow-sm">
-                                                                            <Link
-                                                                                href={`/university/${uniId}/lesson/${subtopic.id}`}
-                                                                                className="flex items-center gap-4 flex-1"
-                                                                            >
-                                                                                {status.isRead ? <CheckCircle className="w-5 h-5 text-green-500" /> : <Clock className="w-5 h-5 text-slate-300" />}
-                                                                                <span className={`text-sm font-bold ${status.isRead ? 'text-slate-900' : 'text-slate-500'}`}>{subtopic.name}</span>
-                                                                            </Link>
-                                                                            <div className="flex items-center gap-2">
-                                                                                <button
-                                                                                    onClick={() => router.push(`/university/${uniId}/lesson/${subtopic.id}`)}
-                                                                                    className="px-4 py-2 bg-white text-slate-600 rounded-xl text-[9px] font-black uppercase tracking-widest hover:bg-slate-50 transition-all border border-slate-200 shadow-sm"
-                                                                                >
-                                                                                    Read
-                                                                                </button>
-                                                                                {(subtopic as any).mcqCount > 0 && (
-                                                                                    <button
-                                                                                        onClick={() => router.push(`/university/${uniId}/practice/${subtopic.id}`)}
-                                                                                        className="px-4 py-2 bg-indigo-600 text-white rounded-xl text-[9px] font-black uppercase tracking-widest hover:bg-indigo-700 transition-all shadow-sm"
+                                                                {expandedTopic === topic.id && (
+                                                                    <div className="px-5 pb-5 pt-0 space-y-2 animate-slide-down">
+                                                                        {topic.subtopics.map(subtopic => {
+                                                                            const status = progressMap[subtopic.id] || { isRead: false, isMastered: false };
+                                                                            return (
+                                                                                <div key={subtopic.id} className="flex items-center justify-between p-4 rounded-2xl bg-slate-100/30 group hover:bg-white transition-all border border-transparent hover:border-indigo-100 shadow-sm">
+                                                                                    <Link
+                                                                                        href={`/university/${uniId}/lesson/${subtopic.id}`}
+                                                                                        className="flex items-center gap-4 flex-1"
                                                                                     >
-                                                                                        Practice
-                                                                                    </button>
-                                                                                )}
-                                                                            </div>
-                                                                        </div>
-                                                                    );
-                                                                })}
+                                                                                        {status.isRead ? <CheckCircle className="w-5 h-5 text-green-500" /> : <Clock className="w-5 h-5 text-slate-300" />}
+                                                                                        <span className={`text-sm font-bold ${status.isRead ? 'text-slate-900' : 'text-slate-500'}`}>{subtopic.name}</span>
+                                                                                    </Link>
+                                                                                    <div className="flex items-center gap-2">
+                                                                                        <button
+                                                                                            onClick={() => router.push(`/university/${uniId}/lesson/${subtopic.id}`)}
+                                                                                            className="px-4 py-2 bg-white text-slate-600 rounded-xl text-[9px] font-black uppercase tracking-widest hover:bg-slate-50 transition-all border border-slate-200 shadow-sm"
+                                                                                        >
+                                                                                            Read
+                                                                                        </button>
+                                                                                        {(subtopic as any).mcqCount > 0 && (
+                                                                                            <button
+                                                                                                onClick={() => router.push(`/university/${uniId}/practice/${subtopic.id}`)}
+                                                                                                className="px-4 py-2 bg-indigo-600 text-white rounded-xl text-[9px] font-black uppercase tracking-widest hover:bg-indigo-700 transition-all shadow-sm"
+                                                                                            >
+                                                                                                Practice
+                                                                                            </button>
+                                                                                        )}
+                                                                                    </div>
+                                                                                </div>
+                                                                            );
+                                                                        })}
+                                                                    </div>
+                                                                )}
                                                             </div>
-                                                        )}
+                                                        ))}
                                                     </div>
-                                                ))}
-                                            </div>
+                                                </>
+                                            )}
                                         </div>
                                     )) : (
                                         <div className="py-20 text-center bg-white rounded-[2.5rem] border border-dashed border-slate-200">
@@ -514,9 +526,8 @@ export default function UniversityDetailPage() {
                                             University Standards
                                         </h2>
                                         {university?.test_pattern_markdown ? (
-                                            <ReactMarkdown remarkPlugins={[remarkGfm, remarkMath]} rehypePlugins={[rehypeKatex]}>
-                                                {university.test_pattern_markdown}
-                                            </ReactMarkdown>
+                                            <MarkdownRenderer content={university.test_pattern_markdown} />
+
                                         ) : (
                                             <div className="text-center py-20 bg-slate-50/50 rounded-3xl border border-dashed border-slate-200">
                                                 <Info className="w-12 h-12 text-slate-200 mx-auto mb-4" />

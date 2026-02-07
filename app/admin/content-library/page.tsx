@@ -13,13 +13,8 @@ import Sidebar from '@/components/layout/Sidebar';
 import Header from '@/components/layout/Header';
 import { AuthService } from '@/lib/services/authService';
 import { supabase } from '@/lib/supabase/client';
-import ReactMarkdown from 'react-markdown';
-import remarkMath from 'remark-math';
-import rehypeKatex from 'rehype-katex';
-import rehypeRaw from 'rehype-raw';
-import remarkGfm from 'remark-gfm';
-import remarkBreaks from 'remark-breaks';
-import 'katex/dist/katex.min.css';
+import MarkdownRenderer from '@/components/shared/MarkdownRenderer';
+
 import Link from 'next/link';
 import { toast } from 'sonner';
 import { X, Save } from 'lucide-react';
@@ -397,12 +392,8 @@ export default function SuperAdminContentLibraryPage() {
                                     <div className="flex-1 overflow-y-auto p-12 bg-white custom-scrollbar">
                                         <div className="prose max-w-none">
                                             {selectedItem.content ? (
-                                                <ReactMarkdown
-                                                    remarkPlugins={[remarkMath, remarkGfm, remarkBreaks]}
-                                                    rehypePlugins={[rehypeKatex, rehypeRaw]}
-                                                >
-                                                    {selectedItem.content}
-                                                </ReactMarkdown>
+                                                <MarkdownRenderer content={selectedItem.content} />
+
                                             ) : (
                                                 <div className="h-full flex flex-col items-center justify-center text-center opacity-40">
                                                     <FileText className="w-16 h-16 text-slate-200 mb-4" />
@@ -532,12 +523,8 @@ Math: $E=mc^2$
                                         <div className="flex-1 p-8 overflow-y-auto custom-scrollbar bg-white">
                                             <div className="prose max-w-none bg-white">
                                                 {editContent ? (
-                                                    <ReactMarkdown
-                                                        remarkPlugins={[remarkMath, remarkGfm, remarkBreaks]}
-                                                        rehypePlugins={[rehypeKatex, rehypeRaw]}
-                                                    >
-                                                        {editContent}
-                                                    </ReactMarkdown>
+                                                    <MarkdownRenderer content={editContent} />
+
                                                 ) : (
                                                     <p className="text-slate-400 italic">No content to preview</p>
                                                 )}

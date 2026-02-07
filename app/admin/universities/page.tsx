@@ -8,8 +8,8 @@ import { useUI } from '@/lib/context/UIContext';
 import { Plus, Search, MapPin, Globe, Building2, Trash2, Edit2, X, CheckCircle, Upload, Image as ImageIcon, FileText, Save, Layout } from 'lucide-react';
 import { AuthService } from '@/lib/services/authService';
 import Link from 'next/link';
-import ReactMarkdown from 'react-markdown';
-import remarkGfm from 'remark-gfm';
+import MarkdownRenderer from '@/components/shared/MarkdownRenderer';
+
 import { toast } from 'sonner';
 
 type University = {
@@ -476,19 +476,8 @@ export default function UniversitiesPage() {
                                     </div>
                                     <div className="flex-1 overflow-y-auto p-8 prose prose-slate max-w-none prose-sm font-sans custom-scrollbar">
                                         {testPatternData.markdown ? (
-                                            <ReactMarkdown
-                                                remarkPlugins={[remarkGfm]}
-                                                components={{
-                                                    table: ({ node, ...props }) => <table className="w-full border-collapse border border-slate-100 my-4 text-xs" {...props} />,
-                                                    th: ({ node, ...props }) => <th className="border border-slate-100 px-4 py-2 bg-slate-50 font-black text-slate-700 text-left" {...props} />,
-                                                    td: ({ node, ...props }) => <td className="border border-slate-100 px-4 py-2 text-slate-600 font-medium" {...props} />,
-                                                    h1: ({ node, ...props }) => <h1 className="text-xl font-black text-slate-900 mb-4 mt-0 border-b-2 border-indigo-500 pb-2 inline-block" {...props} />,
-                                                    h2: ({ node, ...props }) => <h2 className="text-lg font-black text-slate-800 mb-3 mt-6 border-l-4 border-indigo-500 pl-3" {...props} />,
-                                                    strong: ({ node, ...props }) => <strong className="font-black text-indigo-600" {...props} />,
-                                                }}
-                                            >
-                                                {testPatternData.markdown}
-                                            </ReactMarkdown>
+                                            <MarkdownRenderer content={testPatternData.markdown} />
+
                                         ) : (
                                             <div className="h-full flex flex-col items-center justify-center text-slate-300 text-center opacity-40">
                                                 <FileText className="w-16 h-16 mb-4" />

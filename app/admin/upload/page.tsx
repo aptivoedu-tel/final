@@ -6,8 +6,8 @@ import { ExcelUploadService, MCQRow } from '@/lib/services/excelUploadService';
 import { MarkdownService } from '@/lib/services/markdownService';
 import { ContentService } from '@/lib/services/contentService';
 import { AuthService } from '@/lib/services/authService';
-import ReactMarkdown from 'react-markdown';
-import remarkGfm from 'remark-gfm';
+import MarkdownRenderer from '@/components/shared/MarkdownRenderer';
+
 
 export default function UniversalUploader() {
     const [activeTab, setActiveTab] = useState<'excel' | 'markdown'>('excel');
@@ -205,8 +205,8 @@ Conclusion here...`;
                     <button
                         onClick={() => { setActiveTab('excel'); resetUpload(); }}
                         className={`flex items-center gap-2 px-6 py-3 rounded-lg font-medium transition-all ${activeTab === 'excel'
-                                ? 'bg-primary text-white shadow-lg shadow-primary/25'
-                                : 'bg-white text-gray-600 hover:bg-gray-50'
+                            ? 'bg-primary text-white shadow-lg shadow-primary/25'
+                            : 'bg-white text-gray-600 hover:bg-gray-50'
                             }`}
                     >
                         <FileSpreadsheet className="w-5 h-5" />
@@ -215,8 +215,8 @@ Conclusion here...`;
                     <button
                         onClick={() => { setActiveTab('markdown'); resetUpload(); }}
                         className={`flex items-center gap-2 px-6 py-3 rounded-lg font-medium transition-all ${activeTab === 'markdown'
-                                ? 'bg-secondary text-white shadow-lg shadow-secondary/25'
-                                : 'bg-white text-gray-600 hover:bg-gray-50'
+                            ? 'bg-secondary text-white shadow-lg shadow-secondary/25'
+                            : 'bg-white text-gray-600 hover:bg-gray-50'
                             }`}
                     >
                         <FileText className="w-5 h-5" />
@@ -368,9 +368,8 @@ Conclusion here...`;
                                 </div>
                             ) : (
                                 <article className="prose prose-slate max-w-none">
-                                    <ReactMarkdown remarkPlugins={[remarkGfm]}>
-                                        {markdownContent}
-                                    </ReactMarkdown>
+                                    <MarkdownRenderer content={markdownContent} />
+
                                 </article>
                             )}
                         </div>
