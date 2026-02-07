@@ -229,16 +229,25 @@ export default function InstitutionNotificationsPage() {
                 imageUrl = url || '';
             }
 
-            const { success, error } = await NotificationService.sendNotification({
+            let res;
+            const notificationData = {
                 title,
                 message,
                 category,
                 imageUrl,
-                targetType,
-                targetId: targetType === 'individual' ? selectedStudent : undefined,
                 senderRole: 'institution_admin',
                 institutionId: currentUser.institution_id
-            });
+            };
+
+            if (targetType === 'all') {
+                res = await NotificationService.sendToInstitutionStudents(currentUser.institution_id, notificationData);
+            } else if (targetType === 'individual' && selectedStudent) {
+                res = await NotificationService.sendToSpecificUsers([selectedStudent], notificationData);
+            } else {
+                throw new Error("Invalid target selection");
+            }
+
+            const { success, error } = res;
 
             if (success) {
                 setStatusMsg({ type: 'success', text: 'Broadcast dispatched successfully!' });
