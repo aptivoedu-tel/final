@@ -245,11 +245,11 @@ Conclusion here...`;
 
                 {/* Auto-Detect Mode Toggle (Excel Only) */}
                 {activeTab === 'excel' && uploadStatus === 'idle' && (
-                    <div className="mb-6 p-4 bg-indigo-50/50 rounded-xl border border-indigo-100">
+                    <div className="mb-6 p-4 bg-teal-50/50 rounded-xl border border-teal-100">
                         <div className="flex items-center justify-between">
                             <div className="flex-1">
                                 <div className="flex items-center gap-3 mb-1">
-                                    <div className="w-2 h-2 bg-indigo-600 rounded-full"></div>
+                                    <div className="w-2 h-2 bg-teal-600 rounded-full"></div>
                                     <h3 className="text-base font-bold text-gray-900">Auto-Detect Mode</h3>
                                 </div>
                                 <p className="text-sm text-gray-600 ml-5">
@@ -266,7 +266,7 @@ Conclusion here...`;
                                         setSelectedSubtopic(null);
                                     }
                                 }}
-                                className={`ml-4 relative inline-flex h-8 w-14 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 ${autoDetectMode ? 'bg-indigo-600' : 'bg-gray-200'
+                                className={`ml-4 relative inline-flex h-8 w-14 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-teal-500 focus:ring-offset-2 ${autoDetectMode ? 'bg-teal-600' : 'bg-gray-200'
                                     }`}
                             >
                                 <span

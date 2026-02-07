@@ -217,13 +217,13 @@ export default function AdminDashboard() {
                     </a>
 
                     {/* User Management */}
-                    <a href="/admin/users" className="group relative overflow-hidden bg-indigo-600 rounded-2xl p-8 text-white shadow-lg shadow-indigo-600/20 hover:shadow-indigo-600/30 transition-all hover:-translate-y-1 block">
+                    <a href="/admin/users" className="group relative overflow-hidden bg-teal-600 rounded-2xl p-8 text-white shadow-lg shadow-teal-600/20 hover:shadow-teal-600/30 transition-all hover:-translate-y-1 block">
                         <div className="relative z-10">
                             <div className="w-14 h-14 bg-white/20 rounded-2xl flex items-center justify-center backdrop-blur-sm mb-6 group-hover:bg-white/30 transition-colors">
                                 <Shield className="w-7 h-7" />
                             </div>
                             <h3 className="text-xl font-bold mb-2">User Access</h3>
-                            <p className="text-indigo-100 text-sm leading-relaxed">
+                            <p className="text-teal-100 text-sm leading-relaxed">
                                 Manage admin and student accounts
                             </p>
                         </div>

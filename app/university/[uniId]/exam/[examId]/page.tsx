@@ -315,10 +315,10 @@ export default function StudentExamPage() {
             <div className="min-h-screen bg-slate-50 flex flex-col p-8 md:p-12 overflow-y-auto custom-scrollbar">
                 <div className="max-w-5xl mx-auto w-full">
                     <div className="bg-white rounded-[3rem] p-12 shadow-2xl border border-slate-100 mb-12 relative overflow-hidden">
-                        <div className="absolute top-0 right-0 w-64 h-64 bg-indigo-50 rounded-full -translate-y-1/2 translate-x-1/2 opacity-50" />
+                        <div className="absolute top-0 right-0 w-64 h-64 bg-teal-50 rounded-full -translate-y-1/2 translate-x-1/2 opacity-50" />
                         <div className="relative z-10 flex flex-col md:flex-row items-center justify-between gap-12">
                             <div className="text-center md:text-left">
-                                <h1 className="text-[10px] font-black text-indigo-600 uppercase tracking-[0.3em] mb-4">Official Result Summary</h1>
+                                <h1 className="text-[10px] font-black text-teal-600 uppercase tracking-[0.3em] mb-4">Official Result Summary</h1>
                                 <h2 className="text-4xl font-black text-slate-900 leading-tight mb-6">{exam?.name}</h2>
                                 <button
                                     onClick={() => router.push('/university')}
@@ -332,14 +332,14 @@ export default function StudentExamPage() {
                                     <circle
                                         cx="96" cy="96" r="84"
                                         fill="none"
-                                        stroke="#4f46e5"
+                                        stroke="#0d9488"
                                         strokeWidth="12"
                                         strokeDasharray={`${(scorePercentage * 527) / 100} 527`}
                                         strokeLinecap="round"
                                         className="transition-all duration-[2s] ease-out"
                                     />
                                 </svg>
-                                <span className="text-5xl font-black text-indigo-600 relative">{scorePercentage}%</span>
+                                <span className="text-5xl font-black text-teal-600 relative">{scorePercentage}%</span>
                                 <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest relative mt-1">Total Score</span>
                             </div>
                         </div>
@@ -389,12 +389,12 @@ export default function StudentExamPage() {
                                                     })}
                                                 </div>
                                                 {q.explanation && (
-                                                    <div className="mt-8 p-8 bg-indigo-50/50 rounded-3xl border border-indigo-100 flex gap-5">
-                                                        <div className="w-10 h-10 bg-indigo-600 rounded-2xl flex items-center justify-center text-white shrink-0 shadow-lg">
+                                                    <div className="mt-8 p-8 bg-teal-50/50 rounded-3xl border border-teal-100 flex gap-5">
+                                                        <div className="w-10 h-10 bg-teal-600 rounded-2xl flex items-center justify-center text-white shrink-0 shadow-lg">
                                                             <Info className="w-5 h-5" />
                                                         </div>
                                                         <div>
-                                                            <p className="text-[10px] font-black text-indigo-600 uppercase tracking-widest mb-1">Conceptual Clarification</p>
+                                                            <p className="text-[10px] font-black text-teal-600 uppercase tracking-widest mb-1">Conceptual Clarification</p>
                                                             <p className="text-sm font-medium text-slate-700 leading-relaxed italic">"{q.explanation}"</p>
                                                         </div>
                                                     </div>
@@ -515,10 +515,10 @@ export default function StudentExamPage() {
                                     {activeQuestionIdx + 1}
                                 </div>
                                 <div className="min-w-0">
-                                    <h4 className="text-[9px] lg:text-[10px] font-black text-indigo-600 uppercase tracking-widest flex flex-wrap items-center gap-2">
+                                    <h4 className="text-[9px] lg:text-[10px] font-black text-teal-600 uppercase tracking-widest flex flex-wrap items-center gap-2">
                                         <span>Question Workspace</span>
-                                        <span className="w-1 h-1 bg-indigo-200 rounded-full hidden sm:inline" />
-                                        <span className="bg-indigo-50 px-2 py-0.5 rounded text-indigo-700">{sections.find(s => s.id === activeSectionId)?.name}</span>
+                                        <span className="w-1 h-1 bg-teal-200 rounded-full hidden sm:inline" />
+                                        <span className="bg-teal-50 px-2 py-0.5 rounded text-teal-700">{sections.find(s => s.id === activeSectionId)?.name}</span>
                                     </h4>
                                     <p className="text-[10px] lg:text-xs font-bold text-slate-400 mt-0.5 text-wrap">{activeQuestion.marks} Mark(s) • Correct Option Required</p>
                                 </div>
@@ -589,7 +589,7 @@ export default function StudentExamPage() {
                                                 <button
                                                     key={val}
                                                     onClick={() => handleAnswer(activeQuestion.id, val)}
-                                                    className={`flex-1 py-6 lg:py-8 rounded-2xl lg:rounded-[2.5rem] border-2 font-black text-xs lg:text-sm uppercase tracking-widest transition-all ${answers[activeQuestion.id] === val ? 'bg-indigo-600 border-indigo-600 text-white shadow-2xl shadow-indigo-200' : 'bg-white border-slate-100 hover:border-indigo-200'}`}
+                                                    className={`flex-1 py-6 lg:py-8 rounded-2xl lg:rounded-[2.5rem] border-2 font-black text-xs lg:text-sm uppercase tracking-widest transition-all ${answers[activeQuestion.id] === val ? 'bg-teal-600 border-teal-600 text-white shadow-2xl shadow-teal-200' : 'bg-white border-slate-100 hover:border-teal-200'}`}
                                                 >
                                                     {val}
                                                 </button>
@@ -616,7 +616,7 @@ export default function StudentExamPage() {
                                                 {activeQuestion.question_type === 'essay' ? 'Essay / Long Answer' : 'Short Answer Response'}
                                             </label>
                                             <textarea
-                                                className={`w-full p-6 lg:p-8 bg-white border-2 border-slate-100 rounded-2xl lg:rounded-[2.5rem] outline-none focus:border-indigo-600 focus:ring-4 focus:ring-indigo-600/10 font-bold text-base lg:text-lg text-slate-700 shadow-sm leading-relaxed ${activeQuestion.question_type === 'essay' ? 'min-h-[300px] lg:min-h-[400px]' : 'min-h-[150px] lg:min-h-[200px]'}`}
+                                                className={`w-full p-6 lg:p-8 bg-white border-2 border-slate-100 rounded-2xl lg:rounded-[2.5rem] outline-none focus:border-teal-600 focus:ring-4 focus:ring-teal-600/10 font-bold text-base lg:text-lg text-slate-700 shadow-sm leading-relaxed ${activeQuestion.question_type === 'essay' ? 'min-h-[300px] lg:min-h-[400px]' : 'min-h-[150px] lg:min-h-[200px]'}`}
                                                 placeholder="Begin typing your response here..."
                                                 value={answers[activeQuestion.id] || ''}
                                                 onChange={(e) => handleAnswer(activeQuestion.id, e.target.value)}
@@ -635,7 +635,7 @@ export default function StudentExamPage() {
                                             <label className="block text-[9px] lg:text-[10px] font-black text-slate-400 uppercase tracking-widest mb-4">Missing Words</label>
                                             <input
                                                 type="text"
-                                                className="w-full p-6 lg:p-8 bg-white border-2 border-slate-100 rounded-2xl lg:rounded-[2.5rem] outline-none focus:border-indigo-600 focus:ring-4 focus:ring-indigo-600/10 font-black text-lg lg:text-xl text-slate-900 shadow-sm transition-all"
+                                                className="w-full p-6 lg:p-8 bg-white border-2 border-slate-100 rounded-2xl lg:rounded-[2.5rem] outline-none focus:border-teal-600 focus:ring-4 focus:ring-teal-600/10 font-black text-lg lg:text-xl text-slate-900 shadow-sm transition-all"
                                                 placeholder="Enter the missing content..."
                                                 value={answers[activeQuestion.id] || ''}
                                                 onChange={(e) => handleAnswer(activeQuestion.id, e.target.value)}
@@ -772,7 +772,7 @@ export default function StudentExamPage() {
                                 {exam?.allow_continue_after_time_up && (
                                     <button
                                         onClick={() => setIsTimeUpModalOpen(false)}
-                                        className="w-full py-5 bg-indigo-600 text-white rounded-2xl font-black uppercase text-xs tracking-widest hover:bg-indigo-700 transition-all shadow-xl active:scale-95"
+                                        className="w-full py-5 bg-teal-600 text-white rounded-2xl font-black uppercase text-xs tracking-widest hover:bg-teal-700 transition-all shadow-xl active:scale-95"
                                     >
                                         Continue Effort (Mark Lated)
                                     </button>

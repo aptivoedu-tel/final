@@ -132,7 +132,7 @@ export default function AdminProfilePage() {
     if (loading) {
         return (
             <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-                <Loader2 className="w-8 h-8 text-indigo-600 animate-spin" />
+                <Loader2 className="w-8 h-8 text-teal-600 animate-spin" />
             </div>
         );
     }
@@ -172,7 +172,7 @@ export default function AdminProfilePage() {
                                                 {profile?.avatar_url ? (
                                                     <img src={profile.avatar_url} alt="Profile" className="w-full h-full object-cover" />
                                                 ) : (
-                                                    <div className="w-full h-full flex items-center justify-center bg-indigo-50 text-indigo-300">
+                                                    <div className="w-full h-full flex items-center justify-center bg-teal-50 text-teal-300">
                                                         <User className="w-16 h-16" />
                                                     </div>
                                                 )}
@@ -185,7 +185,7 @@ export default function AdminProfilePage() {
                                             <button
                                                 type="button"
                                                 onClick={() => fileInputRef.current?.click()}
-                                                className="absolute bottom-0 right-0 bg-indigo-600 text-white p-2.5 rounded-full shadow-lg hover:bg-indigo-700 transition-colors"
+                                                className="absolute bottom-0 right-0 bg-teal-600 text-white p-2.5 rounded-full shadow-lg hover:bg-teal-700 transition-colors"
                                                 disabled={uploading}
                                             >
                                                 <Camera className="w-5 h-5" />
@@ -207,7 +207,7 @@ export default function AdminProfilePage() {
                                                 <span>{profile?.email}</span>
                                             </div>
                                             <div className="flex flex-wrap gap-2 justify-center sm:justify-start">
-                                                <span className="px-3 py-1 bg-purple-50 text-purple-700 rounded-full text-xs font-bold uppercase tracking-wider flex items-center gap-1">
+                                                <span className="px-3 py-1 bg-teal-50 text-teal-700 rounded-full text-xs font-bold uppercase tracking-wider flex items-center gap-1">
                                                     <Shield className="w-3 h-3" />
                                                     {profile?.role.replace('_', ' ')}
                                                 </span>
@@ -226,7 +226,7 @@ export default function AdminProfilePage() {
                                                 type="text"
                                                 value={fullName}
                                                 onChange={(e) => setFullName(e.target.value)}
-                                                className="w-full px-4 py-3 rounded-lg border border-gray-200 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100 outline-none transition-all"
+                                                className="w-full px-4 py-3 rounded-lg border border-gray-200 focus:border-teal-500 focus:ring-2 focus:ring-teal-100 outline-none transition-all"
                                                 placeholder="Enter your full name"
                                             />
                                         </div>
@@ -236,7 +236,7 @@ export default function AdminProfilePage() {
                                         <button
                                             type="submit"
                                             disabled={saving}
-                                            className="px-6 py-2.5 bg-indigo-600 text-white rounded-lg font-medium hover:bg-indigo-700 transition-colors flex items-center gap-2 disabled:opacity-50"
+                                            className="px-6 py-2.5 bg-teal-600 text-white rounded-lg font-medium hover:bg-teal-700 transition-colors flex items-center gap-2 disabled:opacity-50"
                                         >
                                             {saving ? (
                                                 <Loader2 className="w-4 h-4 animate-spin" />
@@ -263,7 +263,7 @@ export default function AdminProfilePage() {
                                                 type="password"
                                                 value={currentPassword}
                                                 onChange={(e) => setCurrentPassword(e.target.value)}
-                                                className="w-full px-4 py-3 rounded-lg border border-gray-200 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100 outline-none transition-all"
+                                                className="w-full px-4 py-3 rounded-lg border border-gray-200 focus:border-teal-500 focus:ring-2 focus:ring-teal-100 outline-none transition-all"
                                                 placeholder="••••••••"
                                             />
                                         </div>
@@ -273,7 +273,7 @@ export default function AdminProfilePage() {
                                                 type="password"
                                                 value={newPassword}
                                                 onChange={(e) => setNewPassword(e.target.value)}
-                                                className="w-full px-4 py-3 rounded-lg border border-gray-200 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100 outline-none transition-all"
+                                                className="w-full px-4 py-3 rounded-lg border border-gray-200 focus:border-teal-500 focus:ring-2 focus:ring-teal-100 outline-none transition-all"
                                                 placeholder="••••••••"
                                             />
                                         </div>
@@ -284,7 +284,7 @@ export default function AdminProfilePage() {
                                             disabled={saving || !newPassword || !currentPassword}
                                             className="px-6 py-2.5 bg-white border border-gray-200 text-slate-700 rounded-lg font-medium hover:bg-gray-50 transition-colors flex items-center gap-2 disabled:opacity-50"
                                         >
-                                            {saving && <Loader2 className="w-4 h-4 animate-spin text-indigo-600" />}
+                                            {saving && <Loader2 className="w-4 h-4 animate-spin text-teal-600" />}
                                             Change Password
                                         </button>
                                     </div>

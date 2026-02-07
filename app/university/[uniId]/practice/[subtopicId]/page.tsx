@@ -189,9 +189,9 @@ export default function PracticeSessionPage() {
     if (loading) {
         return (
             <div className="min-h-screen bg-[#F8FAFC] flex flex-col items-center justify-center p-8">
-                <div className="w-20 h-20 border-4 border-indigo-100 border-t-indigo-600 rounded-full animate-spin mb-6" />
+                <div className="w-20 h-20 border-4 border-teal-100 border-t-teal-600 rounded-full animate-spin mb-6" />
                 <h2 className="text-xl font-black text-slate-900 animate-pulse">Initializing Practice Session...</h2>
-                <p className="text-slate-500 mt-2">Selecting questions based on university standards</p>
+                <p className="text-slate-500 mt-2">Selecting questions based on university test pattern</p>
             </div>
         );
     }
@@ -200,14 +200,14 @@ export default function PracticeSessionPage() {
         return (
             <div className="min-h-screen bg-[#F8FAFC] flex flex-col items-center justify-center p-4">
                 <div className="w-full max-w-2xl bg-white rounded-[3rem] shadow-2xl overflow-hidden border border-slate-100 animate-scale-in">
-                    <div className="bg-gradient-to-br from-slate-900 to-indigo-950 p-12 text-center relative overflow-hidden">
-                        <div className="absolute top-0 right-0 w-64 h-64 bg-indigo-500/10 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2" />
+                    <div className="bg-gradient-to-br from-slate-900 to-teal-950 p-12 text-center relative overflow-hidden">
+                        <div className="absolute top-0 right-0 w-64 h-64 bg-teal-500/10 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2" />
                         <div className="relative z-10">
                             <div className="w-24 h-24 bg-white/10 backdrop-blur-md rounded-[2rem] flex items-center justify-center mx-auto mb-6 border border-white/20">
-                                <Trophy className="w-12 h-12 text-indigo-300" />
+                                <Trophy className="w-12 h-12 text-teal-300" />
                             </div>
                             <h1 className="text-4xl font-black text-white mb-2 tracking-tight">Session Complete!</h1>
-                            <p className="text-indigo-400 font-bold uppercase tracking-widest text-xs">{subtopicName}</p>
+                            <p className="text-teal-400 font-bold uppercase tracking-widest text-xs">{subtopicName}</p>
                         </div>
                     </div>
 
@@ -215,7 +215,7 @@ export default function PracticeSessionPage() {
                         <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-12">
                             <div className="bg-slate-50 p-6 rounded-3xl border border-slate-100 text-center transition-transform hover:scale-105">
                                 <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Score</p>
-                                <p className="text-3xl font-black text-indigo-600">{results.score}%</p>
+                                <p className="text-3xl font-black text-teal-600">{results.score}%</p>
                             </div>
                             <div className="bg-green-50 p-6 rounded-3xl border border-green-100 text-center transition-transform hover:scale-105">
                                 <p className="text-[10px] font-black text-green-400 uppercase tracking-widest mb-1">Correct</p>
@@ -234,7 +234,7 @@ export default function PracticeSessionPage() {
                         <div className="space-y-4">
                             <button
                                 onClick={() => window.location.reload()}
-                                className="w-full py-5 bg-indigo-600 text-white rounded-2xl font-black uppercase tracking-[0.2em] text-[10px] shadow-xl shadow-indigo-100 hover:bg-indigo-700 transition-all active:scale-98 flex items-center justify-center gap-3"
+                                className="w-full py-5 bg-teal-600 text-white rounded-2xl font-black uppercase tracking-[0.2em] text-[10px] shadow-xl shadow-teal-100 hover:bg-teal-700 transition-all active:scale-98 flex items-center justify-center gap-3"
                             >
                                 <RotateCcw className="w-4 h-4" />
                                 Practice Again
@@ -263,13 +263,13 @@ export default function PracticeSessionPage() {
                 <div className="flex items-center gap-6">
                     <button
                         onClick={() => router.back()}
-                        className="w-10 h-10 rounded-xl border border-slate-200 flex items-center justify-center text-slate-400 hover:text-indigo-600 hover:border-indigo-600 transition-all"
+                        className="w-10 h-10 rounded-xl border border-slate-200 flex items-center justify-center text-slate-400 hover:text-teal-600 hover:border-teal-600 transition-all"
                     >
                         <ChevronLeft className="w-5 h-5" />
                     </button>
                     <div>
                         <h2 className="text-sm font-black text-slate-900 tracking-tight">{subtopicName}</h2>
-                        <p className="text-[10px] font-black text-indigo-500 uppercase tracking-widest">Question {currentIndex + 1} of {questions.length}</p>
+                        <p className="text-[10px] font-black text-teal-500 uppercase tracking-widest">Question {currentIndex + 1} of {questions.length}</p>
                     </div>
                 </div>
 
@@ -290,7 +290,7 @@ export default function PracticeSessionPage() {
             {/* Progress Bar */}
             <div className="h-1.5 w-full bg-slate-100">
                 <div
-                    className="h-full bg-indigo-600 transition-all duration-500 ease-out shadow-[0_0_10px_rgba(79,70,229,0.3)]"
+                    className="h-full bg-teal-600 transition-all duration-500 ease-out shadow-[0_0_10px_rgba(13,148,136,0.3)]"
                     style={{ width: `${progress}%` }}
                 />
             </div>
@@ -301,7 +301,7 @@ export default function PracticeSessionPage() {
                         <div className="p-8 sm:p-12 flex-1">
                             {/* Question */}
                             <div className="mb-12">
-                                <span className="text-[10px] font-black text-indigo-500 uppercase tracking-[0.2em] mb-4 block">Question</span>
+                                <span className="text-[10px] font-black text-teal-500 uppercase tracking-[0.2em] mb-4 block">Question</span>
                                 <h3 className="text-xl sm:text-2xl font-bold text-slate-900 leading-relaxed">
                                     {currentMCQ.question}
                                 </h3>
@@ -324,17 +324,17 @@ export default function PracticeSessionPage() {
                                         key={option.key}
                                         onClick={() => handleSelectOption(option.key)}
                                         className={`group flex items-center p-6 rounded-2xl border-2 transition-all active:scale-[0.99] text-left ${answers[currentIndex] === option.key
-                                            ? 'bg-indigo-50 border-indigo-500 shadow-md shadow-indigo-100'
+                                            ? 'bg-teal-50 border-teal-500 shadow-md shadow-teal-100'
                                             : 'bg-white border-slate-100 hover:border-slate-200 hover:bg-slate-50'
                                             }`}
                                     >
                                         <div className={`w-10 h-10 rounded-xl flex items-center justify-center font-black text-sm shrink-0 transition-all ${answers[currentIndex] === option.key
-                                            ? 'bg-indigo-600 text-white'
+                                            ? 'bg-teal-600 text-white'
                                             : 'bg-slate-100 text-slate-400 group-hover:bg-white group-hover:text-slate-600'
                                             }`}>
                                             {option.key}
                                         </div>
-                                        <span className={`ml-6 text-sm font-bold ${answers[currentIndex] === option.key ? 'text-indigo-900' : 'text-slate-600'
+                                        <span className={`ml-6 text-sm font-bold ${answers[currentIndex] === option.key ? 'text-teal-900' : 'text-slate-600'
                                             }`}>
                                             {option.text}
                                         </span>
@@ -349,7 +349,7 @@ export default function PracticeSessionPage() {
                                 <button
                                     onClick={prevQuestion}
                                     disabled={currentIndex === 0}
-                                    className="flex items-center justify-center w-12 h-12 rounded-2xl border border-slate-200 bg-white text-slate-400 hover:text-indigo-600 hover:border-indigo-600 transition-all disabled:opacity-30 disabled:cursor-not-allowed shadow-sm group"
+                                    className="flex items-center justify-center w-12 h-12 rounded-2xl border border-slate-200 bg-white text-slate-400 hover:text-teal-600 hover:border-teal-600 transition-all disabled:opacity-30 disabled:cursor-not-allowed shadow-sm group"
                                 >
                                     <ChevronLeft className="w-6 h-6 group-hover:-translate-x-1 transition-transform" />
                                 </button>
@@ -358,7 +358,7 @@ export default function PracticeSessionPage() {
                                 </span>
                                 <button
                                     onClick={nextQuestion}
-                                    className="flex items-center justify-center w-12 h-12 rounded-2xl border border-slate-200 bg-white text-slate-400 hover:text-indigo-600 hover:border-indigo-600 transition-all shadow-sm group"
+                                    className="flex items-center justify-center w-12 h-12 rounded-2xl border border-slate-200 bg-white text-slate-400 hover:text-teal-600 hover:border-teal-600 transition-all shadow-sm group"
                                 >
                                     <ChevronRight className="w-6 h-6 group-hover:translate-x-1 transition-transform" />
                                 </button>

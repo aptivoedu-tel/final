@@ -238,10 +238,9 @@ export default function ContentEditor() {
         setLoading(true);
         if (subId === 'no_subtopic') {
             const { data } = await supabase
-                .from('subtopics')
+                .from('topics')
                 .select('content_markdown')
-                .eq('topic_id', selectedTopic)
-                .eq('name', 'General')
+                .eq('id', parseInt(selectedTopic))
                 .single();
             setContent(data?.content_markdown || '');
         } else {
@@ -265,30 +264,15 @@ export default function ContentEditor() {
         let targetSubtopicId = selectedSubtopic;
 
         if (selectedSubtopic === 'no_subtopic') {
-            const { data: existing } = await supabase
-                .from('subtopics')
-                .select('id')
-                .eq('topic_id', selectedTopic)
-                .eq('name', 'General')
-                .single();
+            const { error } = await supabase
+                .from('topics')
+                .update({ content_markdown: content })
+                .eq('id', parseInt(selectedTopic));
 
-            if (existing) {
-                targetSubtopicId = existing.id.toString();
-            } else {
-                const { data: created, error: createErr } = await supabase
-                    .from('subtopics')
-                    .insert({ topic_id: parseInt(selectedTopic), name: 'General' })
-                    .select('id')
-                    .single();
-
-                if (createErr) {
-                    alert('Failed to create general subtopic: ' + createErr.message);
-                    setSaving(false);
-                    return;
-                }
-                targetSubtopicId = created.id.toString();
-                loadSubtopics(parseInt(selectedTopic));
-            }
+            if (error) alert('Failed to save topic content: ' + error.message);
+            else alert('Topic content saved successfully!');
+            setSaving(false);
+            return;
         }
 
         if (!targetSubtopicId) {

@@ -176,7 +176,7 @@ function UniversityPortalContent() {
 
     if (loading) return (
         <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-            <div className="w-10 h-10 border-4 border-indigo-600 border-t-transparent rounded-full animate-spin" />
+            <div className="w-10 h-10 border-4 border-teal-600 border-t-transparent rounded-full animate-spin" />
         </div>
     );
 
@@ -208,7 +208,7 @@ function UniversityPortalContent() {
                                         <input
                                             type="text"
                                             placeholder="Search university..."
-                                            className="w-full p-5 pl-12 bg-gray-50 rounded-2xl outline-none focus:ring-2 focus:ring-indigo-500 transition-all border border-gray-100 font-medium"
+                                            className="w-full p-5 pl-12 bg-gray-50 rounded-2xl outline-none focus:ring-2 focus:ring-teal-500 transition-all border border-gray-100 font-medium"
                                             onChange={(e) => setSearch(e.target.value)}
                                         />
                                         <MapPin className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 w-5 h-5" />
@@ -218,13 +218,13 @@ function UniversityPortalContent() {
                                             .filter(u => u.name.toLowerCase().includes(search.toLowerCase()))
                                             .filter(u => !enrollments.some(e => e.university_id === u.id))
                                             .map(u => (
-                                                <div key={u.id} className="flex items-center justify-between p-5 border border-gray-100 rounded-2xl hover:bg-slate-50 transition-all group hover:border-indigo-100">
+                                                <div key={u.id} className="flex items-center justify-between p-5 border border-gray-100 rounded-2xl hover:bg-slate-50 transition-all group hover:border-teal-100">
                                                     <div className="flex items-center gap-4">
-                                                        <div className="w-12 h-12 bg-white rounded-xl flex items-center justify-center border border-gray-100 group-hover:border-indigo-200 transition-all shadow-sm overflow-hidden p-2 shrink-0">
+                                                        <div className="w-12 h-12 bg-white rounded-xl flex items-center justify-center border border-gray-100 group-hover:border-teal-200 transition-all shadow-sm overflow-hidden p-2 shrink-0">
                                                             {u.logo_url ? (
                                                                 <img src={u.logo_url} alt={u.name} className="w-full h-full object-contain" />
                                                             ) : (
-                                                                <span className="text-indigo-600 font-black">{u.name.substring(0, 1)}</span>
+                                                                <span className="text-teal-600 font-black">{u.name.substring(0, 1)}</span>
                                                             )}
                                                         </div>
                                                         <span className="font-bold text-slate-700">{u.name}</span>
@@ -250,7 +250,7 @@ function UniversityPortalContent() {
                                     {(!user?.institution_id) && (
                                         <button
                                             onClick={() => setShowRegistration(true)}
-                                            className="px-8 py-4 bg-slate-900 text-white rounded-2xl text-[10px] font-black uppercase tracking-widest hover:bg-indigo-600 transition-all shadow-xl shadow-slate-200 flex items-center gap-2"
+                                            className="px-8 py-4 bg-slate-900 text-white rounded-2xl text-[10px] font-black uppercase tracking-widest hover:bg-teal-600 transition-all shadow-xl shadow-slate-200 flex items-center gap-2"
                                         >
                                             <Plus className="w-4 h-4" />
                                             Join Institution
@@ -264,17 +264,17 @@ function UniversityPortalContent() {
                                             <div
                                                 key={en.id}
                                                 onClick={() => router.push(`/university/${en.university_id}`)}
-                                                className="group relative bg-white p-8 rounded-[3rem] border-2 border-gray-100 hover:border-indigo-600 transition-all cursor-pointer hover:shadow-2xl hover:shadow-indigo-100/50"
+                                                className="group relative bg-white p-8 rounded-[3rem] border-2 border-gray-100 hover:border-teal-600 transition-all cursor-pointer hover:shadow-2xl hover:shadow-teal-100/50"
                                             >
                                                 <div className="flex justify-between items-start mb-10">
                                                     <div className="w-20 h-20 bg-white rounded-3xl flex items-center justify-center text-3xl font-black shadow-xl shadow-slate-100 border-2 border-slate-50 p-3 overflow-hidden">
                                                         {en.university.logo_url ? (
                                                             <img src={en.university.logo_url} alt={en.university.name} className="w-full h-full object-contain" />
                                                         ) : (
-                                                            <span className="text-indigo-600">{en.university.name.substring(0, 1)}</span>
+                                                            <span className="text-teal-600">{en.university.name.substring(0, 1)}</span>
                                                         )}
                                                     </div>
-                                                    <div className="bg-indigo-50 text-indigo-600 px-4 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest border border-indigo-100 flex items-center gap-1.5">
+                                                    <div className="bg-teal-50 text-teal-600 px-4 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest border border-teal-100 flex items-center gap-1.5">
                                                         <CheckCircle className="w-3.5 h-3.5" />
                                                         Verified
                                                     </div>
@@ -284,7 +284,7 @@ function UniversityPortalContent() {
                                                 <p className="text-slate-400 text-[10px] font-black uppercase tracking-[0.15em] mb-12">Academic Excellence Path</p>
 
                                                 <div className="flex items-center justify-between">
-                                                    <span className="text-xs font-black text-indigo-600 uppercase tracking-widest group-hover:translate-x-2 transition-transform inline-flex items-center gap-2">
+                                                    <span className="text-xs font-black text-teal-600 uppercase tracking-widest group-hover:translate-x-2 transition-transform inline-flex items-center gap-2">
                                                         Enter Campus
                                                         <ChevronRight className="w-4 h-4" />
                                                     </span>
@@ -306,14 +306,14 @@ function UniversityPortalContent() {
                                         ))
                                     ) : (
                                         <div className="col-span-full py-24 bg-white rounded-[3rem] border-4 border-dashed border-slate-100 text-center">
-                                            <div className="w-24 h-24 bg-indigo-50 rounded-[2rem] flex items-center justify-center mx-auto mb-8">
-                                                <ShieldAlert className="w-12 h-12 text-indigo-300" />
+                                            <div className="w-24 h-24 bg-teal-50 rounded-[2rem] flex items-center justify-center mx-auto mb-8">
+                                                <ShieldAlert className="w-12 h-12 text-teal-300" />
                                             </div>
                                             <h3 className="text-3xl font-black text-slate-900 mb-4">No Institutions Connected</h3>
                                             <p className="text-slate-500 max-w-sm mx-auto font-medium mb-10">You need to join a university or institution to access the portal and its academic resources.</p>
                                             <button
                                                 onClick={() => setShowRegistration(true)}
-                                                className="px-10 py-4 bg-slate-900 text-white rounded-2xl text-[10px] font-black uppercase tracking-[0.2em] hover:bg-indigo-600 transition-all shadow-2xl shadow-slate-200"
+                                                className="px-10 py-4 bg-slate-900 text-white rounded-2xl text-[10px] font-black uppercase tracking-[0.2em] hover:bg-teal-600 transition-all shadow-2xl shadow-slate-200"
                                             >
                                                 Register Now
                                             </button>
@@ -333,7 +333,7 @@ export default function UniversityPortalPage() {
     return (
         <React.Suspense fallback={
             <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-                <div className="w-10 h-10 border-4 border-indigo-600 border-t-transparent rounded-full animate-spin" />
+                <div className="w-10 h-10 border-4 border-teal-600 border-t-transparent rounded-full animate-spin" />
             </div>
         }>
             <UniversityPortalContent />

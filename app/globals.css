@@ -12,16 +12,20 @@
     --primary-dark: #115E59;
     --primary-glow: rgba(13, 148, 136, 0.15);
 
-    /* Secondary Colors - Indigo Accents */
-    --secondary: #6366F1;
-    --secondary-light: #818CF8;
-    --secondary-dark: #4F46E5;
+    /* Secondary Colors - Teal Accents (Replacing Indigo) */
+    --secondary: #115E59;
+    /* Using Dark Teal as Secondary */
+    --secondary-light: #2DD4BF;
+    /* Teal 400 */
+    --secondary-dark: #134e4a;
+    /* Teal 900 */
 
     /* Neutral Palette */
     --background: #F8FAFC;
     --foreground: #1E293B;
     --surface: #FFFFFF;
-    --surface-hover: #F1F5F9;
+    --surface-hover: #F0FDFA;
+    /* Teal-tinted surface hover */
     --border: #E2E8F0;
     --border-light: #F1F5F9;
 
@@ -32,16 +36,18 @@
     --text-muted: #CBD5E1;
 
     /* Status Colors */
-    --success: #10B981;
+    --success: #0D9488;
+    /* Using Primary Teal for Success to match theme */
     --warning: #F59E0B;
     --error: #EF4444;
-    --info: #3B82F6;
+    --info: #0D9488;
+    /* Using Primary Teal for Info */
 
     /* Shadows - Soft & Subtle */
-    --shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.02);
-    --shadow-md: 0 4px 16px rgba(0, 0, 0, 0.04);
-    --shadow-lg: 0 10px 30px rgba(0, 0, 0, 0.06);
-    --shadow-xl: 0 20px 50px rgba(0, 0, 0, 0.08);
+    --shadow-sm: 0 2px 8px rgba(13, 148, 136, 0.1);
+    --shadow-md: 0 4px 16px rgba(13, 148, 136, 0.15);
+    --shadow-lg: 0 10px 30px rgba(13, 148, 136, 0.2);
+    --shadow-xl: 0 20px 50px rgba(13, 148, 136, 0.25);
     --shadow-glow: 0 8px 24px var(--primary-glow);
 
     /* Glassmorphism */
@@ -94,9 +100,9 @@
   body {
     background: var(--background);
     background-image:
-      radial-gradient(at 0% 0%, rgba(100, 116, 139, 0.03) 0, transparent 50%),
-      radial-gradient(at 100% 0%, rgba(99, 102, 241, 0.04) 0, transparent 50%),
-      radial-gradient(at 100% 100%, rgba(148, 163, 184, 0.02) 0, transparent 50%);
+      radial-gradient(at 0% 0%, rgba(13, 148, 136, 0.05) 0, transparent 50%),
+      radial-gradient(at 100% 0%, rgba(94, 234, 212, 0.08) 0, transparent 50%),
+      radial-gradient(at 100% 100%, rgba(17, 94, 89, 0.05) 0, transparent 50%);
     color: var(--foreground);
     font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
     font-size: 16px;

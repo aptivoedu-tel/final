@@ -367,8 +367,8 @@ export default function LoginPage() {
                                             className="group w-full p-5 bg-white border border-slate-100 text-left rounded-[1.5rem] hover:border-[#4CAF50] hover:shadow-xl hover:shadow-green-500/5 transition-all active:scale-[0.98]"
                                         >
                                             <div className="flex items-center gap-4">
-                                                <div className="w-12 h-12 bg-blue-50 rounded-2xl flex items-center justify-center group-hover:bg-[#4CAF50] transition-colors">
-                                                    <Building2 className="w-6 h-6 text-blue-500 group-hover:text-white" />
+                                                <div className="w-12 h-12 bg-teal-50 rounded-2xl flex items-center justify-center group-hover:bg-[#4CAF50] transition-colors">
+                                                    <Building2 className="w-6 h-6 text-teal-500 group-hover:text-white" />
                                                 </div>
                                                 <div className="flex-1">
                                                     <h4 className="text-sm font-black text-[#1B3A3A]">Institution Portal</h4>
