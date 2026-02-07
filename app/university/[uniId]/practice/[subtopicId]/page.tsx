@@ -38,6 +38,8 @@ export default function PracticeSessionPage() {
     const [subtopicName, setSubtopicName] = useState('');
     const [results, setResults] = useState<any>(null);
     const [user, setUser] = useState<any>(null);
+    const [submittedAnswer, setSubmittedAnswer] = useState<Record<number, boolean>>({});
+    const [isCorrect, setIsCorrect] = useState<Record<number, boolean>>({});
 
     const timerRef = useRef<NodeJS.Timeout | null>(null);
 
@@ -344,52 +346,90 @@ export default function PracticeSessionPage() {
                         </div>
 
                         {/* Navigation Footer */}
-                        <div className="p-6 sm:p-12 bg-slate-50/50 border-t border-slate-100 flex flex-col sm:flex-row items-center justify-between gap-6">
-                            <div className="flex items-center gap-3">
-                                <button
-                                    onClick={prevQuestion}
-                                    disabled={currentIndex === 0}
-                                    className="flex items-center justify-center w-12 h-12 rounded-2xl border border-slate-200 bg-white text-slate-400 hover:text-teal-600 hover:border-teal-600 transition-all disabled:opacity-30 disabled:cursor-not-allowed shadow-sm group"
-                                >
-                                    <ChevronLeft className="w-6 h-6 group-hover:-translate-x-1 transition-transform" />
-                                </button>
-                                <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-4">
-                                    Item {currentIndex + 1} / {questions.length}
-                                </span>
-                                <button
-                                    onClick={nextQuestion}
-                                    className="flex items-center justify-center w-12 h-12 rounded-2xl border border-slate-200 bg-white text-slate-400 hover:text-teal-600 hover:border-teal-600 transition-all shadow-sm group"
-                                >
-                                    <ChevronRight className="w-6 h-6 group-hover:translate-x-1 transition-transform" />
-                                </button>
-                            </div>
+                        <div className="p-6 sm:p-12 bg-slate-50/50 border-t border-slate-100 flex flex-col gap-6">
+                            {/* Explanation Section */}
+                            {submittedAnswer[currentMCQ.id] && (
+                                <div className={`p-6 rounded-2xl border ${isCorrect[currentMCQ.id]
+                                    ? 'bg-emerald-50 border-emerald-100'
+                                    : 'bg-rose-50 border-rose-100'
+                                    } animate-fade-in`}>
+                                    <div className="flex items-center gap-3 mb-2">
+                                        {isCorrect[currentMCQ.id] ? (
+                                            <div className="flex items-center gap-2 text-emerald-700 font-bold">
+                                                <CheckCircle2 className="w-5 h-5" /> Correct!
+                                            </div>
+                                        ) : (
+                                            <div className="flex items-center gap-2 text-rose-700 font-bold">
+                                                <XCircle className="w-5 h-5" /> Incorrect
+                                            </div>
+                                        )}
+                                        <div className="ml-auto text-xs font-bold uppercase tracking-widest text-slate-400">
+                                            Correct Answer: {currentMCQ.correct_option}
+                                        </div>
+                                    </div>
+                                    <p className={`text-sm ${isCorrect[currentMCQ.id] ? 'text-emerald-800' : 'text-rose-800'
+                                        }`}>
+                                        {currentMCQ.explanation || "No explanation provided."}
+                                    </p>
+                                </div>
+                            )}
 
-                            <button
-                                onClick={() => {
-                                    if (answers[currentIndex]) {
-                                        handleSubmitAttempt(currentMCQ.id, answers[currentIndex]);
-                                        nextQuestion();
-                                    } else {
-                                        nextQuestion();
-                                    }
-                                }}
-                                className={`w-full sm:w-auto px-10 py-4 rounded-2xl font-black uppercase tracking-[0.2em] text-[10px] transition-all flex items-center justify-center gap-3 ${answers[currentIndex]
-                                    ? 'bg-slate-900 text-white shadow-xl shadow-slate-200 hover:bg-slate-800 active:scale-95'
-                                    : 'bg-white border border-slate-200 text-slate-400 hover:text-slate-600'
-                                    }`}
-                            >
-                                {currentIndex === questions.length - 1 ? (
-                                    <>
-                                        Finish Session
-                                        <CheckCircle2 className="w-4 h-4" />
-                                    </>
-                                ) : (
-                                    <>
-                                        {answers[currentIndex] ? 'Commit Answer' : 'Skip Item'}
-                                        <ArrowRight className="w-4 h-4" />
-                                    </>
-                                )}
-                            </button>
+                            <div className="flex flex-col sm:flex-row items-center justify-between gap-6">
+                                <div className="flex items-center gap-3">
+                                    <button
+                                        onClick={prevQuestion}
+                                        disabled={currentIndex === 0}
+                                        className="flex items-center justify-center w-12 h-12 rounded-2xl border border-slate-200 bg-white text-slate-400 hover:text-teal-600 hover:border-teal-600 transition-all disabled:opacity-30 disabled:cursor-not-allowed shadow-sm group"
+                                    >
+                                        <ChevronLeft className="w-6 h-6 group-hover:-translate-x-1 transition-transform" />
+                                    </button>
+                                    <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-4">
+                                        Item {currentIndex + 1} / {questions.length}
+                                    </span>
+                                    <button
+                                        onClick={nextQuestion}
+                                        className="flex items-center justify-center w-12 h-12 rounded-2xl border border-slate-200 bg-white text-slate-400 hover:text-teal-600 hover:border-teal-600 transition-all shadow-sm group"
+                                    >
+                                        <ChevronRight className="w-6 h-6 group-hover:translate-x-1 transition-transform" />
+                                    </button>
+                                </div>
+
+                                <div className="flex gap-3 w-full sm:w-auto">
+                                    {!submittedAnswer[currentMCQ.id] ? (
+                                        <button
+                                            onClick={() => {
+                                                if (answers[currentIndex]) {
+                                                    // Check Answer Logic
+                                                    setSubmittedAnswer(prev => ({ ...prev, [currentMCQ.id]: true }));
+                                                    setIsCorrect(prev => ({ ...prev, [currentMCQ.id]: answers[currentIndex] === currentMCQ.correct_option }));
+                                                }
+                                            }}
+                                            disabled={!answers[currentIndex]}
+                                            className={`flex-1 sm:flex-none px-8 py-4 rounded-2xl font-black uppercase tracking-[0.2em] text-[10px] transition-all flex items-center justify-center gap-3 ${answers[currentIndex]
+                                                ? 'bg-teal-600 text-white shadow-xl shadow-teal-100 hover:bg-teal-700 active:scale-95'
+                                                : 'bg-slate-100 text-slate-400 cursor-not-allowed'
+                                                }`}
+                                        >
+                                            Check Answer
+                                            <HelpCircle className="w-4 h-4" />
+                                        </button>
+                                    ) : (
+                                        <button
+                                            onClick={() => {
+                                                if (currentIndex === questions.length - 1) {
+                                                    finalizeSession();
+                                                } else {
+                                                    nextQuestion();
+                                                }
+                                            }}
+                                            className="flex-1 sm:flex-none px-8 py-4 bg-slate-900 text-white rounded-2xl font-black uppercase tracking-[0.2em] text-[10px] shadow-xl shadow-slate-200 hover:bg-slate-800 transition-all active:scale-95 flex items-center justify-center gap-3"
+                                        >
+                                            {currentIndex === questions.length - 1 ? 'Finish Session' : 'Next Question'}
+                                            <ArrowRight className="w-4 h-4" />
+                                        </button>
+                                    )}
+                                </div>
+                            </div>
                         </div>
                     </div>
                 </div>

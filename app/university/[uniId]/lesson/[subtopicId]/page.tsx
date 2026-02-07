@@ -259,7 +259,7 @@ export default function LessonReaderPage() {
                         <div className="mt-12 pt-8 border-t border-gray-200 flex items-center justify-between gap-4 flex-wrap">
                             <Link
                                 href={`/university/${uniId}`}
-                                className="group flex items-center gap-3 text-sm font-bold text-slate-500 hover:text-teal-600 transition-colors"
+                                className="group flex items-center gap-3 text-sm font-bold text-slate-500 hover:text-emerald-600 transition-colors"
                             >
                                 <ChevronLeft className="w-5 h-5 group-hover:-translate-x-1 transition-transform" />
                                 BACK TO LIBRARY
@@ -268,9 +268,9 @@ export default function LessonReaderPage() {
                             {mcqCount > 0 && (
                                 <button
                                     onClick={() => router.push(`/university/${uniId}/practice/${subtopicId}`)}
-                                    className="group flex items-center gap-3 text-sm font-bold text-teal-600 hover:text-teal-700 transition-colors"
+                                    className="group flex items-center gap-3 text-sm font-bold text-emerald-600 hover:text-emerald-700 transition-colors"
                                 >
-                                    PROCEED TO PRACTICE
+                                    START PRACTICE
                                     <MoveRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
                                 </button>
                             )}

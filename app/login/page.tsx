@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { Mail, Lock, Eye, EyeOff, AlertCircle, CheckCircle, Shield, GraduationCap, Chrome, Apple, User, Building2, ArrowRight } from 'lucide-react';
+import { Mail, Lock, Eye, EyeOff, AlertCircle, CheckCircle, Shield, GraduationCap, Chrome, Apple, User, Building2, ArrowRight, ArrowLeft } from 'lucide-react';
 import { AuthService } from '@/lib/services/authService';
 import { supabase } from '@/lib/supabase/client';
 import Link from 'next/link';
@@ -203,6 +203,16 @@ export default function LoginPage() {
 
                 {/* Right Side: Form Content */}
                 <div className="flex-1 p-6 sm:p-10 lg:p-14 flex flex-col items-center justify-center bg-white overflow-y-auto custom-scrollbar relative">
+                    <Link
+                        href="/"
+                        className="absolute top-6 left-6 flex items-center gap-2 text-slate-400 hover:text-slate-600 transition-colors text-[10px] font-black uppercase tracking-widest group"
+                    >
+                        <div className="w-8 h-8 rounded-xl border border-slate-100 flex items-center justify-center group-hover:bg-slate-50 transition-all shadow-sm">
+                            <ArrowLeft className="w-4 h-4 group-hover:-translate-x-0.5 transition-transform" />
+                        </div>
+                        <span className="hidden sm:inline">Back to Home</span>
+                    </Link>
+
                     <div className="w-full max-w-sm space-y-6">
 
                         <div className="text-center">

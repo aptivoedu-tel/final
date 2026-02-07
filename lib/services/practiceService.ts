@@ -143,9 +143,16 @@ export class PracticeService {
         const hardCount = totalQuestions - easyCount - mediumCount;
 
         // Fetch MCQs by difficulty
-        const easyMCQs = await this.getMCQsByDifficulty(subtopicId, 'easy', easyCount, studentId, topicId);
-        const mediumMCQs = await this.getMCQsByDifficulty(subtopicId, 'medium', mediumCount, studentId, topicId);
-        const hardMCQs = await this.getMCQsByDifficulty(subtopicId, 'hard', hardCount, studentId, topicId);
+        let easyMCQs = await this.getMCQsByDifficulty(subtopicId, 'easy', easyCount, studentId, topicId);
+        let mediumMCQs = await this.getMCQsByDifficulty(subtopicId, 'medium', mediumCount, studentId, topicId);
+        let hardMCQs = await this.getMCQsByDifficulty(subtopicId, 'hard', hardCount, studentId, topicId);
+
+        // Fallback: If student has completed all questions (0 returned), fetch all available questions (Review Mode)
+        if (easyMCQs.length + mediumMCQs.length + hardMCQs.length === 0) {
+            easyMCQs = await this.getMCQsByDifficulty(subtopicId, 'easy', easyCount, undefined, topicId);
+            mediumMCQs = await this.getMCQsByDifficulty(subtopicId, 'medium', mediumCount, undefined, topicId);
+            hardMCQs = await this.getMCQsByDifficulty(subtopicId, 'hard', hardCount, undefined, topicId);
+        }
 
         // Combine and shuffle (grouped by passage)
         const allMCQs = [...easyMCQs, ...mediumMCQs, ...hardMCQs];

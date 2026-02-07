@@ -106,11 +106,13 @@ export default function StudentExamPage() {
 
     const loadExamData = async (userId: string) => {
         try {
-            const { data: ex } = await supabase.from('university_exams').select('*').eq('id', Number(examId)).single();
+            const { data: ex, error: exError } = await supabase.from('university_exams').select('*').eq('id', Number(examId)).single();
+            if (exError) throw new Error(`Fetch Exam Error: ${exError.message} (${exError.details || exError.hint || exError.code})`);
             if (!ex) throw new Error('Exam not found');
             setExam(ex);
 
-            const { data: sects } = await supabase.from('exam_sections').select('*').eq('exam_id', Number(examId)).order('order_index');
+            const { data: sects, error: sectsError } = await supabase.from('exam_sections').select('*').eq('exam_id', Number(examId)).order('order_index');
+            if (sectsError) throw new Error(`Fetch Sections Error: ${sectsError.message}`);
             setSections(sects || []);
             const firstSect = sects?.[0];
             setActiveSectionId(firstSect?.id || null);
@@ -118,13 +120,15 @@ export default function StudentExamPage() {
                 setSectionTimeLeft(firstSect.section_duration * 60);
             }
 
-            const { data: qs } = await supabase.from('exam_questions').select('*').in('section_id', (sects || []).map(s => s.id)).order('order_index');
+            const { data: qs, error: qsError } = await supabase.from('exam_questions').select('*').in('section_id', (sects || []).map(s => s.id)).order('order_index');
+            if (qsError) throw new Error(`Fetch Questions Error: ${qsError.message}`);
             setQuestions(qs || []);
 
             // Fetch any linked passages
             const pIds = (qs || []).map(q => q.passage_id).filter(Boolean);
             if (pIds.length > 0) {
-                const { data: ps } = await supabase.from('passages').select('*').in('id', pIds);
+                const { data: ps, error: psError } = await supabase.from('passages').select('*').in('id', pIds);
+                if (psError) console.error('Error fetching passages:', psError); // Non-critical
                 const pMap: Record<number, Passage> = {};
                 ps?.forEach(p => pMap[p.id] = p);
                 setPassages(pMap);
@@ -134,7 +138,7 @@ export default function StudentExamPage() {
             setLoading(false);
         } catch (err: any) {
             console.error('Exam initialization failed:', err);
-            toast.error(`Session Error: ${err.message}`);
+            toast.error(`Session Error: ${err.message || JSON.stringify(err)}`);
             setLoading(false);
         }
     };
