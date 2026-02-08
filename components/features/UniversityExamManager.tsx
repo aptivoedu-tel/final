@@ -257,6 +257,16 @@ export default function UniversityExamManager({ uniId, userRole, onBack }: Unive
 
     // --- Exam Handlers ---
     const handleSaveExam = async () => {
+        if (!user?.id) {
+            toast.error("User session invalid. Please reload.");
+            return;
+        }
+
+        if (!examForm.name || !examForm.total_duration) {
+            toast.error("Please fill in all required fields (Name, Duration)");
+            return;
+        }
+
         setGlobalLoading(true, 'Processing Evaluation Model...');
         try {
             // Permission Check
@@ -273,26 +283,56 @@ export default function UniversityExamManager({ uniId, userRole, onBack }: Unive
                 }
             }
 
-            const payload: any = { ...examForm, university_id: uniId, created_by: user?.id };
-            if (userRole === 'institution_admin' && user?.institution_id) {
-                payload.institution_id = user.institution_id;
-            } else if (userRole === 'super_admin') {
-                payload.institution_id = null;
+            // Prepare Payload
+            const payload: any = {
+                name: examForm.name,
+                exam_type: examForm.exam_type,
+                total_duration: examForm.total_duration,
+                allow_continue_after_time_up: examForm.allow_continue_after_time_up || false,
+                allow_reattempt: examForm.allow_reattempt || false,
+                auto_submit: examForm.auto_submit || false,
+                result_release_setting: examForm.result_release_setting || 'immediate',
+                is_active: examForm.is_active || false,
+                university_id: uniId,
+                // Ensure only updated if creating, or preserve if editing
+            };
+
+            // Handle Institution Context
+            if (!activeExam) {
+                // CREATION
+                payload.created_by = user.id;
+                if (userRole === 'institution_admin' && user?.institution_id) {
+                    payload.institution_id = user.institution_id;
+                } else if (userRole === 'super_admin') {
+                    payload.institution_id = null; // Explicitly Global
+                }
+            } else {
+                // EDITING - Preserving existing ownership unless explicitly transferred (not implemented here)
+                // We do NOT overwrite institution_id here to avoid "stealing" exams or breaking global status
             }
+
+            // Handle Dates
+            if (examForm.start_time) payload.start_time = new Date(examForm.start_time).toISOString();
+            else payload.start_time = null;
+
+            if (examForm.end_time) payload.end_time = new Date(examForm.end_time).toISOString();
+            else payload.end_time = null;
+
 
             if (activeExam) {
                 const { error } = await supabase.from('university_exams').update(payload).eq('id', activeExam.id);
                 if (error) throw error;
-                toast.success('Exam updated');
+                toast.success('Exam updated successfully');
             } else {
                 const { error } = await supabase.from('university_exams').insert([payload]);
                 if (error) throw error;
-                toast.success('Exam created');
+                toast.success('Exam created successfully');
             }
             setIsExamModalOpen(false);
             fetchInitialData();
         } catch (error: any) {
-            toast.error(error.message);
+            console.error(error);
+            toast.error(`Error: ${error.message}`);
         } finally {
             setGlobalLoading(false);
         }
@@ -604,7 +644,7 @@ export default function UniversityExamManager({ uniId, userRole, onBack }: Unive
                                         {filteredExams.filter(e => e.institution_id !== null).map(exam => (
                                             <div
                                                 key={exam.id}
-                                                className="group relative bg-gradient-to-br from-emerald-600 to-green-600 p-10 rounded-xl shadow-2xl hover:shadow-amber-500/20 transition-all duration-500 overflow-hidden flex flex-col min-h-[400px]"
+                                                className="group relative bg-gradient-to-br from-emerald-600 to-green-600 p-10 rounded-xl shadow-2xl hover:shadow-amber-500/20 transition-all duration-500 overflow-hidden flex flex-col min-h-[350px]"
                                             >
                                                 <div className="absolute top-0 right-0 w-48 h-48 bg-white/10 rounded-full -translate-y-1/2 translate-x-1/2 group-hover:scale-150 transition-transform duration-700" />
                                                 <div className="absolute top-4 left-4 z-20">
@@ -663,7 +703,7 @@ export default function UniversityExamManager({ uniId, userRole, onBack }: Unive
                                     {filteredExams.filter(e => e.institution_id === null).map(exam => (
                                         <div
                                             key={exam.id}
-                                            className="group relative bg-emerald-900 p-10 rounded-xl border border-slate-800 shadow-2xl hover:shadow-emerald-500/10 transition-all duration-500 overflow-hidden flex flex-col min-h-[400px]"
+                                            className="group relative bg-emerald-900 p-10 rounded-xl border border-slate-800 shadow-2xl hover:shadow-emerald-500/10 transition-all duration-500 overflow-hidden flex flex-col min-h-[350px]"
                                         >
                                             <div className="absolute top-0 right-0 w-48 h-48 bg-emerald-500/10 rounded-full -translate-y-1/2 translate-x-1/2 group-hover:scale-150 transition-transform duration-700" />
                                             <div className="absolute top-4 left-4 z-20">
@@ -1002,6 +1042,367 @@ export default function UniversityExamManager({ uniId, userRole, onBack }: Unive
                         </div>
                     )}
                 </>
+            )}
+
+            {/* EXAM MODAL */}
+            {isExamModalOpen && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm">
+                    <div className="bg-white rounded-2xl shadow-xl w-full max-w-2xl overflow-hidden max-h-[90vh] flex flex-col">
+                        <div className="p-6 border-b border-slate-100 flex justify-between items-center bg-slate-50">
+                            <h3 className="text-xl font-bold text-slate-900">
+                                {activeExam ? 'Edit Assessment' : 'Create New Assessment'}
+                            </h3>
+                            <button onClick={() => setIsExamModalOpen(false)} className="p-2 hover:bg-slate-200 rounded-full transition-colors">
+                                <X className="w-5 h-5 text-slate-500" />
+                            </button>
+                        </div>
+
+                        <div className="p-6 overflow-y-auto space-y-6">
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                <div className="col-span-2">
+                                    <label className="block text-sm font-bold text-slate-700 mb-2">Exam Title</label>
+                                    <input
+                                        type="text"
+                                        value={examForm.name}
+                                        onChange={(e) => setExamForm({ ...examForm, name: e.target.value })}
+                                        className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-emerald-500 outline-none transition-all font-medium"
+                                        placeholder="e.g. Final Semester Physics"
+                                    />
+                                </div>
+
+                                <div>
+                                    <label className="block text-sm font-bold text-slate-700 mb-2">Exam Type</label>
+                                    <select
+                                        value={examForm.exam_type}
+                                        onChange={(e) => setExamForm({ ...examForm, exam_type: e.target.value })}
+                                        className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-emerald-500 outline-none transition-all font-medium"
+                                    >
+                                        <option value="mock">Mock Test</option>
+                                        <option value="module">Module Assessment</option>
+                                        <option value="final">Final Exam</option>
+                                    </select>
+                                </div>
+
+                                <div>
+                                    <label className="block text-sm font-bold text-slate-700 mb-2">Duration (Minutes)</label>
+                                    <input
+                                        type="number"
+                                        value={examForm.total_duration}
+                                        onChange={(e) => setExamForm({ ...examForm, total_duration: parseInt(e.target.value) })}
+                                        className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-emerald-500 outline-none transition-all font-medium"
+                                    />
+                                </div>
+
+                                <div>
+                                    <label className="block text-sm font-bold text-slate-700 mb-2">Start Time</label>
+                                    <input
+                                        type="datetime-local"
+                                        value={examForm.start_time}
+                                        onChange={(e) => setExamForm({ ...examForm, start_time: e.target.value })}
+                                        className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-emerald-500 outline-none transition-all font-medium"
+                                    />
+                                </div>
+
+                                <div>
+                                    <label className="block text-sm font-bold text-slate-700 mb-2">End Time</label>
+                                    <input
+                                        type="datetime-local"
+                                        value={examForm.end_time}
+                                        onChange={(e) => setExamForm({ ...examForm, end_time: e.target.value })}
+                                        className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-emerald-500 outline-none transition-all font-medium"
+                                    />
+                                </div>
+                            </div>
+
+                            <div className="space-y-4 pt-4 border-t border-slate-100">
+                                <h4 className="text-sm font-bold text-slate-900 uppercase tracking-wider">Configuration</h4>
+
+                                <div className="flex items-center justify-between p-4 bg-slate-50 rounded-xl border border-slate-100">
+                                    <div>
+                                        <span className="block font-bold text-slate-700">Allow Reattempt</span>
+                                        <span className="text-xs text-slate-500">Students can take the test multiple times</span>
+                                    </div>
+                                    <label className="relative inline-flex items-center cursor-pointer">
+                                        <input type="checkbox" checked={examForm.allow_reattempt} onChange={(e) => setExamForm({ ...examForm, allow_reattempt: e.target.checked })} className="sr-only peer" />
+                                        <div className="w-11 h-6 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-emerald-600"></div>
+                                    </label>
+                                </div>
+
+                                <div className="flex items-center justify-between p-4 bg-slate-50 rounded-xl border border-slate-100">
+                                    <div>
+                                        <span className="block font-bold text-slate-700">Auto Submit</span>
+                                        <span className="text-xs text-slate-500">Submit automatically when time expires</span>
+                                    </div>
+                                    <label className="relative inline-flex items-center cursor-pointer">
+                                        <input type="checkbox" checked={examForm.auto_submit} onChange={(e) => setExamForm({ ...examForm, auto_submit: e.target.checked })} className="sr-only peer" />
+                                        <div className="w-11 h-6 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-emerald-600"></div>
+                                    </label>
+                                </div>
+
+                                <div className="flex items-center justify-between p-4 bg-slate-50 rounded-xl border border-slate-100">
+                                    <div>
+                                        <span className="block font-bold text-slate-700">Active Status</span>
+                                        <span className="text-xs text-slate-500">Immediately visible to students</span>
+                                    </div>
+                                    <label className="relative inline-flex items-center cursor-pointer">
+                                        <input type="checkbox" checked={examForm.is_active} onChange={(e) => setExamForm({ ...examForm, is_active: e.target.checked })} className="sr-only peer" />
+                                        <div className="w-11 h-6 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-emerald-600"></div>
+                                    </label>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div className="p-6 border-t border-slate-100 bg-slate-50 flex justify-end gap-3">
+                            <button
+                                onClick={() => setIsExamModalOpen(false)}
+                                className="px-6 py-3 bg-white border border-slate-200 text-slate-600 rounded-xl font-bold hover:bg-slate-100 transition-all"
+                            >
+                                Cancel
+                            </button>
+                            <button
+                                onClick={handleSaveExam}
+                                className="px-8 py-3 bg-emerald-600 text-white rounded-xl font-bold hover:bg-emerald-700 transition-all shadow-lg shadow-emerald-200"
+                            >
+                                {activeExam ? 'Update Exam' : 'Create Exam'}
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* SECTION MODAL */}
+            {isSectionModalOpen && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm">
+                    <div className="bg-white rounded-2xl shadow-xl w-full max-w-lg overflow-hidden flex flex-col">
+                        <div className="p-6 border-b border-slate-100 flex justify-between items-center bg-slate-50">
+                            <h3 className="text-xl font-bold text-slate-900">
+                                {activeSection ? 'Edit Section' : 'Add New Section'}
+                            </h3>
+                            <button onClick={() => setIsSectionModalOpen(false)} className="p-2 hover:bg-slate-200 rounded-full transition-colors">
+                                <X className="w-5 h-5 text-slate-500" />
+                            </button>
+                        </div>
+
+                        <div className="p-6 space-y-6">
+                            <div>
+                                <label className="block text-sm font-bold text-slate-700 mb-2">Section Name</label>
+                                <input
+                                    type="text"
+                                    value={sectionForm.name}
+                                    onChange={(e) => setSectionForm({ ...sectionForm, name: e.target.value })}
+                                    className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-emerald-500 outline-none transition-all font-medium"
+                                    placeholder="e.g. Physics Section A"
+                                />
+                            </div>
+
+                            <div className="grid grid-cols-2 gap-4">
+                                <div>
+                                    <label className="block text-sm font-bold text-slate-700 mb-2">Total Questions</label>
+                                    <input
+                                        type="number"
+                                        value={sectionForm.num_questions}
+                                        onChange={(e) => setSectionForm({ ...sectionForm, num_questions: parseInt(e.target.value) })}
+                                        className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-emerald-500 outline-none transition-all font-medium"
+                                    />
+                                </div>
+                                <div>
+                                    <label className="block text-sm font-bold text-slate-700 mb-2">Weightage (%)</label>
+                                    <input
+                                        type="number"
+                                        value={sectionForm.weightage}
+                                        onChange={(e) => setSectionForm({ ...sectionForm, weightage: parseInt(e.target.value) })}
+                                        className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-emerald-500 outline-none transition-all font-medium"
+                                    />
+                                </div>
+                            </div>
+                        </div>
+
+                        <div className="p-6 border-t border-slate-100 bg-slate-50 flex justify-end gap-3">
+                            <button
+                                onClick={() => setIsSectionModalOpen(false)}
+                                className="px-6 py-3 bg-white border border-slate-200 text-slate-600 rounded-xl font-bold hover:bg-slate-100 transition-all"
+                            >
+                                Cancel
+                            </button>
+                            <button
+                                onClick={handleSaveSection}
+                                className="px-8 py-3 bg-emerald-600 text-white rounded-xl font-bold hover:bg-emerald-700 transition-all shadow-lg shadow-emerald-200"
+                            >
+                                Save Section
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* QUESTION MODAL */}
+            {isQuestionModalOpen && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm">
+                    <div className="bg-white rounded-2xl shadow-xl w-full max-w-4xl overflow-hidden max-h-[90vh] flex flex-col">
+                        <div className="p-6 border-b border-slate-100 flex justify-between items-center bg-slate-50">
+                            <h3 className="text-xl font-bold text-slate-900">
+                                {questionForm.id ? 'Edit Question' : 'Add New Question'}
+                            </h3>
+                            <button onClick={() => setIsQuestionModalOpen(false)} className="p-2 hover:bg-slate-200 rounded-full transition-colors">
+                                <X className="w-5 h-5 text-slate-500" />
+                            </button>
+                        </div>
+
+                        <div className="p-6 overflow-y-auto space-y-6">
+                            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                                <div className="space-y-6">
+                                    <div>
+                                        <label className="block text-sm font-bold text-slate-700 mb-2">Question Text</label>
+                                        <textarea
+                                            value={questionForm.question_text}
+                                            onChange={(e) => setQuestionForm({ ...questionForm, question_text: e.target.value })}
+                                            className="w-full p-4 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-emerald-500 outline-none transition-all font-medium min-h-[120px] resize-none"
+                                            placeholder="Enter your question here..."
+                                        />
+                                    </div>
+
+                                    <div className="grid grid-cols-2 gap-4">
+                                        <div>
+                                            <label className="block text-sm font-bold text-slate-700 mb-2">Question Type</label>
+                                            <select
+                                                value={questionForm.question_type}
+                                                onChange={(e) => setQuestionForm({ ...questionForm, question_type: e.target.value })}
+                                                className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-emerald-500 outline-none transition-all font-medium"
+                                            >
+                                                <option value="mcq_single">Single Choice MCQ</option>
+                                                <option value="true_false">True / False</option>
+                                                <option value="short_answer">Short Answer</option>
+                                            </select>
+                                        </div>
+                                        <div>
+                                            <label className="block text-sm font-bold text-slate-700 mb-2">Marks</label>
+                                            <input
+                                                type="number"
+                                                value={questionForm.marks}
+                                                onChange={(e) => setQuestionForm({ ...questionForm, marks: parseInt(e.target.value) })}
+                                                className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-emerald-500 outline-none transition-all font-medium"
+                                            />
+                                        </div>
+                                    </div>
+
+                                    <div>
+                                        <label className="block text-sm font-bold text-slate-700 mb-2">Image Attachment</label>
+                                        <div className="flex items-center gap-4">
+                                            <label className="flex items-center gap-2 px-6 py-3 bg-slate-100 text-slate-600 rounded-xl font-bold cursor-pointer hover:bg-slate-200 transition-all">
+                                                <ImageIcon className="w-4 h-4" />
+                                                Choose Image
+                                                <input type="file" accept="image/*" className="hidden" onChange={handleImageUpload} />
+                                            </label>
+                                            {questionForm.image_url && (
+                                                <div className="text-xs text-emerald-600 font-bold flex items-center gap-1">
+                                                    <CheckCircle className="w-3 h-3" /> Uploaded
+                                                </div>
+                                            )}
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div className="space-y-6">
+                                    {(questionForm.question_type === 'mcq_single' || questionForm.question_type === 'mcq_multiple') && (
+                                        <div>
+                                            <label className="block text-sm font-bold text-slate-700 mb-4">Options & Answer</label>
+                                            <div className="space-y-3">
+                                                {questionForm.options.map((opt: string, idx: number) => (
+                                                    <div key={idx} className="flex items-center gap-3">
+                                                        <div className="w-8 h-8 flex items-center justify-center font-bold text-slate-400 bg-slate-100 rounded-lg text-xs">
+                                                            {String.fromCharCode(65 + idx)}
+                                                        </div>
+                                                        <input
+                                                            type="text"
+                                                            value={opt}
+                                                            onChange={(e) => {
+                                                                const newOptions = [...questionForm.options];
+                                                                newOptions[idx] = e.target.value;
+                                                                setQuestionForm({ ...questionForm, options: newOptions });
+                                                            }}
+                                                            className="flex-1 p-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-emerald-500 outline-none transition-all font-medium text-sm"
+                                                            placeholder={`Option ${idx + 1}`}
+                                                        />
+                                                        <input
+                                                            type="radio"
+                                                            name="correct_answer"
+                                                            checked={parseInt(questionForm.correct_answer) === idx + 1}
+                                                            onChange={() => setQuestionForm({ ...questionForm, correct_answer: idx + 1 })}
+                                                            className="w-5 h-5 text-emerald-600 focus:ring-emerald-500 border-gray-300"
+                                                        />
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        </div>
+                                    )}
+
+                                    <div>
+                                        <label className="block text-sm font-bold text-slate-700 mb-2">Explanation</label>
+                                        <textarea
+                                            value={questionForm.explanation}
+                                            onChange={(e) => setQuestionForm({ ...questionForm, explanation: e.target.value })}
+                                            className="w-full p-4 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-emerald-500 outline-none transition-all font-medium min-h-[100px] resize-none"
+                                            placeholder="Explain why the answer is correct..."
+                                        />
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div className="p-6 border-t border-slate-100 bg-slate-50 flex justify-end gap-3">
+                            <button
+                                onClick={() => setIsQuestionModalOpen(false)}
+                                className="px-6 py-3 bg-white border border-slate-200 text-slate-600 rounded-xl font-bold hover:bg-slate-100 transition-all"
+                            >
+                                Cancel
+                            </button>
+                            <button
+                                onClick={handleSaveQuestion}
+                                className="px-8 py-3 bg-emerald-600 text-white rounded-xl font-bold hover:bg-emerald-700 transition-all shadow-lg shadow-emerald-200"
+                            >
+                                Save Question
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* BULK UPLOAD MODAL */}
+            {isBulkModalOpen && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm">
+                    <div className="bg-white rounded-2xl shadow-xl w-full max-w-md overflow-hidden flex flex-col">
+                        <div className="p-6 border-b border-slate-100 flex justify-between items-center bg-slate-50">
+                            <h3 className="text-xl font-bold text-slate-900">Bulk Upload Questions</h3>
+                            <button onClick={() => setIsBulkModalOpen(false)} className="p-2 hover:bg-slate-200 rounded-full transition-colors">
+                                <X className="w-5 h-5 text-slate-500" />
+                            </button>
+                        </div>
+
+                        <div className="p-8 text-center space-y-6">
+                            <div className="w-16 h-16 bg-emerald-100 text-emerald-600 rounded-3xl flex items-center justify-center mx-auto mb-4">
+                                <FileSpreadsheet className="w-8 h-8" />
+                            </div>
+
+                            <div>
+                                <h4 className="text-lg font-bold text-slate-900 mb-2">Upload Excel / CSV</h4>
+                                <p className="text-slate-500 text-sm">
+                                    Upload a spreadsheet containing questions. Ensure columns match the template: Question, Option A-D, Answer (1-4).
+                                </p>
+                            </div>
+
+                            <label className="block w-full p-4 border-2 border-dashed border-slate-200 rounded-2xl hover:border-emerald-500 hover:bg-emerald-50/50 transition-all cursor-pointer group">
+                                <input type="file" accept=".xlsx,.xls,.csv" className="hidden" onChange={handleBulkUpload} />
+                                <div className="text-slate-400 group-hover:text-emerald-600 font-bold text-sm">
+                                    Click to select file
+                                </div>
+                            </label>
+
+                            <a href="#" className="inline-block text-xs font-bold text-emerald-600 hover:underline">
+                                Download Template
+                            </a>
+                        </div>
+                    </div>
+                </div>
             )}
         </div>
     );

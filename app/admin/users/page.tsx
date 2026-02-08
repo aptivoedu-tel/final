@@ -127,6 +127,7 @@ export default function UserManagementPage() {
         }
     };
 
+    // Link User State
     const [linkingUser, setLinkingUser] = useState<any | null>(null);
     const [institutions, setInstitutions] = useState<any[]>([]);
     const [selectedInstId, setSelectedInstId] = useState<string>('');
@@ -135,6 +136,65 @@ export default function UserManagementPage() {
         const { data } = await supabase.from('institutions').select('id, name');
         if (data) setInstitutions(data);
     };
+
+    // Create User State
+    const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
+    const [createFormData, setCreateFormData] = useState({
+        full_name: '',
+        email: '',
+        password: '',
+        role: 'student',
+        institution_id: '',
+        student_id: ''
+    });
+
+    const openCreateModal = () => {
+        setCreateFormData({
+            full_name: '',
+            email: '',
+            password: '',
+            role: 'student',
+            institution_id: '',
+            student_id: ''
+        });
+        setIsCreateModalOpen(true);
+        if (institutions.length === 0) fetchInstitutions();
+    };
+
+    const handleCreateUser = async () => {
+        if (!createFormData.email || !createFormData.password || !createFormData.full_name) {
+            alert('Please fill in all required fields');
+            return;
+        }
+
+        setGlobalLoading(true, 'Creating User...');
+        try {
+            const response = await fetch('/api/create-user', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    email: createFormData.email,
+                    password: createFormData.password,
+                    fullName: createFormData.full_name,
+                    role: createFormData.role,
+                    institutionId: createFormData.institution_id || null,
+                    studentId: createFormData.student_id || null
+                }),
+            });
+
+            const result = await response.json();
+            if (!response.ok) throw new Error(result.error || 'Failed to create user');
+
+            alert('User created successfully');
+            setIsCreateModalOpen(false);
+            loadUsers();
+        } catch (error: any) {
+            alert(`Error creating user: ${error.message}`);
+        } finally {
+            setGlobalLoading(false);
+        }
+    };
+
 
     const handleLinkToInstitution = async () => {
         if (!linkingUser || !selectedInstId) return;
@@ -204,9 +264,12 @@ export default function UserManagementPage() {
                             <h1 className="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight">User Management</h1>
                             <p className="text-sm sm:text-base text-slate-500 mt-1 font-medium">Manage student access and administrative accounts</p>
                         </div>
-                        <button className="flex items-center justify-center gap-2 px-6 py-3 bg-teal-600 text-white rounded-xl font-bold hover:bg-slate-900 transition-all shadow-lg shadow-teal-100 active:scale-95">
+                        <button
+                            onClick={openCreateModal}
+                            className="flex items-center justify-center gap-2 px-6 py-3 bg-teal-600 text-white rounded-xl font-bold hover:bg-slate-900 transition-all shadow-lg shadow-teal-100 active:scale-95"
+                        >
                             <Users className="w-4 h-4" />
-                            <span className="text-sm">Invite User</span>
+                            <span className="text-sm">Create User</span>
                         </button>
                     </div>
 
@@ -477,6 +540,118 @@ export default function UserManagementPage() {
                                 >
                                     <Save className="w-4 h-4" />
                                     Save Changes
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* CREATE USER MODAL */}
+            {isCreateModalOpen && (
+                <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4 animate-in fade-in duration-200">
+                    <div className="bg-white rounded-3xl shadow-2xl w-full max-w-lg overflow-hidden flex flex-col max-h-[90vh]">
+                        <div className="p-6 border-b border-gray-100 flex justify-between items-center bg-gray-50/50">
+                            <div>
+                                <h3 className="text-lg font-black text-slate-900">Create New User</h3>
+                                <p className="text-xs font-bold text-slate-400 uppercase tracking-widest">Add a new account to the system</p>
+                            </div>
+                            <button onClick={() => setIsCreateModalOpen(false)} className="p-2 hover:bg-slate-200 rounded-full transition-colors text-slate-400">
+                                <X className="w-5 h-5" />
+                            </button>
+                        </div>
+
+                        <div className="p-8 space-y-4 overflow-y-auto custom-scrollbar">
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                <div className="space-y-2">
+                                    <label className="text-xs font-black text-slate-400 uppercase tracking-widest">Role</label>
+                                    <select
+                                        value={createFormData.role}
+                                        onChange={(e) => setCreateFormData({ ...createFormData, role: e.target.value })}
+                                        className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl font-bold text-slate-700 focus:ring-2 focus:ring-teal-500 focus:bg-white transition-all outline-none appearance-none"
+                                    >
+                                        <option value="student">Student</option>
+                                        <option value="institution_admin">Institution Admin</option>
+                                        <option value="super_admin">Super Admin</option>
+                                    </select>
+                                </div>
+
+                                {createFormData.role !== 'super_admin' && (
+                                    <div className="space-y-2">
+                                        <label className="text-xs font-black text-slate-400 uppercase tracking-widest">Institution</label>
+                                        <select
+                                            value={createFormData.institution_id}
+                                            onChange={(e) => setCreateFormData({ ...createFormData, institution_id: e.target.value })}
+                                            className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl font-bold text-slate-700 focus:ring-2 focus:ring-teal-500 focus:bg-white transition-all outline-none appearance-none"
+                                        >
+                                            <option value="">Select Institution</option>
+                                            {institutions.map(inst => (
+                                                <option key={inst.id} value={inst.id}>{inst.name}</option>
+                                            ))}
+                                        </select>
+                                    </div>
+                                )}
+                            </div>
+
+                            <div className="space-y-2">
+                                <label className="text-xs font-black text-slate-400 uppercase tracking-widest">Full Name</label>
+                                <input
+                                    type="text"
+                                    value={createFormData.full_name}
+                                    onChange={(e) => setCreateFormData({ ...createFormData, full_name: e.target.value })}
+                                    className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl font-bold text-slate-700 focus:ring-2 focus:ring-teal-500 focus:bg-white transition-all outline-none"
+                                    placeholder="e.g. John Doe"
+                                />
+                            </div>
+
+                            <div className="space-y-2">
+                                <label className="text-xs font-black text-slate-400 uppercase tracking-widest">Email Address</label>
+                                <input
+                                    type="email"
+                                    value={createFormData.email}
+                                    onChange={(e) => setCreateFormData({ ...createFormData, email: e.target.value })}
+                                    className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl font-bold text-slate-700 focus:ring-2 focus:ring-teal-500 focus:bg-white transition-all outline-none"
+                                    placeholder="e.g. john@example.com"
+                                />
+                            </div>
+
+                            <div className="space-y-2">
+                                <label className="text-xs font-black text-slate-400 uppercase tracking-widest">Password</label>
+                                <input
+                                    type="password"
+                                    value={createFormData.password}
+                                    onChange={(e) => setCreateFormData({ ...createFormData, password: e.target.value })}
+                                    className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl font-bold text-slate-700 focus:ring-2 focus:ring-teal-500 focus:bg-white transition-all outline-none"
+                                    placeholder="Minimum 6 characters"
+                                />
+                            </div>
+
+                            {createFormData.role === 'student' && (
+                                <div className="space-y-2">
+                                    <label className="text-xs font-black text-slate-400 uppercase tracking-widest">Student ID (Optional)</label>
+                                    <input
+                                        type="text"
+                                        value={createFormData.student_id}
+                                        onChange={(e) => setCreateFormData({ ...createFormData, student_id: e.target.value })}
+                                        className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl font-bold text-slate-700 focus:ring-2 focus:ring-teal-500 focus:bg-white transition-all outline-none"
+                                        placeholder="e.g. ST-2024-001"
+                                    />
+                                </div>
+                            )}
+
+                            <div className="pt-4 flex gap-3">
+                                <button
+                                    onClick={() => setIsCreateModalOpen(false)}
+                                    className="flex-1 py-3.5 bg-slate-100 text-slate-600 font-bold rounded-xl hover:bg-slate-200 transition-colors"
+                                >
+                                    Cancel
+                                </button>
+                                <button
+                                    onClick={handleCreateUser}
+                                    className="flex-1 py-3.5 bg-teal-600 text-white font-bold rounded-xl hover:bg-teal-700 shadow-lg shadow-teal-200 transition-all flex items-center justify-center gap-2"
+                                >
+                                    <Users className="w-4 h-4" />
+                                    Create User
                                 </button>
                             </div>
                         </div>

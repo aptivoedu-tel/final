@@ -60,13 +60,22 @@ export default function AdminDashboard() {
                 // const institutionDetails = await AdminDashboardService.getInstitutionDetails(activeUser.id);
                 // const institutionId = institutionDetails.institution?.id;
 
-                const [statsRes, activityRes] = await Promise.all([
-                    AdminDashboardService.getAdminStats(), // Pass institutionId here if available
-                    AdminDashboardService.getRecentActivity(5)
-                ]);
+                // Load stats
+                try {
+                    const statsRes = await AdminDashboardService.getAdminStats();
+                    if (statsRes.stats) setStats(statsRes.stats);
+                } catch (error) {
+                    console.error("Failed to load stats", error);
+                }
 
-                if (statsRes.stats) setStats(statsRes.stats);
-                if (activityRes.activities) setRecentActivity(activityRes.activities);
+                // Load recent activity - silently fail if table doesn't exist
+                try {
+                    const activityRes = await AdminDashboardService.getRecentActivity(5);
+                    if (activityRes.activities) setRecentActivity(activityRes.activities);
+                } catch (error) {
+                    // Silently ignore - activity_logs table may not exist yet
+                    setRecentActivity([]);
+                }
 
             } catch (error) {
                 console.error("Failed to load admin dashboard data", error);

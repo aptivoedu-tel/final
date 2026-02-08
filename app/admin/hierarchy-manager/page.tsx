@@ -35,12 +35,13 @@ type HierarchyItem = {
 
 // --- DND Helper Components ---
 
-const DraggableItem = ({ item, level, children, onExpand, onDelete }: {
+const DraggableItem = ({ item, level, children, onExpand, onDelete, onAddChild }: {
     item: HierarchyItem,
     level: number,
     children?: React.ReactNode,
     onExpand: (id: string) => void,
-    onDelete: (item: HierarchyItem) => void
+    onDelete: (item: HierarchyItem) => void,
+    onAddChild: (item: HierarchyItem) => void
 }) => {
     const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({
         id: item.id,
@@ -105,6 +106,16 @@ const DraggableItem = ({ item, level, children, onExpand, onDelete }: {
 
                 {/* Actions */}
                 <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                    {item.type !== 'subtopic' && (
+                        <button
+                            onClick={(e) => { e.stopPropagation(); onAddChild(item); }}
+                            className="p-2 text-gray-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors"
+                            title={`Add ${item.type === 'subject' ? 'Topic' : 'Subtopic'}`}
+                            onPointerDown={(e) => e.stopPropagation()}
+                        >
+                            <Plus className="w-4 h-4" />
+                        </button>
+                    )}
                     <button
                         onClick={(e) => { e.stopPropagation(); onDelete(item); }}
                         className="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
@@ -209,6 +220,14 @@ export default function HierarchyManagerPage() {
         setAddType(type);
         setInputList(['']);
         setParentId(null);
+        setIsAddModalOpen(true);
+    };
+
+    const handleAddChild = (item: HierarchyItem) => {
+        const nextType = item.type === 'subject' ? 'topic' : 'subtopic';
+        setAddType(nextType);
+        setInputList(['']);
+        setParentId(item.dbId);
         setIsAddModalOpen(true);
     };
 
@@ -368,6 +387,7 @@ export default function HierarchyManagerPage() {
                     level={level}
                     onExpand={handleExpandCallback}
                     onDelete={handleDelete}
+                    onAddChild={handleAddChild}
                 >
                     {item.children && renderTree(item.children, level + 1)}
                 </DraggableItem>
@@ -507,7 +527,7 @@ export default function HierarchyManagerPage() {
                                                 <select
                                                     onChange={(e) => setParentId(parseInt(e.target.value))}
                                                     className="w-full px-4 py-2 rounded-lg border border-gray-200"
-                                                    defaultValue=""
+                                                    value={parentId || ''}
                                                 >
                                                     <option value="" disabled>Select Subject</option>
                                                     {data.filter(i => i.type === 'subject').map(s => (
@@ -523,7 +543,7 @@ export default function HierarchyManagerPage() {
                                                 <select
                                                     onChange={(e) => setParentId(parseInt(e.target.value))}
                                                     className="w-full px-4 py-2 rounded-lg border border-gray-200"
-                                                    defaultValue=""
+                                                    value={parentId || ''}
                                                 >
                                                     <option value="" disabled>Select Topic</option>
                                                     {data.filter(i => i.type === 'subject').map(s => (

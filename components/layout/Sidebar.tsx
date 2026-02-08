@@ -35,6 +35,7 @@ interface SidebarProps {
 const Sidebar: React.FC<SidebarProps> = ({ userRole }) => {
     const { isSidebarOpen, closeSidebar, isSidebarCollapsed, setSidebarCollapsed } = useUI();
     const pathname = usePathname();
+    const navRef = React.useRef<HTMLDivElement>(null);
 
     const isActive = (path: string, exact = false) => {
         if (exact) return pathname === path;
@@ -52,6 +53,28 @@ const Sidebar: React.FC<SidebarProps> = ({ userRole }) => {
 
     const isSuperAdmin = userRole === 'super_admin';
     const isAdmin = userRole !== 'student';
+
+    // Preserve scroll position
+    useEffect(() => {
+        const savedScrollPos = sessionStorage.getItem('sidebar-scroll-position');
+        if (savedScrollPos && navRef.current) {
+            navRef.current.scrollTop = parseInt(savedScrollPos, 10);
+        }
+    }, []);
+
+    useEffect(() => {
+        const handleScroll = () => {
+            if (navRef.current) {
+                sessionStorage.setItem('sidebar-scroll-position', navRef.current.scrollTop.toString());
+            }
+        };
+
+        const navElement = navRef.current;
+        if (navElement) {
+            navElement.addEventListener('scroll', handleScroll);
+            return () => navElement.removeEventListener('scroll', handleScroll);
+        }
+    }, []);
 
     // Force expanded state for Super Admin
     useEffect(() => {
@@ -172,7 +195,7 @@ const Sidebar: React.FC<SidebarProps> = ({ userRole }) => {
 
 
                 {/* Navigation */}
-                <nav className="flex-1 overflow-y-auto p-3 custom-scrollbar">
+                <nav ref={navRef} className="flex-1 overflow-y-auto p-3 custom-scrollbar">
                     <div className="space-y-3">
                         {navItems.map((item: any, i) => {
                             if (item.header) {
@@ -198,12 +221,12 @@ const Sidebar: React.FC<SidebarProps> = ({ userRole }) => {
                                         py-3 rounded-2xl
                                         ${active
                                             ? 'bg-teal-600 text-white shadow-xl shadow-teal-100'
-                                            : 'text-slate-500 hover:bg-slate-50 hover:text-teal-600'
+                                            : 'text-slate-700 hover:bg-slate-50 hover:text-teal-600'
                                         }
                                     `}
                                 >
                                     <div className="w-10 flex-shrink-0 flex items-center justify-center">
-                                        <Icon className={`w-5 h-5 ${active ? 'stroke-[2.5]' : 'stroke-[1.5]'}`} />
+                                        <Icon className={`w-5 h-5 ${active ? 'stroke-[2.5]' : 'stroke-[2]'}`} />
                                     </div>
                                     {!isSidebarCollapsed && (
                                         <span className="ml-2 text-sm font-bold whitespace-nowrap animate-in fade-in slide-in-from-left-2 duration-300">

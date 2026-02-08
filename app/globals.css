@@ -6,61 +6,129 @@
 
 @layer theme {
   :root {
+    /* =====================================================
+       STRICT WHITE + GREEN COLOR SYSTEM
+       All colors are white, green shades, or green-tinted neutrals
+       ===================================================== */
 
-    /* Primary Green Theme */
-    --primary: #0D9488;
-    --primary-light: #5EEAD4;
-    --primary-dark: #115E59;
-    --primary-glow: rgba(13, 148, 136, 0.18);
+    /* Primary Green Scale (Main Brand Color) */
+    --green-50: #F0FDF9;
+    --green-100: #CCFBEF;
+    --green-200: #99F6E0;
+    --green-300: #5EEAD4;
+    --green-400: #2DD4BF;
+    --green-500: #14B8A6;
+    --green-600: #0D9488;
+    --green-700: #0F766E;
+    --green-800: #115E59;
+    --green-900: #134E4A;
+    --green-950: #042F2E;
 
-    /* Secondary Green */
-    --secondary: #115E59;
-    --secondary-light: #2DD4BF;
-    --secondary-dark: #134E4A;
+    /* Primary Palette (Core Brand) */
+    --primary: var(--green-600);
+    --primary-hover: var(--green-700);
+    --primary-active: var(--green-800);
+    --primary-light: var(--green-400);
+    --primary-lighter: var(--green-300);
+    --primary-lightest: var(--green-100);
+    --primary-dark: var(--green-800);
+    --primary-darker: var(--green-900);
 
-    /* Neutral Backgrounds (Green-tinted) */
-    --background: #F8FFFE;
-    --foreground: #0F172A;
-    --surface: #FFFFFF;
-    --surface-hover: #ECFEF9;
+    /* White Scale */
+    --white: #FFFFFF;
+    --white-soft: #FEFFFE;
+    --white-warm: #FAFFFE;
+
+    /* Green-Tinted Neutral Grays */
+    --gray-50: #F8FFFE;
+    --gray-100: #F1FEFC;
+    --gray-200: #E6FFFA;
+    --gray-300: #D1FAE5;
+    --gray-400: #A7F3D0;
+    --gray-500: #6EE7B7;
+    --gray-600: #34D399;
+    --gray-700: #10B981;
+    --gray-800: #059669;
+    --gray-900: #047857;
+
+    /* Neutral Text (Green-tinted) */
+    --text-primary: #042F2E;
+    --text-secondary: #115E59;
+    --text-tertiary: #0F766E;
+    --text-muted: #14B8A6;
+    --text-disabled: #99F6E0;
+    --text-on-green: var(--white);
+    --text-on-white: var(--text-primary);
+
+    /* Backgrounds */
+    --background: var(--white-soft);
+    --background-secondary: var(--gray-50);
+    --background-tertiary: var(--gray-100);
+    --surface: var(--white);
+    --surface-raised: var(--white);
+    --surface-overlay: rgba(255, 255, 255, 0.95);
+    --surface-hover: var(--green-50);
+    --surface-active: var(--green-100);
 
     /* Borders */
-    --border: #D1FAE5;
-    --border-light: #E6FFFA;
+    --border: var(--green-200);
+    --border-light: var(--green-100);
+    --border-strong: var(--green-300);
+    --border-focus: var(--primary);
+    --border-error: var(--green-700);
 
-    /* Text */
-    --text-primary: #0F172A;
-    --text-secondary: #475569;
-    --text-tertiary: #64748B;
-    --text-muted: #94A3B8;
+    /* Status Colors (All Green-Based) */
+    --success: var(--green-600);
+    --success-bg: var(--green-50);
+    --success-border: var(--green-300);
+    --warning: var(--green-500);
+    --warning-bg: var(--green-100);
+    --warning-border: var(--green-400);
+    --error: var(--green-800);
+    --error-bg: var(--green-100);
+    --error-border: var(--green-400);
+    --info: var(--green-600);
+    --info-bg: var(--green-50);
+    --info-border: var(--green-300);
 
-    /* Status (All Theme Green) */
-    --success: #0D9488;
-    --warning: #2DD4BF;
-    /* Teal instead of orange */
-    --error: #0F766E;
-    /* Dark green instead of red */
-    --info: #0D9488;
+    /* Interactive States */
+    --interactive: var(--primary);
+    --interactive-hover: var(--primary-hover);
+    --interactive-active: var(--primary-active);
+    --interactive-disabled: var(--gray-300);
+    --interactive-focus: var(--primary);
 
-    /* Shadows */
+    /* Shadows (Green-tinted) */
+    --shadow-xs: 0 1px 2px rgba(13, 148, 136, 0.08);
     --shadow-sm: 0 2px 8px rgba(13, 148, 136, 0.12);
-    --shadow-md: 0 4px 18px rgba(13, 148, 136, 0.18);
-    --shadow-lg: 0 12px 32px rgba(13, 148, 136, 0.22);
-    --shadow-xl: 0 24px 60px rgba(13, 148, 136, 0.28);
-    --shadow-glow: 0 0 20px rgba(13, 148, 136, 0.35);
+    --shadow-md: 0 4px 16px rgba(13, 148, 136, 0.16);
+    --shadow-lg: 0 8px 32px rgba(13, 148, 136, 0.20);
+    --shadow-xl: 0 16px 48px rgba(13, 148, 136, 0.24);
+    --shadow-2xl: 0 24px 64px rgba(13, 148, 136, 0.28);
+    --shadow-glow: 0 0 24px rgba(13, 148, 136, 0.4);
+    --shadow-glow-strong: 0 0 32px rgba(13, 148, 136, 0.6);
 
     /* Glassmorphism */
-    --glass-bg: rgba(255, 255, 255, 0.75);
-    --glass-border: rgba(13, 148, 136, 0.25);
+    --glass-bg: rgba(255, 255, 255, 0.8);
+    --glass-bg-strong: rgba(255, 255, 255, 0.95);
+    --glass-border: rgba(13, 148, 136, 0.2);
     --glass-blur: blur(12px);
+    --glass-blur-strong: blur(20px);
 
+    /* Overlays */
+    --overlay-light: rgba(255, 255, 255, 0.6);
+    --overlay-medium: rgba(255, 255, 255, 0.8);
+    --overlay-dark: rgba(4, 47, 46, 0.6);
+    --overlay-green: rgba(13, 148, 136, 0.1);
 
     /* Border Radius */
+    --radius-xs: 4px;
     --radius-sm: 8px;
     --radius-md: 12px;
     --radius-lg: 16px;
-    --radius-xl: 24px;
-    --radius-2xl: 32px;
+    --radius-xl: 20px;
+    --radius-2xl: 24px;
+    --radius-3xl: 32px;
     --radius-full: 9999px;
 
     /* Spacing */
@@ -70,14 +138,14 @@
     --spacing-lg: 1.5rem;
     --spacing-xl: 2rem;
     --spacing-2xl: 3rem;
+    --spacing-3xl: 4rem;
 
     /* Transitions */
     --transition-fast: 150ms cubic-bezier(0.4, 0, 0.2, 1);
     --transition-base: 250ms cubic-bezier(0.4, 0, 0.2, 1);
     --transition-slow: 350ms cubic-bezier(0.4, 0, 0.2, 1);
+    --transition-bounce: 400ms cubic-bezier(0.68, -0.55, 0.265, 1.55);
   }
-
-
 }
 
 /* =====================================================
@@ -100,10 +168,11 @@
   body {
     background: var(--background);
     background-image:
-      radial-gradient(at 0% 0%, rgba(13, 148, 136, 0.05) 0, transparent 50%),
-      radial-gradient(at 100% 0%, rgba(94, 234, 212, 0.08) 0, transparent 50%),
-      radial-gradient(at 100% 100%, rgba(17, 94, 89, 0.05) 0, transparent 50%);
-    color: var(--foreground);
+      radial-gradient(at 0% 0%, var(--green-50) 0, transparent 50%),
+      radial-gradient(at 100% 0%, var(--green-100) 0, transparent 50%),
+      radial-gradient(at 100% 100%, var(--green-50) 0, transparent 50%),
+      radial-gradient(at 0% 100%, var(--gray-100) 0, transparent 50%);
+    color: var(--text-primary);
     font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
     font-size: 16px;
     line-height: 1.6;

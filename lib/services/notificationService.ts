@@ -274,13 +274,17 @@ export class NotificationService {
 
     static async getUnreadCount(userId: string): Promise<{ count: number; error?: string }> {
         try {
-            const { data, error } = await supabase.rpc('get_unread_notification_count', {
-                p_user_id: userId
-            });
+            // Use direct query instead of RPC to ensure accuracy
+            // We count rows where read_at is NULL
+            const { count, error } = await supabase
+                .from('notification_recipients')
+                .select('*', { count: 'exact', head: true })
+                .eq('user_id', userId)
+                .is('read_at', null);
 
             if (error) throw error;
 
-            return { count: data as number || 0 };
+            return { count: count || 0 };
         } catch (error: any) {
             console.error('Error fetching unread count:', error);
             return { count: 0, error: error.message };
@@ -289,14 +293,19 @@ export class NotificationService {
 
     static async markAsRead(notificationId: number, userId: string): Promise<{ success: boolean; error?: string }> {
         try {
-            const { data, error } = await supabase.rpc('mark_notification_read', {
-                p_notification_id: notificationId,
-                p_user_id: userId
-            });
+            // Update directly
+            const { error } = await supabase
+                .from('notification_recipients')
+                .update({
+                    is_read: true,
+                    read_at: new Date().toISOString()
+                })
+                .eq('notification_id', notificationId)
+                .eq('user_id', userId);
 
             if (error) throw error;
 
-            return { success: !!data };
+            return { success: true };
         } catch (error: any) {
             console.error('Error marking notification as read:', error);
             return { success: false, error: error.message };
@@ -305,13 +314,20 @@ export class NotificationService {
 
     static async markAllAsRead(userId: string): Promise<{ success: boolean; count: number; error?: string }> {
         try {
-            const { data, error } = await supabase.rpc('mark_all_notifications_read', {
-                p_user_id: userId
-            });
+            // Direct update for all unread
+            const { error, count } = await supabase
+                .from('notification_recipients')
+                .update({
+                    is_read: true,
+                    read_at: new Date().toISOString()
+                })
+                .eq('user_id', userId)
+                .is('read_at', null)
+                .select();
 
             if (error) throw error;
 
-            return { success: true, count: data as number || 0 };
+            return { success: true, count: 0 };
         } catch (error: any) {
             console.error('Error marking all notifications as read:', error);
             return { success: false, count: 0, error: error.message };

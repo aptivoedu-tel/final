@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Search, Bell, User, ChevronDown, CheckCircle, AlertTriangle, Info, Book, GraduationCap, FileText, University as UniIcon, ChevronRight, X, Menu } from 'lucide-react';
 import { useUI } from '@/lib/context/UIContext';
 import { AuthService } from '@/lib/services/authService';
@@ -34,6 +34,10 @@ const Header: React.FC<HeaderProps> = ({ userName, userEmail, userAvatar, avatar
     const [userRole, setUserRole] = useState<string | null>(null);
     const [resolvedUser, setResolvedUser] = useState<{ full_name?: string; email?: string; avatar_url?: string | null } | null>(null);
 
+    // Refs for click-outside detection
+    const notificationRef = useRef<HTMLDivElement>(null);
+    const userMenuRef = useRef<HTMLDivElement>(null);
+
     useEffect(() => {
         const user = AuthService.getCurrentUser();
         if (user) {
@@ -51,6 +55,39 @@ const Header: React.FC<HeaderProps> = ({ userName, userEmail, userAvatar, avatar
 
     const finalAvatar = userAvatar || avatarUrl || resolvedUser?.avatar_url;
     const displayAvatar = finalAvatar;
+
+    // Handle click outside and mutual exclusivity
+    useEffect(() => {
+        const handleClickOutside = (event: MouseEvent) => {
+            if (notificationRef.current && !notificationRef.current.contains(event.target as Node)) {
+                setShowNotifications(false);
+            }
+            if (userMenuRef.current && !userMenuRef.current.contains(event.target as Node)) {
+                setShowUserMenu(false);
+            }
+        };
+
+        if (showNotifications || showUserMenu) {
+            document.addEventListener('mousedown', handleClickOutside);
+        }
+
+        return () => {
+            document.removeEventListener('mousedown', handleClickOutside);
+        };
+    }, [showNotifications, showUserMenu]);
+
+    // Ensure only one dropdown is open at a time
+    useEffect(() => {
+        if (showNotifications) {
+            setShowUserMenu(false);
+        }
+    }, [showNotifications]);
+
+    useEffect(() => {
+        if (showUserMenu) {
+            setShowNotifications(false);
+        }
+    }, [showUserMenu]);
 
     useEffect(() => {
         const fetchNotifications = async () => {
@@ -302,7 +339,7 @@ const Header: React.FC<HeaderProps> = ({ userName, userEmail, userAvatar, avatar
                 {/* Right Section */}
                 <div className="flex items-center gap-2 lg:gap-4 shrink-0">
                     {/* Notifications */}
-                    <div className="relative">
+                    <div className="relative" ref={notificationRef}>
                         <button
                             onClick={() => setShowNotifications(!showNotifications)}
                             className="relative p-2.5 rounded-xl transition-all active:scale-95 hover:bg-slate-100"
@@ -319,11 +356,29 @@ const Header: React.FC<HeaderProps> = ({ userName, userEmail, userAvatar, avatar
                         {showNotifications && (
                             <div className="absolute right-[-45px] sm:right-0 mt-2 w-[calc(100vw-2.5rem)] sm:w-80 rounded-2xl shadow-xl border overflow-hidden animate-scale-in z-50 bg-white border-gray-200">
                                 <div className="p-4 border-b flex justify-between items-center border-gray-100">
-                                    <span className="font-semibold text-gray-900">Notifications</span>
+                                    <div className="flex items-center gap-2">
+                                        <span className="font-semibold text-gray-900">Notifications</span>
+                                        {unreadCount > 0 && (
+                                            <span className="text-xs bg-red-100 text-red-600 px-2 py-0.5 rounded-full font-bold">
+                                                {unreadCount} new
+                                            </span>
+                                        )}
+                                    </div>
                                     {unreadCount > 0 && (
-                                        <span className="text-xs bg-red-100 text-red-600 px-2 py-0.5 rounded-full font-bold">
-                                            {unreadCount} new
-                                        </span>
+                                        <button
+                                            onClick={async () => {
+                                                const user = AuthService.getCurrentUser();
+                                                if (user) {
+                                                    await NotificationService.markAllAsRead(user.id);
+                                                    setUnreadCount(0);
+                                                    const { notifications } = await NotificationService.getUserNotifications(user.id);
+                                                    if (notifications) setRecentNotifications(notifications.slice(0, 5));
+                                                }
+                                            }}
+                                            className="text-[10px] font-bold text-teal-600 hover:text-teal-700 hover:bg-teal-50 px-2 py-1 rounded transition-colors uppercase tracking-wider"
+                                        >
+                                            Mark all read
+                                        </button>
                                     )}
                                 </div>
                                 <div className="max-h-80 overflow-y-auto">
@@ -393,7 +448,7 @@ const Header: React.FC<HeaderProps> = ({ userName, userEmail, userAvatar, avatar
                     </div>
 
                     {/* User Profile */}
-                    <div className="relative">
+                    <div className="relative" ref={userMenuRef}>
                         <button
                             onClick={() => setShowUserMenu(!showUserMenu)}
                             className="flex items-center gap-3 px-3 py-2 rounded-full transition-colors hover:bg-gray-100"
