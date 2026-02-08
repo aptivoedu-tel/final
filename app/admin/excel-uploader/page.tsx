@@ -27,10 +27,9 @@ export default function ExcelUploaderPage() {
     const [dragActive, setDragActive] = useState(false);
     const [selectedFile, setSelectedFile] = useState<File | null>(null);
     const [previewData, setPreviewData] = useState<any[]>([]);
+    const [autoDetectMode, setAutoDetectMode] = useState(false);
     const { setLoading: setGlobalLoading, isLoading: loading } = useLoading();
     const { isSidebarCollapsed } = useUI();
-
-
 
     React.useEffect(() => {
         const currentUser = AuthService.getCurrentUser();
@@ -119,135 +118,127 @@ export default function ExcelUploaderPage() {
         reader.readAsBinaryString(file);
     };
 
-    const convertDriveLink = (url: string) => {
-        if (!url) return '';
-        if (typeof url !== 'string') return '';
-        if (url.includes('drive.google.com')) {
-            const idMatch = url.match(/\/d\/(.+?)\//) || url.match(/id=(.+?)(&|$)/);
-            if (idMatch && idMatch[1]) {
-                return `https://lh3.googleusercontent.com/u/0/d/${idMatch[1]}=w1000`;
-            }
-        }
-        return url;
-    };
-
     const handleSaveToDatabase = async () => {
         if (!user) {
             alert('User session not found. Please log in again.');
             return;
         }
-        if (!topic) {
-            alert('Please select a topic first.');
-            return;
-        }
-        if (!subtopic && subtopic !== 'no_subtopic') {
-            alert('Please select a Subtopic first.');
-            return;
-        }
+
         if (previewData.length === 0) {
             alert('No data found in the file.');
             return;
         }
 
+        // Validate selection if not in auto-detect mode
+        if (!autoDetectMode) {
+            if (!topic) {
+                alert('Please select a topic first.');
+                return;
+            }
+            if (!subtopic && subtopic !== 'no_subtopic') {
+                alert('Please select a Subtopic first.');
+                return;
+            }
+        }
+
         setGlobalLoading(true, 'Ingesting Content into Central Repository...');
         try {
+            if (autoDetectMode) {
+                // Use the new Auto-Detect logic from service
+                const { ExcelUploadService } = await import('@/lib/services/excelUploadService');
 
-            let targetSubtopicId = subtopic;
+                // Map the raw preview data to MCQRow objects for the service
+                const mcqRows = previewData.map(row => {
+                    const getVal = (patterns: string[]) => {
+                        const key = Object.keys(row).find(k => patterns.some(p => k.toLowerCase().includes(p.toLowerCase())));
+                        return key ? row[key]?.toString() : undefined;
+                    };
 
-            // Handle "No Subtopic" case
-            if (subtopic === 'no_subtopic') {
-                const { data: existing } = await supabase
-                    .from('subtopics')
-                    .select('id')
-                    .eq('topic_id', topic)
-                    .eq('name', 'General')
-                    .single();
+                    return {
+                        subject: getVal(['subject']),
+                        topic: getVal(['topic']),
+                        subtopic: getVal(['subtopic']),
+                        question: getVal(['question', 'text', 'statement']) || '',
+                        option_a: getVal(['option a', 'option_a', 'a']) || '',
+                        option_b: getVal(['option b', 'option_b', 'b']) || '',
+                        option_c: getVal(['option c', 'option_c', 'c']) || '',
+                        option_d: getVal(['option d', 'option_d', 'd']) || '',
+                        correct_option: (getVal(['correct', 'answer']) || 'A').toUpperCase() as any,
+                        explanation: getVal(['explanation', 'reason']),
+                        difficulty: (getVal(['difficulty', 'level']) || 'medium').toLowerCase() as any,
+                        image_url: getVal(['question image', 'image_url', 'figure']),
+                        explanation_url: getVal(['explanation image', 'explanation_url'])
+                    };
+                });
 
-                if (existing) {
-                    targetSubtopicId = existing.id.toString();
+                const result = await ExcelUploadService.uploadMCQsWithAutoDetect(
+                    mcqRows,
+                    user.id,
+                    selectedFile?.name || 'bulk_upload.xlsx'
+                );
+
+                if (result.success) {
+                    alert(`Successfully imported ${result.processedRows} questions!`);
+                } else if (result.processedRows > 0) {
+                    alert(`Imported ${result.processedRows} questions, but ${result.failedRows} failed. Check the upload logs for details.`);
                 } else {
-                    const { data: created, error: createErr } = await supabase
+                    throw new Error(result.errors[0]?.message || 'Upload failed');
+                }
+            } else {
+                // Original Manual Logic (Legacy Support in UI)
+                let targetSubtopicId = subtopic;
+
+                // Handle "No Subtopic" case
+                if (subtopic === 'no_subtopic') {
+                    const { data: existing } = await supabase
                         .from('subtopics')
-                        .insert({ topic_id: parseInt(topic), name: 'General' })
                         .select('id')
+                        .eq('topic_id', topic)
+                        .eq('name', 'General')
                         .single();
 
-                    if (createErr) throw createErr;
-                    targetSubtopicId = created.id.toString();
+                    if (existing) {
+                        targetSubtopicId = existing.id.toString();
+                    } else {
+                        const { data: created, error: createErr } = await supabase
+                            .from('subtopics')
+                            .insert({ topic_id: parseInt(topic), name: 'General' })
+                            .select('id')
+                            .single();
+
+                        if (createErr) throw createErr;
+                        targetSubtopicId = created.id.toString();
+                    }
                 }
+
+                // Map and Insert
+                const mcqsToInsert = previewData.map(row => {
+                    const getVal = (patterns: string[]) => {
+                        const key = Object.keys(row).find(k => patterns.some(p => k.toLowerCase().includes(p.toLowerCase())));
+                        return key ? row[key] : null;
+                    };
+
+                    return {
+                        subtopic_id: parseInt(targetSubtopicId),
+                        question: getVal(['question', 'text', 'statement']),
+                        option_a: getVal(['option a', 'a', 'option_a']),
+                        option_b: getVal(['option b', 'b', 'option_b']),
+                        option_c: getVal(['option c', 'c', 'option_c']),
+                        option_d: getVal(['option d', 'd', 'option_d']),
+                        correct_option: (getVal(['correct', 'answer']) || 'A')?.toString().toUpperCase().trim(),
+                        explanation: getVal(['explanation', 'reason']) || '',
+                        difficulty: (getVal(['difficulty', 'level']) || 'medium').toString().toLowerCase(),
+                        upload_id: null, // Will be set if needed
+                        is_active: true
+                    };
+                }).filter(item => item.question && item.option_a);
+
+                const { error: mcqErr } = await supabase.from('mcqs').insert(mcqsToInsert);
+                if (mcqErr) throw mcqErr;
+
+                alert(`Successfully imported ${mcqsToInsert.length} questions!`);
             }
 
-            // 1. Create upload record
-            const { data: uploadRec, error: uploadErr } = await supabase.from('uploads').insert({
-                upload_type: 'mcq_excel',
-                file_name: selectedFile?.name,
-                subtopic_id: parseInt(targetSubtopicId),
-                status: 'processing',
-                total_rows: previewData.length,
-                created_by: user.id
-            }).select().single();
-
-            if (uploadErr) throw uploadErr;
-
-            // 2. Map and Insert MCQs
-            const mcqsToInsert = previewData.map(row => {
-                // Normalize keys (smart case)
-                const getVal = (patterns: string[]) => {
-                    const key = Object.keys(row).find(k => patterns.some(p => k.toLowerCase().includes(p.toLowerCase())));
-                    return key ? row[key] : null;
-                };
-
-                const q = getVal(['question', 'text', 'statement']);
-                const a = getVal(['option a', 'a', 'option_a']);
-                const b = getVal(['option b', 'b', 'option_b']);
-                const c = getVal(['option c', 'c', 'option_c']);
-                const d = getVal(['option d', 'd', 'option_d']);
-                const correct = (getVal(['correct', 'answer']) || 'A')?.toString().toUpperCase().trim();
-                const explanation = getVal(['explanation', 'reason', 'justify']) || '';
-                const rawDifficulty = (getVal(['difficulty', 'level']) || 'medium').toString().toLowerCase();
-
-                // Image fields
-                let qImage = getVal(['question image', 'q image', 'image_url', 'figure']) || '';
-                let eImage = getVal(['explanation image', 'e image', 'explanation_url', 'rationale image']) || '';
-
-                // Convert Drive links if present
-                if (qImage) qImage = convertDriveLink(qImage.toString());
-                if (eImage) eImage = convertDriveLink(eImage.toString());
-
-                // Validate difficulty enum
-                const difficulty = ['easy', 'medium', 'hard'].includes(rawDifficulty) ? rawDifficulty : 'medium';
-
-                return {
-                    subtopic_id: parseInt(targetSubtopicId),
-                    question: q,
-                    option_a: a,
-                    option_b: b,
-                    option_c: c,
-                    option_d: d,
-                    correct_option: correct,
-                    explanation: explanation,
-                    difficulty: difficulty,
-                    question_image_url: qImage || null,
-                    explanation_url: eImage || null,
-                    upload_id: uploadRec.id
-                };
-            }).filter(item => item.question && item.option_a && item.correct_option);
-
-            if (mcqsToInsert.length === 0) {
-                throw new Error('No valid questions found. Check your column headers (Question, Option A, Correct Option are required).');
-            }
-
-            const { error: mcqErr } = await supabase.from('mcqs').insert(mcqsToInsert);
-            if (mcqErr) throw mcqErr;
-
-            // 3. Complete Upload Record
-            await supabase.from('uploads').update({
-                status: 'completed',
-                processed_rows: mcqsToInsert.length,
-                completed_at: new Date().toISOString()
-            }).eq('id', uploadRec.id);
-
-            alert(`Successfully imported ${mcqsToInsert.length} questions!`);
             setPreviewData([]);
             setSelectedFile(null);
             setSubject('');
@@ -261,23 +252,43 @@ export default function ExcelUploaderPage() {
 
 
     const handleDownloadTemplate = () => {
-        const ws = XLSX.utils.json_to_sheet([
+        const templateData = [
             {
-                'Question': 'What is the capital of France?',
-                'Option A': 'London',
-                'Option B': 'Berlin',
-                'Option C': 'Paris',
-                'Option D': 'Madrid',
-                'Correct Option': 'C',
-                'Explanation': 'Paris is the capital and largest city of France.',
+                'Subject': 'Mathematics',
+                'Topic': 'Algebra',
+                'Subtopic': 'Linear Equations',
+                'Question': 'Solve for x: 2x + 5 = 15',
+                'Option A': '5',
+                'Option B': '10',
+                'Option C': '7.5',
+                'Option D': '2.5',
+                'Correct Option': 'A',
+                'Explanation': '2x = 10, so x = 5',
                 'Difficulty': 'Easy',
-                'Question Image': 'https://example.com/question.jpg',
-                'Explanation Image': 'https://example.com/explanation.jpg'
+                'Question Image': '',
+                'Explanation Image': ''
+            },
+            {
+                'Subject': 'English',
+                'Topic': 'Grammar',
+                'Subtopic': '',
+                'Question': 'Identify the verb in: "The cat runs fast."',
+                'Option A': 'Cat',
+                'Option B': 'Runs',
+                'Option C': 'Fast',
+                'Option D': 'The',
+                'Correct Option': 'B',
+                'Explanation': '"Runs" is the action word.',
+                'Difficulty': 'Medium',
+                'Question Image': '',
+                'Explanation Image': ''
             }
-        ]);
+        ];
+
+        const ws = XLSX.utils.json_to_sheet(templateData);
         const wb = XLSX.utils.book_new();
-        XLSX.utils.book_append_sheet(wb, ws, "Template");
-        XLSX.writeFile(wb, "aptivo_mcq_template.xlsx");
+        XLSX.utils.book_append_sheet(wb, ws, "MCQ Template");
+        XLSX.writeFile(wb, "aptivo_smart_mcq_template.xlsx");
     };
 
     const resetUpload = () => {
@@ -305,65 +316,89 @@ export default function ExcelUploaderPage() {
                             className="flex items-center justify-center gap-2 px-6 py-3 bg-green-50 text-green-600 font-bold rounded-xl hover:bg-green-100 transition-all border border-green-200 active:scale-95 text-sm"
                         >
                             <Download className="w-5 h-5" />
-                            <span>Template</span>
+                            <span>Download Template</span>
                         </button>
                     </div>
 
                     <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
                         {/* Left: Configuration & Upload */}
                         <div className="lg:col-span-1 space-y-6">
-                            {/* Topic Selection */}
-                            <div className="bg-white p-6 rounded-3xl shadow-sm border border-gray-100">
-                                <h3 className="text-sm font-bold uppercase tracking-wider text-slate-400 mb-6 flex items-center gap-2">
-                                    <Layers className="w-4 h-4" /> 1. Topic Mapping
-                                </h3>
 
-                                <div className="space-y-4">
-                                    <div>
-                                        <label className="block text-xs font-bold text-slate-500 mb-2">Subject</label>
-                                        <select
-                                            className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-primary/20 transition-all outline-none text-slate-700 font-medium"
-                                            value={subject}
-                                            onChange={(e) => setSubject(e.target.value)}
-                                        >
-                                            <option value="">Select Subject</option>
-                                            {subjectsList.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
-                                        </select>
-                                    </div>
+                            {/* Smart Mode Toggle */}
+                            <div className="bg-white p-6 rounded-3xl shadow-sm border border-gray-100 bg-gradient-to-br from-white to-teal-50/30">
+                                <div className="flex items-center justify-between mb-2">
+                                    <h3 className="text-sm font-bold uppercase tracking-wider text-slate-400 flex items-center gap-2">
+                                        <Layers className="w-4 h-4 text-teal-500" /> Smart Mode
+                                    </h3>
+                                    <button
+                                        onClick={() => setAutoDetectMode(!autoDetectMode)}
+                                        className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none ${autoDetectMode ? 'bg-teal-600' : 'bg-slate-200'}`}
+                                    >
+                                        <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${autoDetectMode ? 'translate-x-6' : 'translate-x-1'}`} />
+                                    </button>
+                                </div>
+                                <p className="text-[11px] text-slate-500 leading-relaxed">
+                                    {autoDetectMode
+                                        ? "Hierarchy will be auto-detected from 'Subject', 'Topic', and 'Subtopic' columns in your file."
+                                        : "Manually select the target subtopic below for all questions in the file."
+                                    }
+                                </p>
+                            </div>
 
-                                    <div>
-                                        <label className="block text-xs font-bold text-slate-500 mb-2">Topic</label>
-                                        <select
-                                            disabled={!subject}
-                                            className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-primary/20 transition-all outline-none text-slate-700 font-medium disabled:opacity-50"
-                                            value={topic}
-                                            onChange={(e) => setTopic(e.target.value)}
-                                        >
-                                            <option value="">Select Topic</option>
-                                            {topicsList.map(t => <option key={t.id} value={t.id}>{t.name}</option>)}
-                                        </select>
-                                    </div>
+                            {/* Manual Selection (Visible only when Smart Mode is OFF) */}
+                            {!autoDetectMode && (
+                                <div className="bg-white p-6 rounded-3xl shadow-sm border border-gray-100 animate-in fade-in slide-in-from-top-4 duration-300">
+                                    <h3 className="text-sm font-bold uppercase tracking-wider text-slate-400 mb-6 flex items-center gap-2">
+                                        <Layers className="w-4 h-4" /> 1. Topic Mapping
+                                    </h3>
 
-                                    <div>
-                                        <label className="block text-xs font-bold text-slate-500 mb-2">Subtopic</label>
-                                        <select
-                                            disabled={!topic}
-                                            className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-primary/20 transition-all outline-none text-slate-700 font-medium disabled:opacity-50"
-                                            value={subtopic}
-                                            onChange={(e) => setSubtopic(e.target.value)}
-                                        >
-                                            <option value="">Select Subtopic</option>
-                                            <option value="no_subtopic" className="text-primary font-bold">-- NO SUBTOPIC (Topic Level) --</option>
-                                            {subtopicsList.map(st => <option key={st.id} value={st.id}>{st.name}</option>)}
-                                        </select>
+                                    <div className="space-y-4">
+                                        <div>
+                                            <label className="block text-xs font-bold text-slate-500 mb-2">Subject</label>
+                                            <select
+                                                className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-primary/20 transition-all outline-none text-slate-700 font-medium"
+                                                value={subject}
+                                                onChange={(e) => setSubject(e.target.value)}
+                                            >
+                                                <option value="">Select Subject</option>
+                                                {subjectsList.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
+                                            </select>
+                                        </div>
+
+                                        <div>
+                                            <label className="block text-xs font-bold text-slate-500 mb-2">Topic</label>
+                                            <select
+                                                disabled={!subject}
+                                                className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-primary/20 transition-all outline-none text-slate-700 font-medium disabled:opacity-50"
+                                                value={topic}
+                                                onChange={(e) => setTopic(e.target.value)}
+                                            >
+                                                <option value="">Select Topic</option>
+                                                {topicsList.map(t => <option key={t.id} value={t.id}>{t.name}</option>)}
+                                            </select>
+                                        </div>
+
+                                        <div>
+                                            <label className="block text-xs font-bold text-slate-500 mb-2">Subtopic</label>
+                                            <select
+                                                disabled={!topic}
+                                                className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-primary/20 transition-all outline-none text-slate-700 font-medium disabled:opacity-50"
+                                                value={subtopic}
+                                                onChange={(e) => setSubtopic(e.target.value)}
+                                            >
+                                                <option value="">Select Subtopic</option>
+                                                <option value="no_subtopic" className="text-primary font-bold">-- NO SUBTOPIC (Topic Level) --</option>
+                                                {subtopicsList.map(st => <option key={st.id} value={st.id}>{st.name}</option>)}
+                                            </select>
+                                        </div>
                                     </div>
                                 </div>
-                            </div>
+                            )}
 
                             {/* Dropzone */}
                             <div className="bg-white p-6 rounded-3xl shadow-sm border border-gray-100">
                                 <h3 className="text-sm font-bold uppercase tracking-wider text-slate-400 mb-6 flex items-center gap-2">
-                                    <Upload className="w-4 h-4" /> 2. Upload File
+                                    <Upload className="w-4 h-4" /> {autoDetectMode ? '1.' : '2.'} Upload File
                                 </h3>
 
                                 {!selectedFile ? (
@@ -405,7 +440,7 @@ export default function ExcelUploaderPage() {
                                                 className="w-full mt-4 py-3 bg-teal-600 text-white font-bold rounded-xl hover:bg-teal-700 transition-all flex items-center justify-center gap-2 shadow-lg shadow-teal-100"
                                             >
                                                 <Save className="w-4 h-4" />
-                                                Commit to Database
+                                                Commit to Repository
                                             </button>
                                         )}
 
@@ -434,43 +469,63 @@ export default function ExcelUploaderPage() {
                                         <table className="w-full text-left border-collapse">
                                             <thead className="bg-white sticky top-0 z-10">
                                                 <tr className="border-b border-gray-100">
-                                                    <th className="px-6 py-4 text-xs font-bold text-slate-400 uppercase">Question Info</th>
+                                                    <th className="px-6 py-4 text-xs font-bold text-slate-400 uppercase">Hierachy & Question</th>
                                                     <th className="px-6 py-4 text-xs font-bold text-slate-400 uppercase">Options</th>
                                                     <th className="px-6 py-4 text-xs font-bold text-slate-400 uppercase">Status</th>
                                                 </tr>
                                             </thead>
                                             <tbody className="divide-y divide-gray-50">
                                                 {previewData.map((row, idx) => {
-                                                    const q = (row as any)['Question'] || (row as any)['question'];
-                                                    const hasOptions = (row as any)['Option A'] && (row as any)['Option B'];
-                                                    const hasCorrect = (row as any)['Correct Option'];
-                                                    const isValid = q && hasOptions && hasCorrect;
+                                                    const getVal = (patterns: string[]) => {
+                                                        const key = Object.keys(row).find(k => patterns.some(p => k.toLowerCase().includes(p.toLowerCase())));
+                                                        return key ? row[key] : null;
+                                                    };
+
+                                                    const subj = getVal(['subject']);
+                                                    const top = getVal(['topic']);
+                                                    const sub = getVal(['subtopic']);
+                                                    const q = getVal(['question', 'text', 'statement']);
+                                                    const hasOptions = getVal(['option a', 'a']) && getVal(['option b', 'b']);
+                                                    const hasCorrect = getVal(['correct', 'answer']);
+
+                                                    const hierarchyValid = !autoDetectMode || (subj && top);
+                                                    const dataValid = q && hasOptions && hasCorrect;
+                                                    const isValid = hierarchyValid && dataValid;
 
                                                     return (
                                                         <tr key={idx} className="hover:bg-slate-50/50 transition-colors">
                                                             <td className="px-6 py-4">
+                                                                {autoDetectMode && (
+                                                                    <div className="flex flex-wrap gap-1 mb-2">
+                                                                        <span className={`text-[9px] px-1.5 py-0.5 rounded font-bold uppercase ${subj ? 'bg-blue-50 text-blue-600' : 'bg-red-50 text-red-600'}`}>{subj || 'No Subject'}</span>
+                                                                        <span className={`text-[9px] px-1.5 py-0.5 rounded font-bold uppercase ${top ? 'bg-indigo-50 text-indigo-600' : 'bg-red-50 text-red-600'}`}>{top || 'No Topic'}</span>
+                                                                        {sub && <span className="text-[9px] bg-purple-50 text-purple-600 px-1.5 py-0.5 rounded font-bold uppercase">{sub}</span>}
+                                                                    </div>
+                                                                )}
                                                                 <p className="text-sm font-bold text-slate-700 max-w-xs truncate">{q || 'MISSING QUESTION'}</p>
                                                                 <div className="flex gap-2 mt-1">
-                                                                    <span className="text-[10px] bg-slate-100 text-slate-500 px-1.5 py-0.5 rounded font-bold uppercase">{(row as any)['Difficulty'] || 'Medium'}</span>
-                                                                    {(row as any)['Explanation'] && <span className="text-[10px] bg-blue-50 text-blue-500 px-1.5 py-0.5 rounded font-bold uppercase">Has Explanation</span>}
-                                                                    {((row as any)['Question Image'] || (row as any)['question image'] || (row as any)['image_url'] || (row as any)['Figure']) && <span className="text-[10px] bg-purple-50 text-purple-600 px-1.5 py-0.5 rounded font-bold uppercase">Q-Image</span>}
-                                                                    {((row as any)['Explanation Image'] || (row as any)['explanation image'] || (row as any)['explanation_url'] || (row as any)['Rationale']) && <span className="text-[10px] bg-indigo-50 text-indigo-600 px-1.5 py-0.5 rounded font-bold uppercase">E-Image</span>}
+                                                                    <span className="text-[10px] bg-slate-100 text-slate-500 px-1.5 py-0.5 rounded font-bold uppercase">{getVal(['difficulty']) || 'Medium'}</span>
+                                                                    {getVal(['explanation']) && <span className="text-[10px] bg-emerald-50 text-emerald-600 px-1.5 py-0.5 rounded font-bold uppercase">Explanation</span>}
+                                                                    {getVal(['image', 'url', 'figure']) && <span className="text-[10px] bg-orange-50 text-orange-600 px-1.5 py-0.5 rounded font-bold uppercase">Image</span>}
                                                                 </div>
                                                             </td>
                                                             <td className="px-6 py-4">
                                                                 <div className="grid grid-cols-2 gap-x-4 gap-y-1">
-                                                                    <span className={`text-[11px] ${(row as any)['Correct Option'] === 'A' ? 'text-green-600 font-bold' : 'text-slate-400'}`}>A: {(row as any)['Option A']?.toString().substring(0, 15)}...</span>
-                                                                    <span className={`text-[11px] ${(row as any)['Correct Option'] === 'B' ? 'text-green-600 font-bold' : 'text-slate-400'}`}>B: {(row as any)['Option B']?.toString().substring(0, 15)}...</span>
-                                                                    <span className={`text-[11px] ${(row as any)['Correct Option'] === 'C' ? 'text-green-600 font-bold' : 'text-slate-400'}`}>C: {(row as any)['Option C']?.toString().substring(0, 15)}...</span>
-                                                                    <span className={`text-[11px] ${(row as any)['Correct Option'] === 'D' ? 'text-green-600 font-bold' : 'text-slate-400'}`}>D: {(row as any)['Option D']?.toString().substring(0, 15)}...</span>
+                                                                    <span className={`text-[11px] ${hasCorrect?.toString().toUpperCase().trim() === 'A' ? 'text-green-600 font-bold' : 'text-slate-400'}`}>A: {getVal(['option a', 'a'])?.toString().substring(0, 15)}...</span>
+                                                                    <span className={`text-[11px] ${hasCorrect?.toString().toUpperCase().trim() === 'B' ? 'text-green-600 font-bold' : 'text-slate-400'}`}>B: {getVal(['option b', 'b'])?.toString().substring(0, 15)}...</span>
+                                                                    <span className={`text-[11px] ${hasCorrect?.toString().toUpperCase().trim() === 'C' ? 'text-green-600 font-bold' : 'text-slate-400'}`}>C: {getVal(['option c', 'c'])?.toString().substring(0, 15)}...</span>
+                                                                    <span className={`text-[11px] ${hasCorrect?.toString().toUpperCase().trim() === 'D' ? 'text-green-600 font-bold' : 'text-slate-400'}`}>D: {getVal(['option d', 'd'])?.toString().substring(0, 15)}...</span>
                                                                 </div>
                                                             </td>
                                                             <td className="px-6 py-4">
                                                                 {isValid ? (
                                                                     <CheckCircle className="w-5 h-5 text-green-500" />
                                                                 ) : (
-                                                                    <div className="flex items-center gap-1 text-red-500 tooltip" title="Incomplete row data">
+                                                                    <div className="flex items-center gap-1 text-red-500 group relative">
                                                                         <AlertTriangle className="w-5 h-5" />
+                                                                        <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-32 p-2 bg-slate-800 text-white text-[10px] rounded opacity-0 group-hover:opacity-100 transition-opacity">
+                                                                            {!dataValid ? 'Incomplete question data' : 'Missing Subject/Topic'}
+                                                                        </div>
                                                                     </div>
                                                                 )}
                                                             </td>

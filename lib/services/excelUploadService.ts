@@ -614,105 +614,148 @@ export class ExcelUploadService {
         fileName: string
     ): Promise<UploadResult> {
         try {
+            // 1. Create upload record
+            const { data: uploadRecord, error: uploadError } = await supabase
+                .from('uploads')
+                .insert([
+                    {
+                        upload_type: 'mcq_excel_auto',
+                        file_name: fileName,
+                        status: 'processing',
+                        total_rows: mcqs.length,
+                        processed_rows: 0,
+                        failed_rows: 0,
+                        created_by: userId
+                    }
+                ])
+                .select()
+                .single();
+
+            if (uploadError || !uploadRecord) {
+                return {
+                    success: false,
+                    totalRows: mcqs.length,
+                    processedRows: 0,
+                    failedRows: mcqs.length,
+                    errors: [{ row: 0, field: 'upload', message: 'Failed to create upload record' }]
+                };
+            }
+
             let processedCount = 0;
             let failedCount = 0;
             const errors: ValidationError[] = [];
 
-            // Group MCQs by hierarchy to minimize database calls
+            // Group MCQs by hierarchy to enable batching
             const hierarchyCache = new Map<string, { subjectId: number; topicId: number; subtopicId: number | null }>();
+            const groupedMCQs = new Map<string, MCQRow[]>();
 
             for (let i = 0; i < mcqs.length; i++) {
                 const mcq = mcqs[i];
-                const hierarchyKey = `${mcq.subject}|${mcq.topic}|${mcq.subtopic || 'NO_SUBTOPIC'}`;
+                if (!mcq.subject || !mcq.topic) {
+                    failedCount++;
+                    errors.push({
+                        row: i + 2,
+                        field: 'hierarchy',
+                        message: 'Subject and Topic are required for auto-detection'
+                    });
+                    continue;
+                }
 
+                const hierarchyKey = `${mcq.subject.trim().toLowerCase()}|${mcq.topic.trim().toLowerCase()}|${mcq.subtopic?.trim().toLowerCase() || 'NO_SUBTOPIC'}`;
+
+                if (!groupedMCQs.has(hierarchyKey)) {
+                    groupedMCQs.set(hierarchyKey, []);
+                }
+                groupedMCQs.get(hierarchyKey)!.push(mcq);
+            }
+
+            // Process each group
+            for (const [hierarchyKey, group] of groupedMCQs.entries()) {
+                const firstMCQ = group[0];
+
+                // Resolve hierarchy for this group
                 let hierarchy = hierarchyCache.get(hierarchyKey);
-
                 if (!hierarchy) {
-                    // Auto-assign hierarchy
-                    const assignResult = await this.autoAssignHierarchy(mcq);
+                    const assignResult = await this.autoAssignHierarchy(firstMCQ);
 
                     if (!assignResult.success || !assignResult.subjectId || !assignResult.topicId) {
-                        failedCount++;
+                        failedCount += group.length;
                         errors.push({
-                            row: i + 2,
+                            row: mcqs.indexOf(firstMCQ) + 2,
                             field: 'hierarchy',
-                            message: assignResult.message
+                            message: `Failed to resolve hierarchy for group: ${firstMCQ.subject} > ${firstMCQ.topic}. ${assignResult.message}`
                         });
                         continue;
                     }
 
                     hierarchy = {
-                        subjectId: assignResult.subjectId!,
-                        topicId: assignResult.topicId!,
+                        subjectId: assignResult.subjectId,
+                        topicId: assignResult.topicId,
                         subtopicId: assignResult.subtopicId ?? null
                     };
                     hierarchyCache.set(hierarchyKey, hierarchy);
                 }
 
-                // Ensure hierarchy is defined
-                if (!hierarchy) {
-                    failedCount++;
+                // Batch insert the group
+                const mcqInserts = group.map(mcq => ({
+                    question: mcq.question,
+                    question_image_url: mcq.image_url,
+                    option_a: mcq.option_a,
+                    option_b: mcq.option_b,
+                    option_c: mcq.option_c,
+                    option_d: mcq.option_d,
+                    correct_option: mcq.correct_option,
+                    explanation: mcq.explanation,
+                    explanation_url: mcq.explanation_url,
+                    difficulty: mcq.difficulty || 'medium',
+                    subtopic_id: hierarchy!.subtopicId,
+                    topic_id: hierarchy!.subtopicId ? null : hierarchy!.topicId, // Only set topic_id if no subtopic
+                    upload_id: uploadRecord.id,
+                    is_active: true
+                }));
+
+                const { error: insertError } = await supabase
+                    .from('mcqs')
+                    .insert(mcqInserts);
+
+                if (insertError) {
+                    failedCount += group.length;
                     errors.push({
-                        row: i + 2,
-                        field: 'hierarchy',
-                        message: 'Failed to resolve hierarchy'
-                    });
-                    continue;
-                }
-
-                // Insert MCQ
-                try {
-                    const mcqData: any = {
-                        question: mcq.question,
-                        question_image_url: mcq.image_url,
-                        option_a: mcq.option_a,
-                        option_b: mcq.option_b,
-                        option_c: mcq.option_c,
-                        option_d: mcq.option_d,
-                        correct_option: mcq.correct_option,
-                        explanation: mcq.explanation,
-                        explanation_url: mcq.explanation_url,
-                        difficulty: mcq.difficulty || 'medium',
-                        is_active: true
-                    };
-
-                    // Assign to subtopic if available, otherwise to topic
-                    if (hierarchy.subtopicId) {
-                        mcqData.subtopic_id = hierarchy.subtopicId;
-                    } else {
-                        mcqData.topic_id = hierarchy.topicId;
-                    }
-
-                    const { error: insertError } = await supabase
-                        .from('mcqs')
-                        .insert([mcqData]);
-
-                    if (insertError) {
-                        failedCount++;
-                        errors.push({
-                            row: i + 2,
-                            field: 'insert',
-                            message: `Failed to insert MCQ: ${insertError.message}`
-                        });
-                    } else {
-                        processedCount++;
-                    }
-                } catch (insertErr) {
-                    failedCount++;
-                    errors.push({
-                        row: i + 2,
+                        row: mcqs.indexOf(firstMCQ) + 2,
                         field: 'insert',
-                        message: `Error inserting MCQ: ${insertErr}`
+                        message: `Failed to insert batch: ${insertError.message}`
                     });
+                } else {
+                    processedCount += group.length;
                 }
+
+                // Update progress
+                await supabase
+                    .from('uploads')
+                    .update({
+                        processed_rows: processedCount,
+                        failed_rows: failedCount
+                    })
+                    .eq('id', uploadRecord.id);
             }
+
+            // Final update
+            await supabase
+                .from('uploads')
+                .update({
+                    status: failedCount === 0 ? 'completed' : (processedCount > 0 ? 'partially_completed' : 'failed'),
+                    validation_errors: errors.length > 0 ? errors : null,
+                    completed_at: new Date().toISOString()
+                })
+                .eq('id', uploadRecord.id);
 
             return {
                 success: failedCount === 0,
                 totalRows: mcqs.length,
                 processedRows: processedCount,
                 failedRows: failedCount,
-                errors
+                errors,
+                uploadId: uploadRecord.id
             };
         } catch (error) {
             console.error('Auto-detect upload error:', error);
