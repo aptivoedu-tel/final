@@ -13,26 +13,26 @@
 
     /* Primary Green Scale (Main Brand Color) */
     --green-50: #F0FDF9;
-    --green-100: #CCFBEF;
-    --green-200: #99F6E0;
-    --green-300: #5EEAD4;
-    --green-400: #2DD4BF;
-    --green-500: #14B8A6;
-    --green-600: #0D9488;
-    --green-700: #0F766E;
-    --green-800: #115E59;
-    --green-900: #134E4A;
+    --blue-100: #CCFBEF;
+    --blue-200: #99F6E0;
+    --blue-300: #5EEAD4;
+    --blue-400: #2DD4BF;
+    --blue-500: #14B8A6;
+    --blue-600: #0d9488;
+    --blue-700: #0f766e;
+    --blue-800: #115E59;
+    --blue-900: #134E4A;
     --green-950: #042F2E;
 
     /* Primary Palette (Core Brand) */
-    --primary: var(--green-600);
-    --primary-hover: var(--green-700);
-    --primary-active: var(--green-800);
-    --primary-light: var(--green-400);
-    --primary-lighter: var(--green-300);
-    --primary-lightest: var(--green-100);
-    --primary-dark: var(--green-800);
-    --primary-darker: var(--green-900);
+    --primary: var(--blue-600);
+    --primary-hover: var(--blue-700);
+    --primary-active: var(--blue-800);
+    --primary-light: var(--blue-400);
+    --primary-lighter: var(--blue-300);
+    --primary-lightest: var(--blue-100);
+    --primary-dark: var(--blue-800);
+    --primary-darker: var(--blue-900);
 
     /* White Scale */
     --white: #FFFFFF;
@@ -54,7 +54,7 @@
     /* Neutral Text (Green-tinted) */
     --text-primary: #042F2E;
     --text-secondary: #115E59;
-    --text-tertiary: #0F766E;
+    --text-tertiary: #0f766e;
     --text-muted: #14B8A6;
     --text-disabled: #99F6E0;
     --text-on-green: var(--white);
@@ -68,28 +68,28 @@
     --surface-raised: var(--white);
     --surface-overlay: rgba(255, 255, 255, 0.95);
     --surface-hover: var(--green-50);
-    --surface-active: var(--green-100);
+    --surface-active: var(--blue-100);
 
     /* Borders */
-    --border: var(--green-200);
-    --border-light: var(--green-100);
-    --border-strong: var(--green-300);
+    --border: var(--blue-200);
+    --border-light: var(--blue-100);
+    --border-strong: var(--blue-300);
     --border-focus: var(--primary);
-    --border-error: var(--green-700);
+    --border-error: var(--blue-700);
 
     /* Status Colors (All Green-Based) */
-    --success: var(--green-600);
+    --success: var(--blue-600);
     --success-bg: var(--green-50);
-    --success-border: var(--green-300);
-    --warning: var(--green-500);
-    --warning-bg: var(--green-100);
-    --warning-border: var(--green-400);
-    --error: var(--green-800);
-    --error-bg: var(--green-100);
-    --error-border: var(--green-400);
-    --info: var(--green-600);
+    --success-border: var(--blue-300);
+    --warning: var(--blue-500);
+    --warning-bg: var(--blue-100);
+    --warning-border: var(--blue-400);
+    --error: var(--blue-800);
+    --error-bg: var(--blue-100);
+    --error-border: var(--blue-400);
+    --info: var(--blue-600);
     --info-bg: var(--green-50);
-    --info-border: var(--green-300);
+    --info-border: var(--blue-300);
 
     /* Interactive States */
     --interactive: var(--primary);
@@ -169,7 +169,7 @@
     background: var(--background);
     background-image:
       radial-gradient(at 0% 0%, var(--green-50) 0, transparent 50%),
-      radial-gradient(at 100% 0%, var(--green-100) 0, transparent 50%),
+      radial-gradient(at 100% 0%, var(--blue-100) 0, transparent 50%),
       radial-gradient(at 100% 100%, var(--green-50) 0, transparent 50%),
       radial-gradient(at 0% 100%, var(--gray-100) 0, transparent 50%);
     color: var(--text-primary);

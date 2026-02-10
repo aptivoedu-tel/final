@@ -173,12 +173,12 @@ export class AdminDashboardService {
                     action = 'MCQs Uploaded';
                     subject = log.activity_data?.subject || 'Unknown Subject';
                     icon = 'upload';
-                    color = 'text-blue-600 bg-blue-50';
+                    color = 'text-emerald-600 bg-emerald-50';
                 } else if (log.activity_type === 'content_updated') {
                     action = 'Content Updated';
                     subject = log.activity_data?.topic || 'Unknown Topic';
                     icon = 'edit';
-                    color = 'text-green-600 bg-green-50';
+                    color = 'text-emerald-600 bg-green-50';
                 } else if (log.activity_type === 'student_enrolled') {
                     action = 'Student Enrolled';
                     subject = log.activity_data?.topic || 'Unknown Topic';

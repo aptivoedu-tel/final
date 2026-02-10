@@ -200,6 +200,19 @@ export class ExcelUploadService {
                 });
             }
 
+            // LaTeX/Markdown Syntax Validation
+            const fieldsToValidate = ['question', 'option_a', 'option_b', 'option_c', 'option_d', 'explanation'];
+            fieldsToValidate.forEach(field => {
+                const content = normalizedRow[field]?.toString() || '';
+                if (content && !this.validateLatex(content)) {
+                    rowErrors.push({
+                        row: rowNumber,
+                        field: field,
+                        message: `Potential LaTeX syntax error (unbalanced $ or $$) in ${field}`
+                    });
+                }
+            });
+
             if (rowErrors.length === 0) {
                 validData.push({
                     subject: normalizedRow.subject?.trim(),
@@ -222,6 +235,32 @@ export class ExcelUploadService {
         });
 
         return { validData, errors };
+    }
+
+    /**
+     * Public validation for a single row (used by UI for preview)
+     */
+    static validateMCQRow(row: any): { isValid: boolean; errors: string[] } {
+        const errors: string[] = [];
+        const normalized = this.normalizeRow(row);
+
+        if (!normalized.question) errors.push('Question is missing');
+
+        // LaTeX check
+        const fields = ['question', 'option_a', 'option_b', 'option_c', 'option_d', 'explanation'];
+        fields.forEach(f => {
+            if (normalized[f] && !this.validateLatex(normalized[f])) {
+                errors.push(`LaTeX syntax error in ${f}`);
+            }
+        });
+
+        const hasOptions = normalized.option_a && normalized.option_b && normalized.option_c && normalized.option_d;
+        if (!hasOptions) errors.push('Options are incomplete');
+
+        const correct = normalized.correct_option?.toString().toUpperCase();
+        if (!['A', 'B', 'C', 'D'].includes(correct)) errors.push('Invalid correct option');
+
+        return { isValid: errors.length === 0, errors };
     }
 
     /**
@@ -266,6 +305,23 @@ export class ExcelUploadService {
         } catch {
             return false;
         }
+    }
+
+    /**
+     * Validate LaTeX syntax (basic check for balanced delimiters)
+     */
+    private static validateLatex(content: string): boolean {
+        // Check for balanced $$
+        const blockCount = (content.match(/\$\$/g) || []).length;
+        if (blockCount % 2 !== 0) return false;
+
+        // Check for balanced $ (ignoring escaped \$)
+        const inlineCount = (content.replace(/\\\$/g, '').match(/\$/g) || []).length;
+        // Subtract block delimiters from inline count if they are processed as single $ twice
+        const actualInlineCount = inlineCount - (blockCount * 2);
+        if (actualInlineCount % 2 !== 0) return false;
+
+        return true;
     }
 
     /**

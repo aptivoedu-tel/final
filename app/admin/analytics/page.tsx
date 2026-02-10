@@ -94,19 +94,19 @@ export default function AnalyticsPage() {
                             <div className="bg-white rounded-xl border border-gray-200 p-1 flex w-full sm:w-auto overflow-x-auto no-scrollbar">
                                 <button
                                     onClick={() => setDateRange('7d')}
-                                    className={`flex-1 sm:flex-none px-4 py-2 text-xs font-black uppercase tracking-wider rounded-lg transition-all ${dateRange === '7d' ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-100' : 'text-slate-500 hover:bg-slate-50'}`}
+                                    className={`flex-1 sm:flex-none px-4 py-2 text-xs font-black uppercase tracking-wider rounded-lg transition-all ${dateRange === '7d' ? 'bg-teal-600 text-white shadow-lg shadow-teal-100' : 'text-slate-500 hover:bg-slate-50'}`}
                                 >
                                     7 Days
                                 </button>
                                 <button
                                     onClick={() => setDateRange('30d')}
-                                    className={`flex-1 sm:flex-none px-4 py-2 text-xs font-black uppercase tracking-wider rounded-lg transition-all ${dateRange === '30d' ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-100' : 'text-slate-500 hover:bg-slate-50'}`}
+                                    className={`flex-1 sm:flex-none px-4 py-2 text-xs font-black uppercase tracking-wider rounded-lg transition-all ${dateRange === '30d' ? 'bg-teal-600 text-white shadow-lg shadow-teal-100' : 'text-slate-500 hover:bg-slate-50'}`}
                                 >
                                     30 Days
                                 </button>
                                 <button
                                     onClick={() => setDateRange('90d')}
-                                    className={`flex-1 sm:flex-none px-4 py-2 text-xs font-black uppercase tracking-wider rounded-lg transition-all ${dateRange === '90d' ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-100' : 'text-slate-500 hover:bg-slate-50'}`}
+                                    className={`flex-1 sm:flex-none px-4 py-2 text-xs font-black uppercase tracking-wider rounded-lg transition-all ${dateRange === '90d' ? 'bg-teal-600 text-white shadow-lg shadow-teal-100' : 'text-slate-500 hover:bg-slate-50'}`}
                                 >
                                     90 Days
                                 </button>
@@ -121,8 +121,8 @@ export default function AnalyticsPage() {
                                     value: stats?.totalSubjects.toLocaleString() || '0',
                                     change: '+2%',
                                     icon: BookOpen,
-                                    color: 'bg-indigo-600',
-                                    shadow: 'shadow-indigo-100'
+                                    color: 'bg-teal-600',
+                                    shadow: 'shadow-teal-100'
                                 },
                                 {
                                     label: 'Students',
@@ -169,7 +169,7 @@ export default function AnalyticsPage() {
                             {/* Growth Chart */}
                             <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
                                 <h3 className="font-bold text-slate-800 mb-6 flex items-center gap-2">
-                                    <TrendingUp className="w-5 h-5 text-indigo-600" />
+                                    <TrendingUp className="w-5 h-5 text-teal-600" />
                                     Student Growth
                                 </h3>
                                 <div className="h-[300px]">
@@ -177,8 +177,8 @@ export default function AnalyticsPage() {
                                         <AreaChart data={growth}>
                                             <defs>
                                                 <linearGradient id="colorGrowth" x1="0" y1="0" x2="0" y2="1">
-                                                    <stop offset="5%" stopColor="#6366f1" stopOpacity={0.3} />
-                                                    <stop offset="95%" stopColor="#6366f1" stopOpacity={0} />
+                                                    <stop offset="5%" stopColor="#14b8a6" stopOpacity={0.3} />
+                                                    <stop offset="95%" stopColor="#14b8a6" stopOpacity={0} />
                                                 </linearGradient>
                                             </defs>
                                             <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
@@ -187,7 +187,7 @@ export default function AnalyticsPage() {
                                             <Tooltip
                                                 contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
                                             />
-                                            <Area type="monotone" dataKey="count" stroke="#6366f1" strokeWidth={3} fillOpacity={1} fill="url(#colorGrowth)" />
+                                            <Area type="monotone" dataKey="count" stroke="#14b8a6" strokeWidth={3} fillOpacity={1} fill="url(#colorGrowth)" />
                                         </AreaChart>
                                     </ResponsiveContainer>
                                 </div>
@@ -196,7 +196,7 @@ export default function AnalyticsPage() {
                             {/* Performance Distribution (Pie) */}
                             <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
                                 <h3 className="font-bold text-slate-800 mb-6 flex items-center gap-2">
-                                    <PieChart className="w-5 h-5 text-indigo-600" />
+                                    <PieChart className="w-5 h-5 text-teal-600" />
                                     Subject Distribution
                                 </h3>
                                 <div className="h-[300px] flex items-center justify-center">
@@ -235,7 +235,7 @@ export default function AnalyticsPage() {
                         <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 mb-8">
                             <div className="flex justify-between items-center mb-6">
                                 <h3 className="font-bold text-slate-800 flex items-center gap-2">
-                                    <Activity className="w-5 h-5 text-indigo-600" />
+                                    <Activity className="w-5 h-5 text-teal-600" />
                                     Topic Performance
                                 </h3>
                             </div>

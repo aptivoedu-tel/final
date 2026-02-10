@@ -142,9 +142,9 @@ function SearchContent() {
 
     const getTypeIcon = (type: string) => {
         switch (type) {
-            case 'university': return <UniIcon className="w-5 h-5 text-indigo-500" />;
+            case 'university': return <UniIcon className="w-5 h-5 text-teal-500" />;
             case 'subject': return <Book className="w-5 h-5 text-purple-500" />;
-            case 'topic': return <GraduationCap className="w-5 h-5 text-blue-500" />;
+            case 'topic': return <GraduationCap className="w-5 h-5 text-emerald-500" />;
             case 'subtopic': return <FileText className="w-5 h-5 text-teal-500" />;
             default: return <Search className="w-5 h-5 text-gray-500" />;
         }
@@ -173,11 +173,11 @@ function SearchContent() {
                                     <Link
                                         key={`${result.type}-${result.id}-${idx}`}
                                         href={result.link}
-                                        className="block bg-white p-6 rounded-3xl border border-gray-100 shadow-sm hover:shadow-xl hover:border-indigo-100 transition-all group"
+                                        className="block bg-white p-6 rounded-3xl border border-gray-100 shadow-sm hover:shadow-xl hover:border-teal-100 transition-all group"
                                     >
                                         <div className="flex items-center justify-between">
                                             <div className="flex items-center gap-5">
-                                                <div className="w-12 h-12 bg-gray-50 rounded-2xl flex items-center justify-center group-hover:bg-indigo-50 transition-colors">
+                                                <div className="w-12 h-12 bg-gray-50 rounded-2xl flex items-center justify-center group-hover:bg-teal-50 transition-colors">
                                                     {getTypeIcon(result.type)}
                                                 </div>
                                                 <div>
@@ -186,16 +186,16 @@ function SearchContent() {
                                                             {result.type}
                                                         </span>
                                                         <span className="text-slate-200">•</span>
-                                                        <span className="text-[10px] font-bold text-indigo-500 uppercase tracking-widest">
+                                                        <span className="text-[10px] font-bold text-teal-500 uppercase tracking-widest">
                                                             {result.description}
                                                         </span>
                                                     </div>
-                                                    <h3 className="text-xl font-bold text-slate-800 group-hover:text-indigo-600 transition-colors">
+                                                    <h3 className="text-xl font-bold text-slate-800 group-hover:text-teal-600 transition-colors">
                                                         {result.title}
                                                     </h3>
                                                 </div>
                                             </div>
-                                            <ChevronRight className="w-5 h-5 text-slate-300 group-hover:text-indigo-600 group-hover:translate-x-1 transition-all" />
+                                            <ChevronRight className="w-5 h-5 text-slate-300 group-hover:text-teal-600 group-hover:translate-x-1 transition-all" />
                                         </div>
                                     </Link>
                                 ))}

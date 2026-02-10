@@ -113,7 +113,7 @@ export default function StudentDashboard() {
                                         Good Morning, {user?.full_name?.split(' ')[0] || 'Student'}! 👋
                                     </h1>
                                     <p className="text-slate-600 font-bold text-sm lg:text-lg">
-                                        You're on a <span className="text-teal-600 font-extrabold underline decoration-teal-100 underline-offset-4 tracking-tight">{stats.currentStreak}-day streak!</span> Keep it up.
+                                        You're on a <span className="text-teal-600 font-extrabold underline decoration-indigo-100 underline-offset-4 tracking-tight">{stats.currentStreak}-day streak!</span> Keep it up.
                                     </p>
                                 </div>
                             </div>
@@ -123,7 +123,7 @@ export default function StudentDashboard() {
                         <div className="grid grid-cols-2 md:grid-cols-2 lg:grid-cols-4 gap-4 lg:gap-6">
                             {[
                                 { label: 'Topics Enrolled', value: stats.enrolledTopics, icon: BookOpen, color: 'bg-teal-50 text-teal-600' },
-                                { label: 'Modules Completed', value: stats.questionsSolved, icon: Trophy, color: 'bg-indigo-50 text-indigo-600' },
+                                { label: 'Modules Completed', value: stats.questionsSolved, icon: Trophy, color: 'bg-teal-50 text-teal-600' },
                                 { label: 'Current Streak', value: `${stats.currentStreak} days`, icon: Flame, color: 'bg-orange-50 text-orange-600' },
                                 { label: 'Accuracy', value: `${stats.overallAccuracy}%`, icon: TrendingUp, color: 'bg-rose-50 text-rose-600' }
                             ].map((stat, i) => (
@@ -141,7 +141,7 @@ export default function StudentDashboard() {
 
                         {/* Special Recommendation Card */}
                         {(recommended || (continueLearning.length > 0)) && (
-                            <div className="bg-gradient-to-br from-indigo-600 to-indigo-950 rounded-[2.5rem] p-8 lg:p-12 text-white relative overflow-hidden shadow-2xl shadow-indigo-200">
+                            <div className="bg-gradient-to-br from-teal-600 to-teal-950 rounded-[2.5rem] p-8 lg:p-12 text-white relative overflow-hidden shadow-2xl shadow-teal-200">
                                 <div className="absolute top-0 right-0 w-96 h-96 bg-white/10 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2" />
                                 <div className="absolute bottom-0 left-0 w-64 h-64 bg-teal-500/10 rounded-full blur-3xl translate-y-1/2 -translate-x-1/2" />
 
@@ -154,7 +154,7 @@ export default function StudentDashboard() {
                                         <h2 className="text-3xl lg:text-4xl font-black tracking-tight leading-tight">
                                             {recommended ? `Ready to master ${recommended.subtopics.name}?` : `Pick up where you left off in ${continueLearning[0].title}`}
                                         </h2>
-                                        <p className="text-indigo-200 text-sm lg:text-lg font-medium opacity-80">
+                                        <p className="text-teal-200 text-sm lg:text-lg font-medium opacity-80">
                                             Based on your recent performance, we recommend a focused practice session to boost your {recommended ? 'detected weakness' : 'learning momentum'}.
                                         </p>
                                     </div>
@@ -164,7 +164,7 @@ export default function StudentDashboard() {
                                             // Since we don't have uniId easily here, we'll redirect to university page or try to find an enrollment
                                             window.location.href = `/university`;
                                         }}
-                                        className="px-10 py-5 bg-white text-indigo-600 rounded-2xl font-black uppercase tracking-[0.2em] text-xs shadow-xl shadow-indigo-900/20 hover:bg-teal-500 hover:text-white transition-all transform hover:scale-105 active:scale-95 flex items-center gap-3"
+                                        className="px-10 py-5 bg-white text-teal-600 rounded-2xl font-black uppercase tracking-[0.2em] text-xs shadow-xl shadow-teal-900/20 hover:bg-teal-500 hover:text-white transition-all transform hover:scale-105 active:scale-95 flex items-center gap-3"
                                     >
                                         Start Smart Practice
                                         <ChevronRight className="w-5 h-5 font-black" />
@@ -236,8 +236,8 @@ export default function StudentDashboard() {
                                             <h2 className="text-lg lg:text-xl font-black text-slate-900">Performance Status</h2>
                                             <p className="text-[10px] lg:text-xs font-black text-slate-500 tracking-wider">Overall accuracy by subject</p>
                                         </div>
-                                        <div className="w-10 h-10 bg-blue-50 rounded-xl flex items-center justify-center">
-                                            <TrendingUp className="w-5 h-5 text-blue-600" />
+                                        <div className="w-10 h-10 bg-emerald-50 rounded-xl flex items-center justify-center">
+                                            <TrendingUp className="w-5 h-5 text-emerald-600" />
                                         </div>
                                     </div>
 

@@ -27,11 +27,11 @@ import {
 } from 'lucide-react';
 import { toast } from 'sonner';
 import Link from 'next/link';
-import MarkdownRenderer from '@/components/shared/MarkdownRenderer';
+import dynamic from 'next/dynamic';
 import { useLoading } from '@/lib/context/LoadingContext';
-
-
 import { useUI } from '@/lib/context/UIContext';
+
+const MarkdownRenderer = dynamic(() => import('@/components/shared/MarkdownRenderer'), { ssr: false });
 
 type ContentMap = {
     subject: { id: number; name: string };
@@ -63,6 +63,12 @@ export default function UniversityDetailPage() {
     const [progressMap, setProgressMap] = useState<Record<number, { isRead: boolean; isMastered: boolean }>>({});
 
     useEffect(() => {
+        if (isNaN(uniId)) {
+            toast.error("Invalid university ID");
+            router.push('/university');
+            return;
+        }
+
         const init = async () => {
             const u = AuthService.getCurrentUser();
             if (u) {
@@ -415,7 +421,7 @@ export default function UniversityDetailPage() {
                                                             key={exam.id}
                                                             className="group relative bg-white rounded-[2.5rem] border border-slate-100 overflow-hidden shadow-xl shadow-slate-100/50 hover:shadow-2xl hover:shadow-teal-100/20 transition-all duration-500"
                                                         >
-                                                            <div className="bg-gradient-to-br from-teal-900 via-teal-800 to-emerald-950 p-8 pb-12 relative overflow-hidden">
+                                                            <div className="bg-gradient-to-br from-teal-900 via-teal-800 to-blue-950 p-8 pb-12 relative overflow-hidden">
                                                                 <div className="absolute top-0 right-0 w-48 h-48 bg-teal-500/10 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2" />
                                                                 <div className="relative z-10 flex justify-between items-start mb-6">
                                                                     <div className="px-5 py-2 bg-white/10 backdrop-blur-md rounded-full border border-white/20 text-white font-black text-[10px] uppercase tracking-widest flex items-center gap-2">
@@ -473,10 +479,10 @@ export default function UniversityDetailPage() {
                                     <div className="grid grid-cols-1 gap-8">
                                         {content.length > 0 ? content.map((subjectItem) => (
                                             <div key={subjectItem.subject.id} className="bg-white rounded-[2.5rem] border border-slate-100 overflow-hidden shadow-xl shadow-slate-100/50 hover:shadow-2xl hover:shadow-teal-100/20 transition-all duration-500">
-                                                <div className="relative overflow-hidden bg-gradient-to-br from-teal-900 via-teal-800 to-emerald-950 rounded-t-[2.5rem] p-8 cursor-pointer group hover:from-teal-800 hover:via-teal-700 hover:to-emerald-900 transition-all duration-300"
+                                                <div className="relative overflow-hidden bg-gradient-to-br from-teal-900 via-teal-800 to-blue-950 rounded-t-[2.5rem] p-8 cursor-pointer group hover:from-teal-800 hover:via-teal-700 hover:to-blue-900 transition-all duration-300"
                                                     onClick={() => setExpandedSubject(expandedSubject === subjectItem.subject.id ? null : subjectItem.subject.id)}
                                                 >
-                                                    <div className="absolute inset-0 bg-gradient-to-r from-teal-500/10 to-emerald-500/10 opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+                                                    <div className="absolute inset-0 bg-gradient-to-r from-teal-500/10 to-blue-500/10 opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
                                                     <div className="flex items-start justify-between">
                                                         <div className="relative z-10 flex-1">
                                                             <span className="text-teal-400 text-[10px] font-black uppercase tracking-[0.25em] mb-2 block">Foundational Curriculum</span>
@@ -502,7 +508,7 @@ export default function UniversityDetailPage() {
                                                             </div>
                                                         </div>
                                                         <div className="p-8 space-y-4">
-                                                            {subjectItem.topics.map(topic => (
+                                                            {subjectItem.topics?.map(topic => (
                                                                 <div key={topic.id} className="border border-gray-100 rounded-2xl overflow-hidden bg-white shadow-sm transition-all hover:border-teal-100">
                                                                     <div
                                                                         className="w-full flex items-center justify-between p-5 text-left group transition-colors hover:bg-teal-50/30"
@@ -510,7 +516,7 @@ export default function UniversityDetailPage() {
                                                                         <div
                                                                             className="flex items-center gap-4 cursor-pointer flex-1"
                                                                             onClick={() => {
-                                                                                if (topic.subtopics.length > 0) {
+                                                                                if (topic.subtopics?.length > 0) {
                                                                                     setExpandedTopic(expandedTopic === topic.id ? null : topic.id)
                                                                                 }
                                                                             }}
@@ -521,14 +527,14 @@ export default function UniversityDetailPage() {
                                                                             <div>
                                                                                 <h4 className="font-bold text-slate-800">{topic.name}</h4>
                                                                                 <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mt-0.5">
-                                                                                    {topic.subtopics.length > 0
+                                                                                    {topic.subtopics?.length > 0
                                                                                         ? `${topic.subtopics.length} Learning Modules Available`
                                                                                         : 'Direct Knowledge Module'}
                                                                                 </p>
                                                                             </div>
                                                                         </div>
 
-                                                                        {topic.subtopics.length > 0 ? (
+                                                                        {topic.subtopics?.length > 0 ? (
                                                                             <div onClick={() => setExpandedTopic(expandedTopic === topic.id ? null : topic.id)} className="cursor-pointer">
                                                                                 {expandedTopic === topic.id ? <ChevronUp className="w-5 h-5 text-teal-600" /> : <ChevronDown className="w-5 h-5 text-slate-400 group-hover:text-teal-500" />}
                                                                             </div>
@@ -554,15 +560,15 @@ export default function UniversityDetailPage() {
 
                                                                     {expandedTopic === topic.id && (
                                                                         <div className="px-5 pb-5 pt-0 space-y-2 animate-slide-down">
-                                                                            {topic.subtopics.map(subtopic => {
+                                                                            {topic.subtopics?.map(subtopic => {
                                                                                 const status = progressMap[subtopic.id] || { isRead: false, isMastered: false };
                                                                                 return (
-                                                                                    <div key={subtopic.id} className="flex items-center justify-between p-4 rounded-2xl bg-slate-100/30 group hover:bg-white transition-all border border-transparent hover:border-indigo-100 shadow-sm">
+                                                                                    <div key={subtopic.id} className="flex items-center justify-between p-4 rounded-2xl bg-slate-100/30 group hover:bg-white transition-all border border-transparent hover:border-teal-100 shadow-sm">
                                                                                         <Link
                                                                                             href={`/university/${uniId}/lesson/${subtopic.id}`}
                                                                                             className="flex items-center gap-4 flex-1"
                                                                                         >
-                                                                                            {status.isRead ? <CheckCircle className="w-5 h-5 text-green-500" /> : <Clock className="w-5 h-5 text-slate-300" />}
+                                                                                            {status.isRead ? <CheckCircle className="w-5 h-5 text-emerald-500" /> : <Clock className="w-5 h-5 text-slate-300" />}
                                                                                             <span className={`text-sm font-bold ${status.isRead ? 'text-slate-900' : 'text-slate-500'}`}>{subtopic.name}</span>
                                                                                         </Link>
                                                                                         <div className="flex items-center gap-2">

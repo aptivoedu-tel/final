@@ -97,7 +97,7 @@ function SetPasswordContent() {
                         <div className="absolute inset-0 bg-primary opacity-0 group-hover:opacity-10 transition-opacity" />
                         <Lock className="w-10 h-10 text-primary animate-bounce-slow" />
                         <div className="absolute -bottom-1 -right-1">
-                            <CheckCircle2 className="w-6 h-6 text-green-500 fill-white" />
+                            <CheckCircle2 className="w-6 h-6 text-emerald-500 fill-white" />
                         </div>
                     </div>
                     <h1 className="text-3xl font-bold text-slate-900 mb-2">Secure Your Account</h1>
@@ -157,12 +157,12 @@ function SetPasswordContent() {
                         {/* Password Checklist */}
                         <div className="bg-slate-50 rounded-xl p-4 space-y-2">
                             <div className="flex items-center gap-2 text-xs">
-                                <div className={`w-1.5 h-1.5 rounded-full ${password.length >= 6 ? 'bg-green-500' : 'bg-slate-300'}`} />
-                                <span className={password.length >= 6 ? 'text-green-600' : 'text-slate-500'}>At least 6 characters</span>
+                                <div className={`w-1.5 h-1.5 rounded-full ${password.length >= 6 ? 'bg-emerald-500' : 'bg-slate-300'}`} />
+                                <span className={password.length >= 6 ? 'text-emerald-600' : 'text-slate-500'}>At least 6 characters</span>
                             </div>
                             <div className="flex items-center gap-2 text-xs">
-                                <div className={`w-1.5 h-1.5 rounded-full ${password && password === confirmPassword ? 'bg-green-500' : 'bg-slate-300'}`} />
-                                <span className={password && password === confirmPassword ? 'text-green-600' : 'text-slate-500'}>Passwords match</span>
+                                <div className={`w-1.5 h-1.5 rounded-full ${password && password === confirmPassword ? 'bg-emerald-500' : 'bg-slate-300'}`} />
+                                <span className={password && password === confirmPassword ? 'text-emerald-600' : 'text-slate-500'}>Passwords match</span>
                             </div>
                         </div>
 

@@ -228,8 +228,8 @@ export default function LoginPage() {
                             </div>
 
                             {(infoMessage || error) && (
-                                <div className={`p-4 rounded-2xl flex items-center gap-3 text-xs font-bold leading-relaxed animate-in fade-in slide-in-from-top-2 ${infoMessage ? 'bg-green-50 text-green-700 border border-green-100' : 'bg-red-50 text-red-700 border border-red-100'}`}>
-                                    {infoMessage ? <CheckCircle className="w-5 h-5 text-green-500" /> : <AlertCircle className="w-5 h-5 text-red-500" />}
+                                <div className={`p-4 rounded-2xl flex items-center gap-3 text-xs font-bold leading-relaxed animate-in fade-in slide-in-from-top-2 ${infoMessage ? 'bg-green-50 text-emerald-700 border border-emerald-100' : 'bg-red-50 text-red-700 border border-red-100'}`}>
+                                    {infoMessage ? <CheckCircle className="w-5 h-5 text-emerald-500" /> : <AlertCircle className="w-5 h-5 text-red-500" />}
                                     {infoMessage || error}
                                 </div>
                             )}
@@ -247,7 +247,7 @@ export default function LoginPage() {
                                             <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">{role === 'student' ? 'Student ID / Email' : 'Admin Email'}</label>
                                             <div className="relative group">
                                                 <Mail className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-300 group-focus-within:text-[#4CAF50] transition-colors" />
-                                                <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} required className="w-full pl-11 pr-5 py-4 bg-slate-50 border border-slate-100 rounded-2xl text-[13px] font-medium focus:bg-white focus:border-[#4CAF50] focus:ring-4 focus:ring-green-500/5 transition-all outline-none" placeholder={role === 'student' ? "student@university.edu" : "admin@aptivo.com"} />
+                                                <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} required className="w-full pl-11 pr-5 py-4 bg-slate-50 border border-slate-100 rounded-2xl text-[13px] font-medium focus:bg-white focus:border-[#4CAF50] focus:ring-4 focus:ring-blue-500/5 transition-all outline-none" placeholder={role === 'student' ? "student@university.edu" : "admin@aptivo.com"} />
                                             </div>
                                         </div>
 
@@ -255,7 +255,7 @@ export default function LoginPage() {
                                             <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Secure Password</label>
                                             <div className="relative group">
                                                 <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-300 group-focus-within:text-[#4CAF50] transition-colors" />
-                                                <input type={showPassword ? 'text' : 'password'} value={password} onChange={(e) => setPassword(e.target.value)} required className="w-full pl-11 pr-12 py-4 bg-slate-50 border border-slate-100 rounded-2xl text-[13px] font-medium focus:bg-white focus:border-[#4CAF50] focus:ring-4 focus:ring-green-500/5 transition-all outline-none" placeholder="••••••••" />
+                                                <input type={showPassword ? 'text' : 'password'} value={password} onChange={(e) => setPassword(e.target.value)} required className="w-full pl-11 pr-12 py-4 bg-slate-50 border border-slate-100 rounded-2xl text-[13px] font-medium focus:bg-white focus:border-[#4CAF50] focus:ring-4 focus:ring-blue-500/5 transition-all outline-none" placeholder="••••••••" />
                                                 <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-300 hover:text-[#4CAF50] transition-colors p-1">{showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}</button>
                                             </div>
                                         </div>

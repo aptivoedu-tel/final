@@ -231,8 +231,8 @@ const Header: React.FC<HeaderProps> = ({ userName, userEmail, userAvatar, avatar
     const getIcon = (category: string) => {
         switch (category) {
             case 'alert': return <AlertTriangle className="w-4 h-4 text-red-500" />;
-            case 'success': return <CheckCircle className="w-4 h-4 text-green-500" />;
-            case 'info': default: return <Info className="w-4 h-4 text-blue-500" />;
+            case 'success': return <CheckCircle className="w-4 h-4 text-emerald-500" />;
+            case 'info': default: return <Info className="w-4 h-4 text-emerald-500" />;
         }
     };
 
@@ -289,7 +289,7 @@ const Header: React.FC<HeaderProps> = ({ userName, userEmail, userAvatar, avatar
                                 <div className="p-4 bg-gray-50 border-b border-gray-100 flex items-center justify-between">
                                     <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">Quick Results</span>
                                     {isSearching && (
-                                        <div className="w-3 h-3 border-2 border-indigo-500 border-t-transparent rounded-full animate-spin" />
+                                        <div className="w-3 h-3 border-2 border-teal-500 border-t-transparent rounded-full animate-spin" />
                                     )}
                                 </div>
                                 <div className="max-h-[400px] overflow-y-auto">

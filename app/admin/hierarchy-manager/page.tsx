@@ -65,8 +65,8 @@ const DraggableItem = ({ item, level, children, onExpand, onDelete, onAddChild }
                 {...attributes}
                 className={`
                     group flex items-center gap-3 py-3 px-4 border-b border-gray-100 bg-white transition-colors
-                    ${isDragging ? 'opacity-50 shadow-xl ring-2 ring-indigo-500 rounded-lg relative z-50' : ''}
-                    ${isOver && !isDragging ? 'bg-indigo-50 border-indigo-200' : 'hover:bg-gray-50'}
+                    ${isDragging ? 'opacity-50 shadow-xl ring-2 ring-teal-500 rounded-lg relative z-50' : ''}
+                    ${isOver && !isDragging ? 'bg-teal-50 border-teal-200' : 'hover:bg-gray-50'}
                     ${level === 0 ? 'border-l-4 border-l-transparent hover:border-l-indigo-500' : ''}
                 `}
                 style={{ paddingLeft: `${level * 24 + 16}px`, ...style }}
@@ -89,7 +89,7 @@ const DraggableItem = ({ item, level, children, onExpand, onDelete, onAddChild }
                 <div className={`
                     w-8 h-8 rounded-lg flex items-center justify-center shrink-0
                     ${item.type === 'subject' ? 'bg-purple-100 text-purple-600' :
-                        item.type === 'topic' ? 'bg-blue-50 text-blue-500' :
+                        item.type === 'topic' ? 'bg-emerald-50 text-emerald-500' :
                             'bg-gray-100 text-gray-500'}
                 `}>
                     {item.type === 'subject' && <Layers className="w-4 h-4" />}
@@ -109,7 +109,7 @@ const DraggableItem = ({ item, level, children, onExpand, onDelete, onAddChild }
                     {item.type !== 'subtopic' && (
                         <button
                             onClick={(e) => { e.stopPropagation(); onAddChild(item); }}
-                            className="p-2 text-gray-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors"
+                            className="p-2 text-gray-400 hover:text-teal-600 hover:bg-teal-50 rounded-lg transition-colors"
                             title={`Add ${item.type === 'subject' ? 'Topic' : 'Subtopic'}`}
                             onPointerDown={(e) => e.stopPropagation()}
                         >
@@ -425,7 +425,7 @@ export default function HierarchyManagerPage() {
                                 <div className="flex gap-2 flex-wrap justify-center sm:justify-start">
                                     <button
                                         onClick={() => openAddModal('subject')}
-                                        className="flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white text-[11px] font-black uppercase tracking-wider rounded-xl hover:bg-slate-900 transition-all shadow-lg shadow-indigo-100 active:scale-95"
+                                        className="flex items-center gap-2 px-4 py-2 bg-teal-600 text-white text-[11px] font-black uppercase tracking-wider rounded-xl hover:bg-slate-900 transition-all shadow-lg shadow-teal-100 active:scale-95"
                                     >
                                         <Plus className="w-4 h-4" />
                                         Subject
@@ -463,8 +463,8 @@ export default function HierarchyManagerPage() {
                         {createPortal(
                             <DragOverlay>
                                 {activeDragItem ? (
-                                    <div className="p-4 bg-white shadow-2xl rounded-lg border-2 border-indigo-500 w-[300px] flex items-center gap-3 opacity-90 cursor-grabbing">
-                                        <GripVertical className="w-4 h-4 text-indigo-500" />
+                                    <div className="p-4 bg-white shadow-2xl rounded-lg border-2 border-teal-500 w-[300px] flex items-center gap-3 opacity-90 cursor-grabbing">
+                                        <GripVertical className="w-4 h-4 text-teal-500" />
                                         <span className="font-bold text-slate-800">{activeDragItem.title}</span>
                                     </div>
                                 ) : null}
@@ -494,7 +494,7 @@ export default function HierarchyManagerPage() {
                                                                 newList[index] = e.target.value;
                                                                 setInputList(newList);
                                                             }}
-                                                            className="flex-1 px-4 py-2 rounded-lg border border-gray-200 focus:ring-2 focus:ring-indigo-100 focus:border-indigo-500 outline-none"
+                                                            className="flex-1 px-4 py-2 rounded-lg border border-gray-200 focus:ring-2 focus:ring-teal-100 focus:border-teal-500 outline-none"
                                                             placeholder={`Enter ${addType} name`}
                                                             autoFocus={index === inputList.length - 1}
                                                         />
@@ -514,7 +514,7 @@ export default function HierarchyManagerPage() {
                                             </div>
                                             <button
                                                 onClick={() => setInputList([...inputList, ''])}
-                                                className="mt-3 flex items-center gap-2 text-sm font-bold text-indigo-600 hover:text-indigo-800"
+                                                className="mt-3 flex items-center gap-2 text-sm font-bold text-teal-600 hover:text-teal-800"
                                             >
                                                 <Plus className="w-4 h-4" />
                                                 Add Another
@@ -559,7 +559,7 @@ export default function HierarchyManagerPage() {
                                     </div>
                                     <div className="p-6 bg-gray-50 flex justify-end gap-3">
                                         <button onClick={() => setIsAddModalOpen(false)} className="px-4 py-2 text-slate-600 font-medium hover:bg-gray-200 rounded-lg">Cancel</button>
-                                        <button onClick={handleSave} className="px-4 py-2 bg-indigo-600 text-white font-bold rounded-lg hover:bg-indigo-700">Save</button>
+                                        <button onClick={handleSave} className="px-4 py-2 bg-teal-600 text-white font-bold rounded-lg hover:bg-teal-700">Save</button>
                                     </div>
                                 </div>
                             </div>

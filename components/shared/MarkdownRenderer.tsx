@@ -60,12 +60,12 @@ const MarkdownRenderer: React.FC<MarkdownRendererProps> = ({ content, className 
                         <td className="border-b border-slate-50 px-6 py-4 text-slate-600 font-medium" {...props} />
                     ),
                     // Style headings
-                    h1: ({ node, ...props }) => <h1 className="text-3xl font-black text-slate-900 mb-6 mt-12 tracking-tight pb-2 border-b-2 border-indigo-500/10" {...props} />,
-                    h2: ({ node, ...props }) => <h2 className="text-2xl font-black text-slate-800 mb-4 mt-8 tracking-tight flex items-center gap-3 before:w-1 before:h-6 before:bg-indigo-500 before:rounded-full" {...props} />,
+                    h1: ({ node, ...props }) => <h1 className="text-3xl font-black text-slate-900 mb-6 mt-12 tracking-tight pb-2 border-b-2 border-teal-500/10" {...props} />,
+                    h2: ({ node, ...props }) => <h2 className="text-2xl font-black text-slate-800 mb-4 mt-8 tracking-tight flex items-center gap-3 before:w-1 before:h-6 before:bg-teal-500 before:rounded-full" {...props} />,
                     h3: ({ node, ...props }) => <h3 className="text-xl font-bold text-slate-800 mb-3 mt-6 tracking-tight" {...props} />,
                     // Style blockquotes
                     blockquote: ({ node, ...props }) => (
-                        <blockquote className="border-l-4 border-indigo-500 bg-indigo-50/30 px-6 py-4 rounded-r-2xl my-6 italic text-slate-700 font-medium" {...props} />
+                        <blockquote className="border-l-4 border-teal-500 bg-teal-50/30 px-6 py-4 rounded-r-2xl my-6 italic text-slate-700 font-medium" {...props} />
                     ),
                     // Style math blocks
                     div: ({ node, className, children, ...props }) => {
@@ -82,7 +82,7 @@ const MarkdownRenderer: React.FC<MarkdownRendererProps> = ({ content, className 
                     // Style strong text
                     strong: ({ node, ...props }) => <strong className="font-black text-slate-900" {...props} />,
                     // Style links
-                    a: ({ node, ...props }) => <a className="text-indigo-600 font-bold hover:text-indigo-700 underline decoration-indigo-200 underline-offset-4 decoration-2 transition-colors" {...props} />
+                    a: ({ node, ...props }) => <a className="text-teal-600 font-bold hover:text-teal-700 underline decoration-indigo-200 underline-offset-4 decoration-2 transition-colors" {...props} />
                 }}
             >
                 {content}

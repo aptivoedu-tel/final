@@ -176,7 +176,7 @@ export default function InstitutionNotificationsPage() {
         switch (category) {
             case 'alert': return 'bg-rose-50/50 border-rose-100';
             case 'success': return 'bg-emerald-50/50 border-emerald-100';
-            default: return 'bg-indigo-50/50 border-indigo-100';
+            default: return 'bg-teal-50/50 border-teal-100';
         }
     };
 
@@ -184,7 +184,7 @@ export default function InstitutionNotificationsPage() {
         switch (category) {
             case 'alert': return <AlertTriangle className="w-6 h-6 text-rose-500" />;
             case 'success': return <CheckCircle className="w-6 h-6 text-emerald-500" />;
-            default: return <Info className="w-6 h-6 text-indigo-500" />;
+            default: return <Info className="w-6 h-6 text-teal-500" />;
         }
     };
 
@@ -296,19 +296,19 @@ export default function InstitutionNotificationsPage() {
                                 <div className="bg-white rounded-lg border border-gray-200 p-1 flex w-full sm:w-auto">
                                     <button
                                         onClick={() => setActiveTab('inbox')}
-                                        className={`flex-1 sm:flex-none px-4 py-1.5 text-xs sm:text-sm font-bold rounded-md transition-all ${activeTab === 'inbox' ? 'bg-indigo-600 text-white shadow-lg' : 'text-slate-500 hover:text-slate-800'}`}
+                                        className={`flex-1 sm:flex-none px-4 py-1.5 text-xs sm:text-sm font-bold rounded-md transition-all ${activeTab === 'inbox' ? 'bg-teal-600 text-white shadow-lg' : 'text-slate-500 hover:text-slate-800'}`}
                                     >
                                         Inbox
                                     </button>
                                     <button
                                         onClick={() => setActiveTab('compose')}
-                                        className={`flex-1 sm:flex-none px-4 py-1.5 text-xs sm:text-sm font-bold rounded-md transition-all ${activeTab === 'compose' ? 'bg-indigo-600 text-white shadow-lg' : 'text-slate-500 hover:text-slate-800'}`}
+                                        className={`flex-1 sm:flex-none px-4 py-1.5 text-xs sm:text-sm font-bold rounded-md transition-all ${activeTab === 'compose' ? 'bg-teal-600 text-white shadow-lg' : 'text-slate-500 hover:text-slate-800'}`}
                                     >
                                         Compose
                                     </button>
                                     <button
                                         onClick={() => setActiveTab('history')}
-                                        className={`flex-1 sm:flex-none px-4 py-1.5 text-xs sm:text-sm font-bold rounded-md transition-all ${activeTab === 'history' ? 'bg-indigo-600 text-white shadow-lg' : 'text-slate-500 hover:text-slate-800'}`}
+                                        className={`flex-1 sm:flex-none px-4 py-1.5 text-xs sm:text-sm font-bold rounded-md transition-all ${activeTab === 'history' ? 'bg-teal-600 text-white shadow-lg' : 'text-slate-500 hover:text-slate-800'}`}
                                     >
                                         History
                                     </button>
@@ -324,7 +324,7 @@ export default function InstitutionNotificationsPage() {
                                             </button>
                                             <button
                                                 onClick={() => setFilter('unread')}
-                                                className={`px-3 py-1.5 text-xs sm:text-sm font-medium rounded-md transition-colors ${filter === 'unread' ? 'bg-indigo-50 text-indigo-700' : 'text-slate-500 hover:text-slate-700'}`}
+                                                className={`px-3 py-1.5 text-xs sm:text-sm font-medium rounded-md transition-colors ${filter === 'unread' ? 'bg-teal-50 text-teal-700' : 'text-slate-500 hover:text-slate-700'}`}
                                             >
                                                 Unread
                                             </button>
@@ -389,7 +389,7 @@ export default function InstitutionNotificationsPage() {
 
                                                     {!notification.read_at && (
                                                         <div className="flex justify-end">
-                                                            <div className="text-[10px] font-black text-indigo-600 uppercase tracking-widest flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                                                            <div className="text-[10px] font-black text-teal-600 uppercase tracking-widest flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                                                                 <CheckCircle className="w-3 h-3" /> Click to mark as read
                                                             </div>
                                                         </div>
@@ -413,12 +413,12 @@ export default function InstitutionNotificationsPage() {
                         {activeTab === 'compose' && (
                             <div className="bg-white rounded-3xl shadow-xl border border-gray-100 overflow-hidden animate-in fade-in slide-in-from-bottom-4 duration-500">
                                 <div className="bg-[#1e1b4b] p-8 text-white relative">
-                                    <div className="absolute top-0 right-0 w-32 h-32 bg-indigo-500/10 rounded-full blur-2xl" />
+                                    <div className="absolute top-0 right-0 w-32 h-32 bg-teal-500/10 rounded-full blur-2xl" />
                                     <h2 className="text-xl font-black flex items-center gap-3 text-white">
-                                        <Send className="w-6 h-6 text-indigo-400" />
+                                        <Send className="w-6 h-6 text-teal-400" />
                                         Broadcast Announcement
                                     </h2>
-                                    <p className="text-indigo-200 text-xs mt-1 font-medium italic opacity-80 underline decoration-indigo-500/30 underline-offset-4">Only students of your institution will receive this.</p>
+                                    <p className="text-teal-200 text-xs mt-1 font-medium italic opacity-80 underline decoration-indigo-500/30 underline-offset-4">Only students of your institution will receive this.</p>
                                 </div>
 
                                 <form onSubmit={handleSend} className="p-8 space-y-6">
@@ -433,17 +433,17 @@ export default function InstitutionNotificationsPage() {
                                         <button
                                             type="button"
                                             onClick={() => setTargetType('all')}
-                                            className={`p-4 rounded-2xl border-2 flex flex-col items-center gap-2 transition-all ${targetType === 'all' ? 'border-indigo-600 bg-indigo-50' : 'border-gray-100 text-slate-400 hover:border-indigo-100'}`}
+                                            className={`p-4 rounded-2xl border-2 flex flex-col items-center gap-2 transition-all ${targetType === 'all' ? 'border-teal-600 bg-teal-50' : 'border-gray-100 text-slate-400 hover:border-teal-100'}`}
                                         >
-                                            <Users className={`w-6 h-6 ${targetType === 'all' ? 'text-indigo-600' : ''}`} />
+                                            <Users className={`w-6 h-6 ${targetType === 'all' ? 'text-teal-600' : ''}`} />
                                             <span className="text-xs font-black uppercase tracking-widest">All Students</span>
                                         </button>
                                         <button
                                             type="button"
                                             onClick={() => setTargetType('individual')}
-                                            className={`p-4 rounded-2xl border-2 flex flex-col items-center gap-2 transition-all ${targetType === 'individual' ? 'border-indigo-600 bg-indigo-50' : 'border-gray-100 text-slate-400 hover:border-indigo-100'}`}
+                                            className={`p-4 rounded-2xl border-2 flex flex-col items-center gap-2 transition-all ${targetType === 'individual' ? 'border-teal-600 bg-teal-50' : 'border-gray-100 text-slate-400 hover:border-teal-100'}`}
                                         >
-                                            <User className={`w-6 h-6 ${targetType === 'individual' ? 'text-indigo-600' : ''}`} />
+                                            <User className={`w-6 h-6 ${targetType === 'individual' ? 'text-teal-600' : ''}`} />
                                             <span className="text-xs font-black uppercase tracking-widest">Individual</span>
                                         </button>
                                     </div>
@@ -455,7 +455,7 @@ export default function InstitutionNotificationsPage() {
                                                 value={selectedStudent}
                                                 onChange={(e) => setSelectedStudent(e.target.value)}
                                                 required
-                                                className="w-full px-5 py-4 rounded-2xl border border-gray-100 bg-gray-50 focus:bg-white focus:border-indigo-600 outline-none transition-all font-bold text-slate-700 shadow-inner"
+                                                className="w-full px-5 py-4 rounded-2xl border border-gray-100 bg-gray-50 focus:bg-white focus:border-teal-600 outline-none transition-all font-bold text-slate-700 shadow-inner"
                                             >
                                                 <option value="">Search student name...</option>
                                                 {students.map(s => (
@@ -471,7 +471,7 @@ export default function InstitutionNotificationsPage() {
                                             {[
                                                 { id: 'info', icon: Info, color: 'blue' },
                                                 { id: 'alert', icon: AlertTriangle, color: 'rose' },
-                                                { id: 'success', icon: CheckCircle, color: 'emerald' }
+                                                { id: 'success', icon: CheckCircle, color: 'blue' }
                                             ].map(cat => (
                                                 <button
                                                     key={cat.id}
@@ -493,7 +493,7 @@ export default function InstitutionNotificationsPage() {
                                             value={title}
                                             onChange={(e) => setTitle(e.target.value)}
                                             required
-                                            className="w-full px-5 py-4 rounded-2xl border border-gray-100 bg-gray-50 focus:bg-white focus:border-indigo-600 outline-none transition-all font-bold text-slate-700 shadow-inner"
+                                            className="w-full px-5 py-4 rounded-2xl border border-gray-100 bg-gray-50 focus:bg-white focus:border-teal-600 outline-none transition-all font-bold text-slate-700 shadow-inner"
                                             placeholder="e.g., Campus Maintenance Tomorrow"
                                         />
                                     </div>
@@ -505,7 +505,7 @@ export default function InstitutionNotificationsPage() {
                                             onChange={(e) => setMessage(e.target.value)}
                                             required
                                             rows={6}
-                                            className="w-full px-5 py-4 rounded-2xl border border-gray-100 bg-gray-50 focus:bg-white focus:border-indigo-600 outline-none transition-all font-medium text-slate-700 shadow-inner resize-none"
+                                            className="w-full px-5 py-4 rounded-2xl border border-gray-100 bg-gray-50 focus:bg-white focus:border-teal-600 outline-none transition-all font-medium text-slate-700 shadow-inner resize-none"
                                             placeholder="Type your message here... Use **text** for emphasis."
                                         />
                                     </div>
@@ -523,7 +523,7 @@ export default function InstitutionNotificationsPage() {
                                             </div>
                                         ) : (
                                             <label className="cursor-pointer">
-                                                <div className="w-16 h-16 bg-white rounded-3xl shadow-sm border border-gray-100 flex items-center justify-center mx-auto mb-4 text-slate-300 group-hover:text-indigo-500 transition-colors">
+                                                <div className="w-16 h-16 bg-white rounded-3xl shadow-sm border border-gray-100 flex items-center justify-center mx-auto mb-4 text-slate-300 group-hover:text-teal-500 transition-colors">
                                                     <ImageIcon className="w-8 h-8" />
                                                 </div>
                                                 <p className="text-sm font-black text-slate-700">Attach Media Blast</p>
@@ -535,7 +535,7 @@ export default function InstitutionNotificationsPage() {
 
                                     <button
                                         type="submit"
-                                        className="w-full py-5 bg-[#1e1b4b] text-white rounded-[2rem] font-black text-xs uppercase tracking-[0.2em] shadow-2xl shadow-indigo-200 hover:scale-[1.02] active:scale-95 transition-all flex items-center justify-center gap-3"
+                                        className="w-full py-5 bg-[#1e1b4b] text-white rounded-[2rem] font-black text-xs uppercase tracking-[0.2em] shadow-2xl shadow-teal-200 hover:scale-[1.02] active:scale-95 transition-all flex items-center justify-center gap-3"
                                     >
                                         <Send className="w-5 h-5" />
                                         Dispatch Broadcast
@@ -554,7 +554,7 @@ export default function InstitutionNotificationsPage() {
                                             <div className="flex flex-col sm:flex-row justify-between items-start gap-4 mb-6">
                                                 <div className="flex-1">
                                                     <div className="flex items-center gap-3 mb-2">
-                                                        <span className={`px-3 py-1 rounded-full text-[9px] font-black uppercase tracking-widest ${item.category === 'alert' ? 'bg-rose-50 text-rose-600' : 'bg-indigo-50 text-indigo-600'}`}>
+                                                        <span className={`px-3 py-1 rounded-full text-[9px] font-black uppercase tracking-widest ${item.category === 'alert' ? 'bg-rose-50 text-rose-600' : 'bg-teal-50 text-teal-600'}`}>
                                                             {item.category || 'System'}
                                                         </span>
                                                         <span className="text-[10px] font-bold text-slate-400">
@@ -565,9 +565,9 @@ export default function InstitutionNotificationsPage() {
                                                     <p className="text-slate-600 text-sm whitespace-pre-wrap">{item.message}</p>
                                                 </div>
                                                 <div className="flex flex-col items-center sm:items-end shrink-0">
-                                                    <div className="w-14 h-14 bg-indigo-50 rounded-2xl flex flex-col items-center justify-center border border-indigo-100 mb-2">
-                                                        <Users className="w-5 h-5 text-indigo-600" />
-                                                        <span className="text-[10px] font-black text-indigo-600">{item.recipientCount}</span>
+                                                    <div className="w-14 h-14 bg-teal-50 rounded-2xl flex flex-col items-center justify-center border border-teal-100 mb-2">
+                                                        <Users className="w-5 h-5 text-teal-600" />
+                                                        <span className="text-[10px] font-black text-teal-600">{item.recipientCount}</span>
                                                     </div>
                                                     <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Recipients</p>
                                                 </div>
@@ -579,7 +579,7 @@ export default function InstitutionNotificationsPage() {
                                                         const el = document.getElementById(`recipients-${item.id}`);
                                                         if (el) el.classList.toggle('hidden');
                                                     }}
-                                                    className="text-[10px] font-black text-indigo-600 uppercase tracking-widest flex items-center gap-2 hover:gap-3 transition-all"
+                                                    className="text-[10px] font-black text-teal-600 uppercase tracking-widest flex items-center gap-2 hover:gap-3 transition-all"
                                                 >
                                                     View Recipient Details <ChevronRight className="w-3 h-3" />
                                                 </button>
@@ -594,7 +594,7 @@ export default function InstitutionNotificationsPage() {
                                                                 <p className="text-xs font-bold text-slate-800 truncate">{r.name || 'Unknown'}</p>
                                                                 <p className="text-[10px] text-slate-400 truncate">{r.email}</p>
                                                             </div>
-                                                            {r.isRead ? <CheckCircle className="w-3 h-3 text-green-500" /> : <Clock className="w-3 h-3 text-slate-300" />}
+                                                            {r.isRead ? <CheckCircle className="w-3 h-3 text-emerald-500" /> : <Clock className="w-3 h-3 text-slate-300" />}
                                                         </div>
                                                     ))}
                                                 </div>

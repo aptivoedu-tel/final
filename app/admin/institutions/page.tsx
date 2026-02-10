@@ -287,7 +287,7 @@ function InstitutionsContent() {
                                 {filteredInstitutions.map(inst => (
                                     <div key={inst.id} className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm hover:shadow-xl hover:-translate-y-1 transition-all group overflow-hidden relative">
                                         {/* Status Ribbon */}
-                                        <div className={`absolute top-0 right-0 px-4 py-1 text-[10px] font-bold rounded-bl-xl uppercase tracking-widest ${inst.status === 'approved' ? 'bg-green-100 text-green-600' :
+                                        <div className={`absolute top-0 right-0 px-4 py-1 text-[10px] font-bold rounded-bl-xl uppercase tracking-widest ${inst.status === 'approved' ? 'bg-emerald-100 text-emerald-600' :
                                             inst.status === 'pending' ? 'bg-amber-100 text-amber-600' :
                                                 inst.status === 'blocked' ? 'bg-red-100 text-red-600' : 'bg-slate-100 text-slate-600'
                                             }`}>
@@ -369,7 +369,7 @@ function InstitutionsContent() {
                                                     <div className="flex gap-2">
                                                         <button
                                                             onClick={() => handleUpdateStatus(inst.id, 'approved')}
-                                                            className="flex-1 py-2.5 bg-green-600 text-white text-xs font-bold rounded-xl hover:bg-green-700 transition-colors flex items-center justify-center gap-1.5"
+                                                            className="flex-1 py-2.5 bg-emerald-600 text-white text-xs font-bold rounded-xl hover:bg-emerald-700 transition-colors flex items-center justify-center gap-1.5"
                                                         >
                                                             <UserCheck className="w-3.5 h-3.5" /> Approve
                                                         </button>
@@ -398,7 +398,7 @@ function InstitutionsContent() {
                                                         onClick={() => handleUpdateStatus(inst.id, inst.status === 'approved' ? 'blocked' : 'approved')}
                                                         className={`w-full py-2.5 text-xs font-bold rounded-xl flex items-center justify-center gap-1.5 transition-all ${inst.status === 'approved'
                                                             ? 'bg-red-50 text-red-600 hover:bg-red-100'
-                                                            : 'bg-green-50 text-green-600 hover:bg-green-100'
+                                                            : 'bg-green-50 text-emerald-600 hover:bg-emerald-100'
                                                             }`}
                                                     >
                                                         {inst.status === 'approved' ? (

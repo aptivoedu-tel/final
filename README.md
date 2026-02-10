@@ -189,7 +189,7 @@ See `supabase/schema.sql` for complete details.
 
 ### Colors
 - **Primary**: `#88D1B1` (Mint Green)
-- **Secondary**: `#6366F1` (Indigo)
+- **Secondary**: `#14b8a6` (Indigo)
 - **Background**: `#F8FAFC` (Off-white)
 - **Surface**: `#FFFFFF` (White)
 

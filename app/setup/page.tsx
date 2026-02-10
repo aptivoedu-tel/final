@@ -72,7 +72,7 @@ export default function SetupPage() {
                 const { data: newSubj } = await supabase.from('subjects').insert({
                     name: 'Mathematics',
                     description: 'Core mathematics curriculum',
-                    color: 'bg-blue-600',
+                    color: 'bg-emerald-600',
                     is_active: true
                 }).select().single();
                 subjId = newSubj?.id;
@@ -280,35 +280,35 @@ export default function SetupPage() {
     return (
         <div className="min-h-screen bg-gray-50 flex items-center justify-center p-8 font-sans">
             <div className="max-w-2xl w-full bg-white rounded-2xl shadow-xl overflow-hidden border border-gray-100">
-                <div className="bg-gradient-to-r from-indigo-900 to-indigo-700 p-8 text-white">
+                <div className="bg-gradient-to-r from-teal-900 to-teal-700 p-8 text-white">
                     <div className="flex items-center gap-3 mb-2">
                         <DbIcon className="w-8 h-8" />
                         <h1 className="text-2xl font-bold">Database Setup & Seeding</h1>
                     </div>
-                    <p className="text-indigo-200">Initialize your application with required test data.</p>
+                    <p className="text-teal-200">Initialize your application with required test data.</p>
                 </div>
 
                 <div className="p-8">
                     <div className="mb-8 space-y-4">
-                        <div className="flex items-start gap-4 p-4 rounded-lg bg-indigo-50 border border-indigo-100">
-                            <Shield className="w-5 h-5 text-indigo-600 mt-0.5" />
+                        <div className="flex items-start gap-4 p-4 rounded-lg bg-teal-50 border border-teal-100">
+                            <Shield className="w-5 h-5 text-teal-600 mt-0.5" />
                             <div>
-                                <h3 className="font-bold text-indigo-900">Super Admin</h3>
-                                <p className="text-sm text-indigo-700 font-mono mt-1">super@demo.com / password123</p>
+                                <h3 className="font-bold text-teal-900">Super Admin</h3>
+                                <p className="text-sm text-teal-700 font-mono mt-1">super@demo.com / password123</p>
                             </div>
                         </div>
-                        <div className="flex items-start gap-4 p-4 rounded-lg bg-blue-50 border border-blue-100">
-                            <Building2 className="w-5 h-5 text-blue-600 mt-0.5" />
+                        <div className="flex items-start gap-4 p-4 rounded-lg bg-emerald-50 border border-emerald-100">
+                            <Building2 className="w-5 h-5 text-emerald-600 mt-0.5" />
                             <div>
-                                <h3 className="font-bold text-blue-900">Institution Admin</h3>
-                                <p className="text-sm text-blue-700 font-mono mt-1">admin@demo.com / password123</p>
+                                <h3 className="font-bold text-emerald-900">Institution Admin</h3>
+                                <p className="text-sm text-emerald-700 font-mono mt-1">admin@demo.com / password123</p>
                             </div>
                         </div>
-                        <div className="flex items-start gap-4 p-4 rounded-lg bg-green-50 border border-green-100">
-                            <Users className="w-5 h-5 text-green-600 mt-0.5" />
+                        <div className="flex items-start gap-4 p-4 rounded-lg bg-green-50 border border-emerald-100">
+                            <Users className="w-5 h-5 text-emerald-600 mt-0.5" />
                             <div>
-                                <h3 className="font-bold text-green-900">Student</h3>
-                                <p className="text-sm text-green-700 font-mono mt-1">student@demo.com / password123</p>
+                                <h3 className="font-bold text-emerald-900">Student</h3>
+                                <p className="text-sm text-emerald-700 font-mono mt-1">student@demo.com / password123</p>
                             </div>
                         </div>
                     </div>
@@ -319,7 +319,7 @@ export default function SetupPage() {
                                 <button
                                     onClick={runSetup}
                                     disabled={loading}
-                                    className="flex items-center gap-2 px-8 py-4 bg-indigo-600 text-white rounded-xl font-bold text-lg hover:bg-indigo-700 transition-all shadow-lg hover:shadow-indigo-200 disabled:opacity-50 disabled:cursor-not-allowed"
+                                    className="flex items-center gap-2 px-8 py-4 bg-teal-600 text-white rounded-xl font-bold text-lg hover:bg-teal-700 transition-all shadow-lg hover:shadow-teal-200 disabled:opacity-50 disabled:cursor-not-allowed"
                                 >
                                     {loading ? 'Initializing Application...' : 'Run Setup Script'}
                                 </button>
@@ -338,7 +338,7 @@ export default function SetupPage() {
 
                         {status === 'success' && (
                             <div className="text-center">
-                                <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-green-100 text-green-600 mb-4">
+                                <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-emerald-100 text-emerald-600 mb-4">
                                     <CheckCircle className="w-8 h-8" />
                                 </div>
                                 <h2 className="text-2xl font-bold text-slate-800 mb-2">Setup Complete!</h2>
@@ -368,7 +368,7 @@ export default function SetupPage() {
                                             You must disable RLS to allow initial seeding.
                                         </p>
                                         <div className="bg-slate-900 rounded-lg p-3 mb-3 text-left">
-                                            <code className="text-green-400 text-xs font-mono block whitespace-pre overflow-x-auto">
+                                            <code className="text-emerald-400 text-xs font-mono block whitespace-pre overflow-x-auto">
                                                 {`ALTER TABLE universities DISABLE ROW LEVEL SECURITY;
 ALTER TABLE institutions DISABLE ROW LEVEL SECURITY;
 ALTER TABLE users DISABLE ROW LEVEL SECURITY;

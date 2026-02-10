@@ -346,7 +346,7 @@ export default function UniversityContentMapperPage() {
                                 <select
                                     value={selectedUniId || ''}
                                     onChange={(e) => setSelectedUniId(parseInt(e.target.value))}
-                                    className="w-full p-3.5 bg-slate-50 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-indigo-500 transition-all font-bold text-slate-700 text-sm"
+                                    className="w-full p-3.5 bg-slate-50 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-teal-500 transition-all font-bold text-slate-700 text-sm"
                                 >
                                     <option value="">-- Choose a University --</option>
                                     {universities.map(u => (
@@ -359,7 +359,7 @@ export default function UniversityContentMapperPage() {
                                 <select
                                     value={selectedInstId}
                                     onChange={(e) => setSelectedInstId(e.target.value === 'none' ? 'none' : parseInt(e.target.value))}
-                                    className="w-full p-3.5 bg-slate-50 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-indigo-500 transition-all font-bold text-slate-700 text-sm"
+                                    className="w-full p-3.5 bg-slate-50 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-teal-500 transition-all font-bold text-slate-700 text-sm"
                                 >
                                     <option value="none">Global Default (No Institution)</option>
                                     {institutions.map(inst => (
@@ -373,7 +373,7 @@ export default function UniversityContentMapperPage() {
                             <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
                                 <div className="p-6 border-b border-slate-100 flex flex-col lg:flex-row items-stretch lg:items-center justify-between gap-6 bg-slate-50/50">
                                     <div className="flex items-center gap-3">
-                                        <div className="w-10 h-10 rounded-xl bg-white shadow-sm border border-slate-100 flex items-center justify-center text-indigo-600">
+                                        <div className="w-10 h-10 rounded-xl bg-white shadow-sm border border-slate-100 flex items-center justify-center text-teal-600">
                                             <Layers className="w-5 h-5" />
                                         </div>
                                         <div>
@@ -389,21 +389,21 @@ export default function UniversityContentMapperPage() {
                                                 type="number"
                                                 value={globalSessionLimit}
                                                 onChange={(e) => setGlobalSessionLimit(parseInt(e.target.value) || 10)}
-                                                className="w-12 bg-transparent outline-none text-center font-black text-indigo-600 border-b border-indigo-100 focus:border-indigo-600 transition-colors"
+                                                className="w-12 bg-transparent outline-none text-center font-black text-teal-600 border-b border-teal-100 focus:border-teal-600 transition-colors"
                                             />
                                         </div>
 
                                         <div className="relative z-50">
                                             <div
-                                                className="flex items-center justify-between gap-3 bg-white px-4 py-2 rounded-xl border border-slate-200 cursor-pointer min-w-[150px] hover:border-indigo-300 transition-colors"
+                                                className="flex items-center justify-between gap-3 bg-white px-4 py-2 rounded-xl border border-slate-200 cursor-pointer min-w-[150px] hover:border-teal-300 transition-colors"
                                                 onClick={() => setIsDifficultyOpen(!isDifficultyOpen)}
                                             >
                                                 <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Difficulty</span>
                                                 <div className="flex items-center gap-2">
-                                                    <span className="text-xs font-black text-indigo-600">
+                                                    <span className="text-xs font-black text-teal-600">
                                                         {selectedDifficulties.includes('all') ? 'All Levels' : `${selectedDifficulties.length} Selected`}
                                                     </span>
-                                                    <ChevronDown className={`w-3 h-3 text-indigo-600 transition-transform ${isDifficultyOpen ? 'rotate-180' : ''}`} />
+                                                    <ChevronDown className={`w-3 h-3 text-teal-600 transition-transform ${isDifficultyOpen ? 'rotate-180' : ''}`} />
                                                 </div>
                                             </div>
 
@@ -416,28 +416,28 @@ export default function UniversityContentMapperPage() {
                                                             onClick={() => toggleDifficulty('all')}
                                                         >
                                                             <span className="text-xs font-bold text-slate-700">All Levels</span>
-                                                            {selectedDifficulties.includes('all') && <CheckCircle className="w-4 h-4 text-indigo-600" />}
+                                                            {selectedDifficulties.includes('all') && <CheckCircle className="w-4 h-4 text-teal-600" />}
                                                         </div>
                                                         <div
                                                             className="flex items-center justify-between p-3 hover:bg-slate-50 cursor-pointer border-b border-gray-50"
                                                             onClick={() => toggleDifficulty('easy')}
                                                         >
                                                             <span className="text-xs font-bold text-slate-700">Basic</span>
-                                                            {selectedDifficulties.includes('easy') && <CheckCircle className="w-4 h-4 text-indigo-600" />}
+                                                            {selectedDifficulties.includes('easy') && <CheckCircle className="w-4 h-4 text-teal-600" />}
                                                         </div>
                                                         <div
                                                             className="flex items-center justify-between p-3 hover:bg-slate-50 cursor-pointer border-b border-gray-50"
                                                             onClick={() => toggleDifficulty('medium')}
                                                         >
                                                             <span className="text-xs font-bold text-slate-700">Intermediate</span>
-                                                            {selectedDifficulties.includes('medium') && <CheckCircle className="w-4 h-4 text-indigo-600" />}
+                                                            {selectedDifficulties.includes('medium') && <CheckCircle className="w-4 h-4 text-teal-600" />}
                                                         </div>
                                                         <div
                                                             className="flex items-center justify-between p-3 hover:bg-slate-50 cursor-pointer"
                                                             onClick={() => toggleDifficulty('hard')}
                                                         >
                                                             <span className="text-xs font-bold text-slate-700">Advanced</span>
-                                                            {selectedDifficulties.includes('hard') && <CheckCircle className="w-4 h-4 text-indigo-600" />}
+                                                            {selectedDifficulties.includes('hard') && <CheckCircle className="w-4 h-4 text-teal-600" />}
                                                         </div>
                                                     </div>
                                                 </>
@@ -447,7 +447,7 @@ export default function UniversityContentMapperPage() {
                                         <button
                                             onClick={handleSave}
                                             disabled={saving}
-                                            className="w-full sm:w-auto flex items-center justify-center gap-2 px-6 py-2.5 bg-indigo-600 text-white font-black uppercase tracking-wider text-[11px] rounded-xl hover:bg-slate-900 transition-all shadow-lg shadow-indigo-100 active:scale-95 disabled:opacity-50"
+                                            className="w-full sm:w-auto flex items-center justify-center gap-2 px-6 py-2.5 bg-teal-600 text-white font-black uppercase tracking-wider text-[11px] rounded-xl hover:bg-slate-900 transition-all shadow-lg shadow-teal-100 active:scale-95 disabled:opacity-50"
                                         >
                                             {saving ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
                                             {saving ? 'Syncing...' : 'Save Changes'}
@@ -456,7 +456,7 @@ export default function UniversityContentMapperPage() {
                                 </div>
 
                                 {statusMsg && (
-                                    <div className={`p-4 ${statusMsg.type === 'success' ? 'bg-green-50 text-green-700' : 'bg-red-50 text-red-700'} flex items-center gap-2 border-b border-gray-100`}>
+                                    <div className={`p-4 ${statusMsg.type === 'success' ? 'bg-green-50 text-emerald-700' : 'bg-red-50 text-red-700'} flex items-center gap-2 border-b border-gray-100`}>
                                         {statusMsg.type === 'success' ? <CheckCircle className="w-5 h-5" /> : <AlertCircle className="w-5 h-5" />}
                                         {statusMsg.text}
                                     </div>
@@ -472,7 +472,7 @@ export default function UniversityContentMapperPage() {
                                                         type="checkbox"
                                                         checked={subject.isSelected}
                                                         onChange={() => handleSelection('subject', subject.id)}
-                                                        className="w-5 h-5 text-indigo-600 rounded focus:ring-indigo-500"
+                                                        className="w-5 h-5 text-teal-600 rounded focus:ring-teal-500"
                                                     />
                                                     <div className="flex items-center gap-2 cursor-pointer" onClick={() => toggleNode('subject', subject.id)}>
                                                         <Layers className="w-4 h-4 text-slate-400" />
@@ -489,12 +489,12 @@ export default function UniversityContentMapperPage() {
                                                 <div className="border-t border-gray-100 bg-white">
                                                     {subject.children?.map(topic => (
                                                         <div key={topic.id} className="ml-8 border-l-2 border-gray-100">
-                                                            <div className="flex items-center gap-3 p-3 hover:bg-indigo-50/30 transition-colors">
+                                                            <div className="flex items-center gap-3 p-3 hover:bg-teal-50/30 transition-colors">
                                                                 <input
                                                                     type="checkbox"
                                                                     checked={topic.isSelected}
                                                                     onChange={() => handleSelection('topic', topic.id, subject.id)}
-                                                                    className="w-4 h-4 text-indigo-600 rounded focus:ring-indigo-500"
+                                                                    className="w-4 h-4 text-teal-600 rounded focus:ring-teal-500"
                                                                 />
                                                                 <div className="flex-1 flex items-center justify-between cursor-pointer" onClick={() => toggleNode('topic', topic.id)}>
                                                                     <div className="flex items-center gap-2">
@@ -516,7 +516,7 @@ export default function UniversityContentMapperPage() {
                                                                                 type="checkbox"
                                                                                 checked={subtopic.isSelected}
                                                                                 onChange={() => handleSelection('subtopic', subtopic.id, topic.id, subject.id)}
-                                                                                className="w-4 h-4 text-indigo-600 rounded border-gray-300 focus:ring-indigo-500"
+                                                                                className="w-4 h-4 text-teal-600 rounded border-gray-300 focus:ring-teal-500"
                                                                             />
                                                                             <FileText className="w-3 h-3 text-slate-300" />
                                                                             <span className="text-sm text-slate-600">{subtopic.name}</span>

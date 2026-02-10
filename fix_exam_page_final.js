@@ -20,12 +20,12 @@ if (content.includes(stateStart)) {
 
 // 2. Make the Maximize icon functional
 const maximizeIcon = '            <div className="bg-slate-900 text-white px-8 py-4 flex items-center justify-between shadow-2xl z-40">';
-const oldButton = `<div className="w-10 h-10 bg-indigo-600 rounded-xl flex items-center justify-center shadow-lg">
+const oldButton = `<div className="w-10 h-10 bg-teal-600 rounded-xl flex items-center justify-center shadow-lg">
                             <Maximize2 className="w-5 h-5" />
                         </div>`;
 const newButton = `<button
                             onClick={toggleFullScreen}
-                            className="w-10 h-10 bg-indigo-600 rounded-xl flex items-center justify-center shadow-lg hover:bg-indigo-700 transition-all active:scale-95"
+                            className="w-10 h-10 bg-teal-600 rounded-xl flex items-center justify-center shadow-lg hover:bg-teal-700 transition-all active:scale-95"
                             title="Toggle Fullscreen"
                         >
                             <Maximize2 className="w-5 h-5" />
@@ -33,7 +33,7 @@ const newButton = `<button
 
 if (content.includes('Maximize2')) {
     // Replace the specific block containing Maximize2
-    content = content.replace(/<div className="w-10 h-10 bg-indigo-600 rounded-xl flex items-center justify-center shadow-lg">\s*<Maximize2 className="w-5 h-5" \/>\s*<\/div>/, newButton);
+    content = content.replace(/<div className="w-10 h-10 bg-teal-600 rounded-xl flex items-center justify-center shadow-lg">\s*<Maximize2 className="w-5 h-5" \/>\s*<\/div>/, newButton);
 }
 
 // 3. Fix the broken JSX at the bottom
@@ -72,7 +72,7 @@ const correctModal = `        </div>
                                 {exam?.allow_continue_after_time_up && (
                                     <button
                                         onClick={() => setIsTimeUpModalOpen(false)}
-                                        className="w-full py-5 bg-indigo-600 text-white rounded-2xl font-black uppercase text-xs tracking-widest hover:bg-indigo-700 transition-all shadow-xl active:scale-95"
+                                        className="w-full py-5 bg-teal-600 text-white rounded-2xl font-black uppercase text-xs tracking-widest hover:bg-teal-700 transition-all shadow-xl active:scale-95"
                                     >
                                         Continue Effort (Mark Lated)
                                     </button>

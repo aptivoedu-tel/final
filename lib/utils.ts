@@ -36,17 +36,17 @@ export function calculatePercentage(value: number, total: number): number {
 
 // Generate random color for avatars
 export function getAvatarColor(name?: string): string {
-    const defaultColor = 'bg-indigo-600';
+    const defaultColor = 'bg-teal-600';
     if (!name) return defaultColor;
 
     const colors = [
         'bg-red-500',
-        'bg-blue-500',
-        'bg-green-500',
+        'bg-emerald-500',
+        'bg-emerald-500',
         'bg-yellow-500',
         'bg-purple-500',
         'bg-pink-500',
-        'bg-indigo-500',
+        'bg-teal-500',
         'bg-teal-500'
     ];
 

@@ -218,9 +218,9 @@ export default function ContentManagementPage() {
                                                     e.stopPropagation();
                                                     openEditModal('subject', subject);
                                                 }}
-                                                className="p-1 hover:bg-blue-100 rounded"
+                                                className="p-1 hover:bg-emerald-100 rounded"
                                             >
-                                                <Edit className="w-3 h-3 text-blue-500" />
+                                                <Edit className="w-3 h-3 text-emerald-500" />
                                             </button>
                                             <button
                                                 onClick={(e) => {
@@ -280,9 +280,9 @@ export default function ContentManagementPage() {
                                                         e.stopPropagation();
                                                         openEditModal('topic', topic);
                                                     }}
-                                                    className="p-1 hover:bg-blue-100 rounded"
+                                                    className="p-1 hover:bg-emerald-100 rounded"
                                                 >
-                                                    <Edit className="w-3 h-3 text-blue-500" />
+                                                    <Edit className="w-3 h-3 text-emerald-500" />
                                                 </button>
                                                 <button
                                                     onClick={(e) => {
@@ -339,9 +339,9 @@ export default function ContentManagementPage() {
                                                         e.stopPropagation();
                                                         openEditModal('subtopic', subtopic);
                                                     }}
-                                                    className="p-1 hover:bg-blue-100 rounded"
+                                                    className="p-1 hover:bg-emerald-100 rounded"
                                                 >
-                                                    <Edit className="w-3 h-3 text-blue-500" />
+                                                    <Edit className="w-3 h-3 text-emerald-500" />
                                                 </button>
                                                 <button
                                                     onClick={(e) => {

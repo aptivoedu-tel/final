@@ -162,7 +162,7 @@ export default function RegisterPage() {
                     >
                         RETURN TO LOGIN
                     </button>
-                    <div className="absolute top-10 right-10 w-24 h-24 bg-green-500/5 rounded-full blur-3xl -z-10"></div>
+                    <div className="absolute top-10 right-10 w-24 h-24 bg-emerald-500/5 rounded-full blur-3xl -z-10"></div>
                 </div>
             </div>
         );
@@ -190,7 +190,7 @@ export default function RegisterPage() {
                                         }`}
                                 >
                                     <div className="w-full aspect-square max-w-[240px] mx-auto bg-white rounded-[2.5rem] shadow-xl p-6 border border-white/50 relative group">
-                                        <div className="absolute inset-0 bg-green-400/10 rounded-[2.5rem] blur-xl opacity-0 group-hover:opacity-100 transition-opacity"></div>
+                                        <div className="absolute inset-0 bg-emerald-400/10 rounded-[2.5rem] blur-xl opacity-0 group-hover:opacity-100 transition-opacity"></div>
                                         <img src={slide.image} alt={slide.title} className="w-full h-full object-contain relative" />
                                     </div>
                                     <div className="mt-10 space-y-3">
@@ -283,7 +283,7 @@ export default function RegisterPage() {
                                     <div className="space-y-3">
                                         <div className="relative">
                                             <Building2 className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-300" />
-                                            <input type="text" name="institutionName" value={formData.institutionName} onChange={handleChange} placeholder="Full Institution Name" className="w-full pl-11 pr-4 py-3.5 bg-white border border-slate-200 rounded-2xl text-xs font-bold focus:border-[#4CAF50] focus:ring-4 focus:ring-green-500/5 outline-none" />
+                                            <input type="text" name="institutionName" value={formData.institutionName} onChange={handleChange} placeholder="Full Institution Name" className="w-full pl-11 pr-4 py-3.5 bg-white border border-slate-200 rounded-2xl text-xs font-bold focus:border-[#4CAF50] focus:ring-4 focus:ring-blue-500/5 outline-none" />
                                         </div>
                                         <div className="relative">
                                             <Globe className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-300" />
@@ -303,14 +303,14 @@ export default function RegisterPage() {
                                     <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Full Name</label>
                                     <div className="relative">
                                         <User className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-300" />
-                                        <input type="text" name="fullName" value={formData.fullName} onChange={handleChange} required placeholder="John Doe" className="w-full pl-11 pr-4 py-3.5 bg-slate-50/50 border border-slate-100 rounded-2xl text-[13px] font-medium focus:bg-white focus:border-[#4CAF50] focus:ring-4 focus:ring-green-500/5 outline-none transition-all" />
+                                        <input type="text" name="fullName" value={formData.fullName} onChange={handleChange} required placeholder="John Doe" className="w-full pl-11 pr-4 py-3.5 bg-slate-50/50 border border-slate-100 rounded-2xl text-[13px] font-medium focus:bg-white focus:border-[#4CAF50] focus:ring-4 focus:ring-blue-500/5 outline-none transition-all" />
                                     </div>
                                 </div>
                                 <div className="space-y-1.5">
                                     <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Email Address</label>
                                     <div className="relative">
                                         <Mail className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-300" />
-                                        <input type="email" name="email" value={formData.email} onChange={handleChange} required placeholder="john@example.com" className="w-full pl-11 pr-4 py-3.5 bg-slate-50/50 border border-slate-100 rounded-2xl text-[13px] font-medium focus:bg-white focus:border-[#4CAF50] focus:ring-4 focus:ring-green-500/5 outline-none transition-all" />
+                                        <input type="email" name="email" value={formData.email} onChange={handleChange} required placeholder="john@example.com" className="w-full pl-11 pr-4 py-3.5 bg-slate-50/50 border border-slate-100 rounded-2xl text-[13px] font-medium focus:bg-white focus:border-[#4CAF50] focus:ring-4 focus:ring-blue-500/5 outline-none transition-all" />
                                     </div>
                                 </div>
                             </div>
@@ -320,7 +320,7 @@ export default function RegisterPage() {
                                     <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Secure Password</label>
                                     <div className="relative">
                                         <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-300" />
-                                        <input type={showPassword ? 'text' : 'password'} name="password" value={formData.password} onChange={handleChange} required placeholder="••••••••" className="w-full pl-11 pr-12 py-3.5 bg-slate-50/50 border border-slate-100 rounded-2xl text-[13px] font-medium focus:bg-white focus:border-[#4CAF50] focus:ring-4 focus:ring-green-500/5 outline-none transition-all" />
+                                        <input type={showPassword ? 'text' : 'password'} name="password" value={formData.password} onChange={handleChange} required placeholder="••••••••" className="w-full pl-11 pr-12 py-3.5 bg-slate-50/50 border border-slate-100 rounded-2xl text-[13px] font-medium focus:bg-white focus:border-[#4CAF50] focus:ring-4 focus:ring-blue-500/5 outline-none transition-all" />
                                         <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-300 hover:text-[#4CAF50] transition-colors p-1">
                                             {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                                         </button>
@@ -335,7 +335,7 @@ export default function RegisterPage() {
                                     <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Confirm Identity</label>
                                     <div className="relative">
                                         <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-300" />
-                                        <input type={showConfirmPassword ? 'text' : 'password'} name="confirmPassword" value={formData.confirmPassword} onChange={handleChange} required placeholder="••••••••" className="w-full pl-11 pr-12 py-3.5 bg-slate-50/50 border border-slate-100 rounded-2xl text-[13px] font-medium focus:bg-white focus:border-[#4CAF50] focus:ring-4 focus:ring-green-500/5 outline-none transition-all" />
+                                        <input type={showConfirmPassword ? 'text' : 'password'} name="confirmPassword" value={formData.confirmPassword} onChange={handleChange} required placeholder="••••••••" className="w-full pl-11 pr-12 py-3.5 bg-slate-50/50 border border-slate-100 rounded-2xl text-[13px] font-medium focus:bg-white focus:border-[#4CAF50] focus:ring-4 focus:ring-blue-500/5 outline-none transition-all" />
                                         <button type="button" onClick={() => setShowConfirmPassword(!showConfirmPassword)} className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-300 hover:text-[#4CAF50] transition-colors p-1">
                                             {showConfirmPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                                         </button>

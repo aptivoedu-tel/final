@@ -218,9 +218,9 @@ export default function PracticeSessionPage() {
                                 <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Score</p>
                                 <p className="text-3xl font-black text-teal-600">{results.score}%</p>
                             </div>
-                            <div className="bg-green-50 p-6 rounded-3xl border border-green-100 text-center transition-transform hover:scale-105">
-                                <p className="text-[10px] font-black text-green-400 uppercase tracking-widest mb-1">Correct</p>
-                                <p className="text-3xl font-black text-green-600">{results.correct}</p>
+                            <div className="bg-green-50 p-6 rounded-3xl border border-emerald-100 text-center transition-transform hover:scale-105">
+                                <p className="text-[10px] font-black text-emerald-400 uppercase tracking-widest mb-1">Correct</p>
+                                <p className="text-3xl font-black text-emerald-600">{results.correct}</p>
                             </div>
                             <div className="bg-rose-50 p-6 rounded-3xl border border-rose-100 text-center transition-transform hover:scale-105">
                                 <p className="text-[10px] font-black text-rose-400 uppercase tracking-widest mb-1">Wrong</p>

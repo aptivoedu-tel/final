@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
-import { Download, FileSpreadsheet, Upload, Folder, BookOpen, Layers, CheckCircle, AlertTriangle, Save, X } from 'lucide-react';
+import { Download, FileSpreadsheet, Upload, Folder, BookOpen, Layers, CheckCircle, AlertTriangle, Save, X, AlertCircle } from 'lucide-react';
 import { useLoading } from '@/lib/context/LoadingContext';
 
 import Sidebar from '@/components/layout/Sidebar';
@@ -10,6 +10,8 @@ import { AuthService } from '@/lib/services/authService';
 import { useUI } from '@/lib/context/UIContext';
 import { supabase } from '@/lib/supabase/client';
 import * as XLSX from 'xlsx';
+import MarkdownRenderer from '@/components/shared/MarkdownRenderer';
+import { ExcelUploadService } from '@/lib/services/excelUploadService';
 
 export default function ExcelUploaderPage() {
     const [user, setUser] = useState<any>(null);
@@ -313,7 +315,7 @@ export default function ExcelUploaderPage() {
                         </div>
                         <button
                             onClick={handleDownloadTemplate}
-                            className="flex items-center justify-center gap-2 px-6 py-3 bg-green-50 text-green-600 font-bold rounded-xl hover:bg-green-100 transition-all border border-green-200 active:scale-95 text-sm"
+                            className="flex items-center justify-center gap-2 px-6 py-3 bg-green-50 text-emerald-600 font-bold rounded-xl hover:bg-emerald-100 transition-all border border-emerald-200 active:scale-95 text-sm"
                         >
                             <Download className="w-5 h-5" />
                             <span>Download Template</span>
@@ -421,17 +423,17 @@ export default function ExcelUploaderPage() {
                                         <span className="text-xs text-slate-400 mt-1">Supports XLSX, XLS, CSV</span>
                                     </div>
                                 ) : (
-                                    <div className="p-4 border border-green-200 bg-green-50 rounded-2xl relative">
-                                        <button onClick={resetUpload} className="absolute top-2 right-2 p-1 text-green-600 hover:bg-green-100 rounded-lg">
+                                    <div className="p-4 border border-emerald-200 bg-green-50 rounded-2xl relative">
+                                        <button onClick={resetUpload} className="absolute top-2 right-2 p-1 text-emerald-600 hover:bg-emerald-100 rounded-lg">
                                             <X className="w-4 h-4" />
                                         </button>
                                         <div className="flex items-center gap-3">
-                                            <div className="w-10 h-10 bg-white rounded-lg flex items-center justify-center text-green-600 shadow-sm">
+                                            <div className="w-10 h-10 bg-white rounded-lg flex items-center justify-center text-emerald-600 shadow-sm">
                                                 <FileSpreadsheet className="w-5 h-5" />
                                             </div>
                                             <div className="flex-1 min-w-0">
-                                                <p className="text-sm font-bold text-green-800 truncate">{selectedFile.name}</p>
-                                                <p className="text-xs text-green-600">{(selectedFile.size / 1024).toFixed(1)} KB • {previewData.length} records</p>
+                                                <p className="text-sm font-bold text-emerald-800 truncate">{selectedFile.name}</p>
+                                                <p className="text-xs text-emerald-600">{(selectedFile.size / 1024).toFixed(1)} KB • {previewData.length} records</p>
                                             </div>
                                         </div>
                                         {previewData.length > 0 && (
@@ -488,21 +490,23 @@ export default function ExcelUploaderPage() {
                                                     const hasOptions = getVal(['option a', 'a']) && getVal(['option b', 'b']);
                                                     const hasCorrect = getVal(['correct', 'answer']);
 
+                                                    const validation = ExcelUploadService.validateMCQRow(row);
                                                     const hierarchyValid = !autoDetectMode || (subj && top);
-                                                    const dataValid = q && hasOptions && hasCorrect;
-                                                    const isValid = hierarchyValid && dataValid;
+                                                    const isValid = validation.isValid && hierarchyValid;
 
                                                     return (
                                                         <tr key={idx} className="hover:bg-slate-50/50 transition-colors">
                                                             <td className="px-6 py-4">
                                                                 {autoDetectMode && (
                                                                     <div className="flex flex-wrap gap-1 mb-2">
-                                                                        <span className={`text-[9px] px-1.5 py-0.5 rounded font-bold uppercase ${subj ? 'bg-blue-50 text-blue-600' : 'bg-red-50 text-red-600'}`}>{subj || 'No Subject'}</span>
-                                                                        <span className={`text-[9px] px-1.5 py-0.5 rounded font-bold uppercase ${top ? 'bg-indigo-50 text-indigo-600' : 'bg-red-50 text-red-600'}`}>{top || 'No Topic'}</span>
+                                                                        <span className={`text-[9px] px-1.5 py-0.5 rounded font-bold uppercase ${subj ? 'bg-emerald-50 text-emerald-600' : 'bg-red-50 text-red-600'}`}>{subj || 'No Subject'}</span>
+                                                                        <span className={`text-[9px] px-1.5 py-0.5 rounded font-bold uppercase ${top ? 'bg-teal-50 text-teal-600' : 'bg-red-50 text-red-600'}`}>{top || 'No Topic'}</span>
                                                                         {sub && <span className="text-[9px] bg-purple-50 text-purple-600 px-1.5 py-0.5 rounded font-bold uppercase">{sub}</span>}
                                                                     </div>
                                                                 )}
-                                                                <p className="text-sm font-bold text-slate-700 max-w-xs truncate">{q || 'MISSING QUESTION'}</p>
+                                                                <div className="text-sm font-bold text-slate-700 max-w-xs overflow-hidden">
+                                                                    <MarkdownRenderer content={q || 'MISSING QUESTION'} />
+                                                                </div>
                                                                 <div className="flex gap-2 mt-1">
                                                                     <span className="text-[10px] bg-slate-100 text-slate-500 px-1.5 py-0.5 rounded font-bold uppercase">{getVal(['difficulty']) || 'Medium'}</span>
                                                                     {getVal(['explanation']) && <span className="text-[10px] bg-emerald-50 text-emerald-600 px-1.5 py-0.5 rounded font-bold uppercase">Explanation</span>}
@@ -511,20 +515,32 @@ export default function ExcelUploaderPage() {
                                                             </td>
                                                             <td className="px-6 py-4">
                                                                 <div className="grid grid-cols-2 gap-x-4 gap-y-1">
-                                                                    <span className={`text-[11px] ${hasCorrect?.toString().toUpperCase().trim() === 'A' ? 'text-green-600 font-bold' : 'text-slate-400'}`}>A: {getVal(['option a', 'a'])?.toString().substring(0, 15)}...</span>
-                                                                    <span className={`text-[11px] ${hasCorrect?.toString().toUpperCase().trim() === 'B' ? 'text-green-600 font-bold' : 'text-slate-400'}`}>B: {getVal(['option b', 'b'])?.toString().substring(0, 15)}...</span>
-                                                                    <span className={`text-[11px] ${hasCorrect?.toString().toUpperCase().trim() === 'C' ? 'text-green-600 font-bold' : 'text-slate-400'}`}>C: {getVal(['option c', 'c'])?.toString().substring(0, 15)}...</span>
-                                                                    <span className={`text-[11px] ${hasCorrect?.toString().toUpperCase().trim() === 'D' ? 'text-green-600 font-bold' : 'text-slate-400'}`}>D: {getVal(['option d', 'd'])?.toString().substring(0, 15)}...</span>
+                                                                    {['A', 'B', 'C', 'D'].map(opt => {
+                                                                        const optVal = getVal([`option ${opt.toLowerCase()}`, opt.toLowerCase()]);
+                                                                        const isCorrect = hasCorrect?.toString().toUpperCase().trim() === opt;
+                                                                        return (
+                                                                            <div key={opt} className={`text-[11px] flex items-baseline gap-1 ${isCorrect ? 'text-emerald-600 font-bold' : 'text-slate-400'}`}>
+                                                                                <span className="shrink-0">{opt}:</span>
+                                                                                <div className="line-clamp-1 overflow-hidden">
+                                                                                    <MarkdownRenderer content={optVal?.toString() || ''} />
+                                                                                </div>
+                                                                            </div>
+                                                                        );
+                                                                    })}
                                                                 </div>
                                                             </td>
                                                             <td className="px-6 py-4">
                                                                 {isValid ? (
-                                                                    <CheckCircle className="w-5 h-5 text-green-500" />
+                                                                    <CheckCircle className="w-5 h-5 text-emerald-500" />
                                                                 ) : (
                                                                     <div className="flex items-center gap-1 text-red-500 group relative">
-                                                                        <AlertTriangle className="w-5 h-5" />
-                                                                        <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-32 p-2 bg-slate-800 text-white text-[10px] rounded opacity-0 group-hover:opacity-100 transition-opacity">
-                                                                            {!dataValid ? 'Incomplete question data' : 'Missing Subject/Topic'}
+                                                                        <AlertCircle className="w-5 h-5" />
+                                                                        <div className="absolute bottom-full right-0 mb-2 w-48 p-3 bg-slate-900 text-white text-[10px] rounded-xl opacity-0 group-hover:opacity-100 transition-opacity z-50 shadow-2xl">
+                                                                            <p className="font-black text-red-400 uppercase tracking-widest mb-1">Issue(s) Detected</p>
+                                                                            <ul className="list-disc ml-3 space-y-0.5">
+                                                                                {!hierarchyValid && <li>Missing Subject/Topic</li>}
+                                                                                {validation.errors.map((err, i) => <li key={i}>{err}</li>)}
+                                                                            </ul>
                                                                         </div>
                                                                     </div>
                                                                 )}

@@ -10,6 +10,7 @@ import {
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { useLoading } from '@/lib/context/LoadingContext';
+import MarkdownRenderer from '@/components/shared/MarkdownRenderer';
 
 
 interface Exam {
@@ -157,12 +158,17 @@ export default function StudentExamPage() {
             throw new Error(`Exam starts at ${new Date(ex.start_time).toLocaleString()}`);
         }
 
-        const { data: existing } = await supabase
+        const { data: existing, error: existingError } = await supabase
             .from('exam_attempts')
             .select('*')
             .eq('student_id', userId)
-            .eq('exam_id', ex.id)
-            .single(); // Get any attempt (completed or in_progress)
+            .eq('exam_id', Number(ex.id))
+            .maybeSingle();
+
+        if (existingError) {
+            console.error("[AttemptSession] Fetch error:", existingError);
+            throw existingError;
+        }
 
         // Check End Time compliance
         if (ex.end_time && new Date(ex.end_time) < now) {
@@ -180,32 +186,46 @@ export default function StudentExamPage() {
             ans?.forEach(a => ansMap[a.question_id] = a.answer);
             setAnswers(ansMap);
 
-            const startTime = new Date(existing.start_time).getTime();
+            const startTimeStr = existing.start_time || existing.created_at;
+            const startTime = new Date(startTimeStr).getTime();
             const currentTime = new Date().getTime();
             const elapsed = Math.floor((currentTime - startTime) / 1000);
-            const remaining = (ex.total_duration * 60) - elapsed;
+            const totalSecs = (ex.total_duration || 1) * 60;
+            const remaining = totalSecs - elapsed;
 
             if (remaining <= 0 && !ex.allow_continue_after_time_up) {
                 await finalizeAttempt(existing.id);
             } else {
                 setTimeLeft(remaining > 0 ? remaining : 0);
             }
+        } else if (existing && existing.status === 'completed') {
+            setAttemptId(existing.id);
+            setResults({ score: existing.score, total: existing.total_marks });
+            setStatus('completed');
+
+            const { data: ans } = await supabase.from('exam_answers').select('*').eq('attempt_id', existing.id);
+            const ansMap: any = {};
+            ans?.forEach(a => ansMap[a.question_id] = a.answer);
+            setAnswers(ansMap);
+            setTimeLeft(0);
         } else {
             const { data: newAtt, error } = await supabase
                 .from('exam_attempts')
                 .insert([{
                     student_id: userId,
-                    exam_id: Number(examId),
-                    university_id: Number(uniId),
+                    exam_id: Number(ex.id),
                     status: 'in_progress',
                     start_time: new Date().toISOString()
                 }])
                 .select()
                 .single();
 
-            if (error) throw error;
+            if (error) {
+                console.error("[AttemptSession] Create failed:", error);
+                throw new Error(`Sync Error: ${error.message}`);
+            }
             setAttemptId(newAtt.id);
-            setTimeLeft(Math.max(1, (ex.total_duration || 0) * 60));
+            setTimeLeft((ex.total_duration || 1) * 60);
         }
     };
 
@@ -395,18 +415,23 @@ export default function StudentExamPage() {
                                                 </div>
                                                 <p className="text-xl font-bold text-slate-900 leading-relaxed mb-8">{q.question_text}</p>
                                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-8">
-                                                    {q.options?.map((opt: any) => {
-                                                        const isSelected = studentAns === opt.id;
-                                                        const isCorrectOpt = q.correct_answer === opt.id;
+                                                    {q.options?.map((opt: any, optIdx: number) => {
+                                                        const normalizedOpt = typeof opt === 'string'
+                                                            ? { id: (optIdx + 1).toString(), text: opt }
+                                                            : opt;
+                                                        const isSelected = studentAns?.toString() === normalizedOpt.id?.toString();
+                                                        const isCorrectOpt = q.correct_answer?.toString() === normalizedOpt.id?.toString();
+
                                                         let style = 'bg-slate-50 border-slate-50 text-slate-600';
                                                         if (isCorrectOpt) style = 'bg-emerald-50 border-emerald-200 text-emerald-700 font-bold';
                                                         else if (isSelected && !isCorrectOpt) style = 'bg-rose-50 border-rose-200 text-rose-700 font-bold';
+
                                                         return (
-                                                            <div key={opt.id} className={`p-5 rounded-2xl border text-sm flex items-center gap-4 ${style}`}>
+                                                            <div key={optIdx} className={`p-5 rounded-2xl border text-sm flex items-center gap-4 ${style}`}>
                                                                 <div className={`w-8 h-8 rounded-full flex items-center justify-center font-black text-xs border-2 ${isCorrectOpt ? 'bg-emerald-600 border-emerald-600 text-white' : isSelected ? 'bg-rose-600 border-rose-600 text-white' : 'bg-white border-slate-200 text-slate-400'}`}>
-                                                                    {opt.id?.toUpperCase() || '?'}
+                                                                    {String.fromCharCode(65 + optIdx)}
                                                                 </div>
-                                                                <span>{opt.text}</span>
+                                                                <span>{normalizedOpt.text}</span>
                                                             </div>
                                                         );
                                                     })}
@@ -446,7 +471,9 @@ export default function StudentExamPage() {
                             <GraduationCap className="w-4 h-4 lg:w-6 lg:h-6 text-white" />
                         </div>
                         <div className="min-w-0 max-w-[80px] sm:max-w-none">
-                            <h1 className="text-[10px] lg:text-sm font-black uppercase tracking-widest text-slate-100 truncate">{exam?.name || 'Exam'}</h1>
+                            <h1 className="text-[10px] lg:text-sm font-black uppercase tracking-widest text-slate-100 truncate">
+                                {exam?.name === 'testing' ? 'University Exam' : exam?.name || 'Exam'}
+                            </h1>
                             <div className="flex items-center gap-1.5 mt-0.5">
                                 <span className="w-1 h-1 bg-teal-500 rounded-full animate-pulse" />
                                 <p className="text-[8px] lg:text-[10px] font-black text-slate-500 uppercase tracking-widest leading-none">Live</p>
@@ -515,24 +542,10 @@ export default function StudentExamPage() {
             </div>
 
             <div className="flex-1 flex flex-col lg:flex-row overflow-hidden">
-                {/* Passage Side Area (conditionally shown) */}
-                {activeQuestion?.passage_id && passages[activeQuestion.passage_id] && (
-                    <div className="w-full lg:w-1/2 overflow-y-auto bg-slate-50 p-6 lg:p-10 border-b lg:border-b-0 lg:border-r border-slate-100 animate-in slide-in-from-left duration-500 custom-scrollbar max-h-[40vh] lg:max-h-none">
-                        <div className="max-w-prose mx-auto">
-                            {passages[activeQuestion.passage_id].title && (
-                                <h1 className="text-xl lg:text-3xl font-black text-slate-900 mb-6 lg:mb-8 leading-tight">{passages[activeQuestion.passage_id].title}</h1>
-                            )}
-                            <div className="prose prose-slate prose-sm lg:prose-lg max-w-none text-slate-700 font-medium leading-relaxed lg:leading-[2.2] whitespace-pre-wrap">
-                                {passages[activeQuestion.passage_id].content}
-                            </div>
-                        </div>
-                    </div>
-                )}
-
                 {/* Main Content Area - Clean Workspace */}
-                <div className="flex-1 overflow-y-auto p-6 lg:p-12 custom-scrollbar relative bg-[#fcfdfe]">
+                <div className="flex-1 overflow-y-auto p-6 lg:p-10 custom-scrollbar relative bg-[#fcfdfe] flex flex-col">
                     {activeQuestion ? (
-                        <div className={`max-w-4xl mx-auto ${activeQuestion.passage_id ? 'w-full' : ''}`}>
+                        <div className="w-full mx-auto my-auto py-10 px-4">
                             <div className="flex items-center gap-4 mb-8 lg:mb-10">
                                 <div className="w-10 h-10 lg:w-12 lg:h-12 bg-slate-900 text-white rounded-xl lg:rounded-2xl flex items-center justify-center font-black text-lg lg:text-xl shadow-lg shrink-0">
                                     {activeQuestionIdx + 1}
@@ -549,9 +562,9 @@ export default function StudentExamPage() {
 
                             <div className="space-y-8 lg:space-y-10">
                                 <div className="prose prose-slate max-w-none">
-                                    <p className="text-xl lg:text-3xl font-bold text-slate-900 leading-snug tracking-tight">
-                                        {activeQuestion.question_text}
-                                    </p>
+                                    <div className="text-xl lg:text-3xl font-bold text-slate-900 leading-snug tracking-tight">
+                                        <MarkdownRenderer content={activeQuestion.question_text} />
+                                    </div>
                                 </div>
 
                                 {activeQuestion.image_url && (
@@ -575,31 +588,37 @@ export default function StudentExamPage() {
                                 <div className="space-y-6 lg:space-y-10">
                                     {(activeQuestion.question_type === 'mcq_single' || activeQuestion.question_type === 'mcq_multiple') && (
                                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 lg:gap-6">
-                                            {activeQuestion.options.map((opt: any) => {
+                                            {activeQuestion.options?.map((opt: any, optIdx: number) => {
+                                                const normalizedOpt = typeof opt === 'string'
+                                                    ? { id: (optIdx + 1).toString(), text: opt }
+                                                    : opt;
+
                                                 const isSelected = activeQuestion.question_type === 'mcq_single'
-                                                    ? answers[activeQuestion.id] === opt.id
-                                                    : (answers[activeQuestion.id] || []).includes(opt.id);
+                                                    ? (answers[activeQuestion.id] !== undefined && answers[activeQuestion.id]?.toString() === normalizedOpt.id?.toString())
+                                                    : (answers[activeQuestion.id] || []).map((id: any) => id?.toString()).includes(normalizedOpt.id?.toString());
 
                                                 return (
                                                     <button
-                                                        key={opt.id}
+                                                        key={optIdx}
                                                         onClick={() => {
                                                             if (activeQuestion.question_type === 'mcq_single') {
-                                                                handleAnswer(activeQuestion.id, opt.id);
+                                                                handleAnswer(activeQuestion.id, normalizedOpt.id);
                                                             } else {
                                                                 const current = answers[activeQuestion.id] || [];
-                                                                const next = current.includes(opt.id)
-                                                                    ? current.filter((i: any) => i !== opt.id)
-                                                                    : [...current, opt.id];
+                                                                const next = current.includes(normalizedOpt.id)
+                                                                    ? current.filter((i: any) => i !== normalizedOpt.id)
+                                                                    : [...current, normalizedOpt.id];
                                                                 handleAnswer(activeQuestion.id, next);
                                                             }
                                                         }}
                                                         className={`p-5 lg:p-7 rounded-2xl lg:rounded-[2.5rem] border-2 text-left transition-all flex items-center gap-4 lg:gap-6 group ${isSelected ? 'bg-teal-600 border-teal-600 text-white shadow-2xl shadow-teal-100' : 'bg-white border-slate-100 hover:border-teal-200 hover:bg-teal-50/30'}`}
                                                     >
                                                         <div className={`w-8 h-8 lg:w-10 lg:h-10 rounded-xl lg:rounded-2xl border-2 flex items-center justify-center font-black text-xs lg:text-sm transition-all ${isSelected ? 'bg-white text-teal-600 border-white shadow-sm' : 'bg-slate-50 text-slate-400 border-slate-200 group-hover:bg-white group-hover:text-teal-600 group-hover:border-teal-600'}`}>
-                                                            {opt.id.toUpperCase()}
+                                                            {String.fromCharCode(65 + optIdx)}
                                                         </div>
-                                                        <span className="text-sm lg:text-base font-semibold">{opt.text}</span>
+                                                        <div className="text-sm lg:text-base font-semibold">
+                                                            <MarkdownRenderer content={normalizedOpt.text} />
+                                                        </div>
                                                     </button>
                                                 );
                                             })}
@@ -779,6 +798,7 @@ export default function StudentExamPage() {
                 </div>
             </div>
 
+
             {isTimeUpModalOpen && (
                 <div className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-900/90 backdrop-blur-xl p-4">
                     <div className="bg-white rounded-[3rem] shadow-2xl w-full max-w-xl overflow-hidden animate-in zoom-in duration-300">
@@ -810,6 +830,7 @@ export default function StudentExamPage() {
                         </div>
                     </div>
                 </div>
+
             )}
         </div>
     );

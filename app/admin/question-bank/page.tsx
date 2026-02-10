@@ -16,6 +16,8 @@ import { toast } from 'sonner';
 import { X, Save, Trash2 } from 'lucide-react';
 import { useUI } from '@/lib/context/UIContext';
 import { useLoading } from '@/lib/context/LoadingContext';
+import MarkdownRenderer from '@/components/shared/MarkdownRenderer';
+import RichTextEditor from '@/components/shared/RichTextEditor';
 
 // Data Type
 type HierarchyItem = {
@@ -342,7 +344,7 @@ export default function SuperAdminQuestionBankPage() {
             <div key={item.id} className="select-none">
                 <div
                     className={`
-                        group flex items-center gap-3 py-2 px-4 border-b border-indigo-50/10 hover:bg-slate-50 transition-all cursor-pointer
+                        group flex items-center gap-3 py-2 px-4 border-b border-teal-50/10 hover:bg-slate-50 transition-all cursor-pointer
                         ${selectedItem?.id === item.id ? 'bg-slate-100 border-l-4 border-l-indigo-600' : 'bg-transparent border-l-4 border-l-transparent'}
                     `}
                     style={{ paddingLeft: `${level * 16 + 16}px` }}
@@ -366,8 +368,8 @@ export default function SuperAdminQuestionBankPage() {
                     {/* Icon */}
                     <div className={`
                         w-6 h-6 rounded flex items-center justify-center
-                        ${item.type === 'subject' ? 'bg-indigo-500/10 text-indigo-400' :
-                            item.type === 'topic' ? 'bg-blue-500/10 text-blue-400' :
+                        ${item.type === 'subject' ? 'bg-teal-500/10 text-teal-400' :
+                            item.type === 'topic' ? 'bg-emerald-500/10 text-emerald-400' :
                                 'bg-slate-500/10 text-slate-400'}
                     `}>
                         {item.type === 'subject' && <Layers className="w-3 h-3" />}
@@ -383,7 +385,7 @@ export default function SuperAdminQuestionBankPage() {
                     </div>
 
                     {item.mcqCount !== undefined && (
-                        <div className={`text-[9px] font-black px-1.5 py-0.5 rounded min-w-[20px] text-center shadow-sm ${item.mcqCount > 0 ? 'bg-indigo-600 text-white' : 'bg-slate-800 text-slate-500'}`}>
+                        <div className={`text-[9px] font-black px-1.5 py-0.5 rounded min-w-[20px] text-center shadow-sm ${item.mcqCount > 0 ? 'bg-teal-600 text-white' : 'bg-slate-800 text-slate-500'}`}>
                             {item.mcqCount}
                         </div>
                     )}
@@ -415,7 +417,7 @@ export default function SuperAdminQuestionBankPage() {
                         </div>
                         <button
                             onClick={handleOpenAddMcq}
-                            className="w-full sm:w-auto flex items-center justify-center gap-2 px-6 py-2.5 bg-slate-900 text-white font-black uppercase tracking-wider text-[11px] rounded-xl hover:bg-indigo-600 transition-all shadow-lg active:scale-95"
+                            className="w-full sm:w-auto flex items-center justify-center gap-2 px-6 py-2.5 bg-slate-900 text-white font-black uppercase tracking-wider text-[11px] rounded-xl hover:bg-teal-600 transition-all shadow-lg active:scale-95"
                         >
                             <Plus className="w-4 h-4" />
                             New Question
@@ -433,7 +435,7 @@ export default function SuperAdminQuestionBankPage() {
                                         placeholder="Filter hierarchy..."
                                         value={searchQuery}
                                         onChange={(e) => setSearchQuery(e.target.value)}
-                                        className="w-full pl-9 pr-4 py-2 bg-white border border-slate-200 rounded-xl text-xs font-bold text-slate-700 focus:ring-2 focus:ring-indigo-500/20 outline-none transition-all placeholder:text-slate-300"
+                                        className="w-full pl-9 pr-4 py-2 bg-white border border-slate-200 rounded-xl text-xs font-bold text-slate-700 focus:ring-2 focus:ring-teal-500/20 outline-none transition-all placeholder:text-slate-300"
                                     />
                                 </div>
                             </div>
@@ -457,7 +459,7 @@ export default function SuperAdminQuestionBankPage() {
                                     <div className="p-6 border-b border-gray-100 bg-white flex justify-between items-center shadow-sm">
                                         <div>
                                             <div className="flex items-center gap-2 mb-1">
-                                                <span className="text-[10px] font-black uppercase tracking-widest text-indigo-600 bg-indigo-50 px-2 py-0.5 rounded-full">
+                                                <span className="text-[10px] font-black uppercase tracking-widest text-teal-600 bg-teal-50 px-2 py-0.5 rounded-full">
                                                     Master Data Repository
                                                 </span>
                                                 <span className="text-[10px] font-black uppercase tracking-widest text-slate-500 bg-slate-100 px-2 py-0.5 rounded-full">
@@ -481,12 +483,12 @@ export default function SuperAdminQuestionBankPage() {
                                     <div className="flex-1 overflow-y-auto p-6 space-y-6 bg-slate-50/50 custom-scrollbar">
                                         {questionsLoading ? null : questions.length > 0 ? (
                                             questions.map((q, idx) => (
-                                                <div key={q.id} className="bg-white p-6 rounded-xl border border-gray-100 shadow-sm hover:shadow-xl hover:shadow-indigo-500/5 transition-all group relative overflow-hidden">
+                                                <div key={q.id} className="bg-white p-6 rounded-xl border border-gray-100 shadow-sm hover:shadow-xl hover:shadow-teal-500/5 transition-all group relative overflow-hidden">
                                                     <div className="absolute top-0 right-0 p-4 opacity-0 group-hover:opacity-100 transition-opacity">
                                                         <div className="flex gap-2">
                                                             <button
                                                                 onClick={() => handleOpenEditMcq(q)}
-                                                                className="text-slate-400 hover:text-indigo-600 px-3 py-1 text-[10px] font-black uppercase tracking-widest bg-slate-50 rounded-lg border border-gray-100 transition-colors"
+                                                                className="text-slate-400 hover:text-teal-600 px-3 py-1 text-[10px] font-black uppercase tracking-widest bg-slate-50 rounded-lg border border-gray-100 transition-colors"
                                                             >
                                                                 Edit Entry
                                                             </button>
@@ -511,7 +513,7 @@ export default function SuperAdminQuestionBankPage() {
                                                                 }`}>
                                                                 {q.difficulty}
                                                             </span>
-                                                            <span className="px-2.5 py-1 bg-indigo-50 text-indigo-600 rounded-lg text-[9px] font-black uppercase tracking-[0.1em]">
+                                                            <span className="px-2.5 py-1 bg-teal-50 text-teal-600 rounded-lg text-[9px] font-black uppercase tracking-[0.1em]">
                                                                 {q.question_type?.replace('_', ' ') || 'MCQ Single'}
                                                             </span>
                                                         </div>
@@ -528,7 +530,7 @@ export default function SuperAdminQuestionBankPage() {
                                                     </div>
 
                                                     <div className="text-slate-800 text-lg font-black mb-8 leading-tight">
-                                                        {q.question}
+                                                        <MarkdownRenderer content={q.question} />
                                                     </div>
 
                                                     <div className="grid grid-cols-2 gap-4 mb-8">
@@ -544,26 +546,30 @@ export default function SuperAdminQuestionBankPage() {
                                                                     }`}>
                                                                     {opt}
                                                                 </span>
-                                                                <span className="text-sm font-bold">{q[`option_${opt.toLowerCase()}`]}</span>
+                                                                <div className="text-sm font-bold">
+                                                                    <MarkdownRenderer content={q[`option_${opt.toLowerCase()}`]} />
+                                                                </div>
                                                             </div>
                                                         ))}
                                                     </div>
 
                                                     {q.explanation && (
-                                                        <div className="p-5 bg-indigo-50/30 rounded-2xl border border-indigo-50">
-                                                            <div className="flex items-center gap-2 text-indigo-700 text-[10px] font-black uppercase tracking-widest mb-2">
+                                                        <div className="p-5 bg-teal-50/30 rounded-2xl border border-teal-50">
+                                                            <div className="flex items-center gap-2 text-teal-700 text-[10px] font-black uppercase tracking-widest mb-2">
                                                                 <HelpCircle className="w-4 h-4" />
                                                                 Academic Rationale
                                                             </div>
-                                                            <p className="text-sm text-indigo-900/80 font-medium leading-relaxed italic">"{q.explanation}"</p>
+                                                            <div className="text-sm text-teal-900/80 font-medium leading-relaxed italic">
+                                                                <MarkdownRenderer content={q.explanation} />
+                                                            </div>
                                                         </div>
                                                     )}
                                                 </div>
                                             ))
                                         ) : (
                                             <div className="h-full flex flex-col items-center justify-center text-center p-20">
-                                                <div className="w-24 h-24 bg-white rounded-full shadow-2xl shadow-indigo-500/10 flex items-center justify-center mb-8">
-                                                    <Target className="w-12 h-12 text-indigo-100" />
+                                                <div className="w-24 h-24 bg-white rounded-full shadow-2xl shadow-teal-500/10 flex items-center justify-center mb-8">
+                                                    <Target className="w-12 h-12 text-teal-100" />
                                                 </div>
                                                 <h3 className="text-2xl font-black text-slate-900 mb-2">Virgin Territory</h3>
                                                 <p className="text-slate-500 max-w-sm mb-8">
@@ -578,8 +584,8 @@ export default function SuperAdminQuestionBankPage() {
                                 </>
                             ) : (
                                 <div className="flex-1 flex flex-col items-center justify-center text-center p-12 bg-white">
-                                    <div className="w-32 h-32 bg-indigo-50 rounded-full flex items-center justify-center mb-10 animate-pulse">
-                                        <Target className="w-16 h-16 text-indigo-600 opacity-10" />
+                                    <div className="w-32 h-32 bg-teal-50 rounded-full flex items-center justify-center mb-10 animate-pulse">
+                                        <Target className="w-16 h-16 text-teal-600 opacity-10" />
                                     </div>
                                     <h3 className="text-3xl font-black text-slate-900 mb-4 tracking-tight">Select a Data Node</h3>
                                     <p className="text-slate-500 max-w-md font-medium leading-relaxed">
@@ -609,11 +615,11 @@ export default function SuperAdminQuestionBankPage() {
                                     <div>
                                         <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">System Blueprint Type</label>
                                         <div className="relative group">
-                                            <Settings className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-indigo-600 z-10" />
+                                            <Settings className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-teal-600 z-10" />
                                             <select
                                                 value={mcqForm.question_type}
                                                 onChange={(e) => setMcqForm({ ...mcqForm, question_type: e.target.value })}
-                                                className="w-full pl-12 pr-10 py-3 bg-slate-50 border border-gray-100 rounded-xl text-slate-800 font-bold outline-none appearance-none cursor-pointer focus:ring-2 focus:ring-indigo-500/10 transition-all"
+                                                className="w-full pl-12 pr-10 py-3 bg-slate-50 border border-gray-100 rounded-xl text-slate-800 font-bold outline-none appearance-none cursor-pointer focus:ring-2 focus:ring-teal-500/10 transition-all"
                                             >
                                                 <option value="mcq_single">MCQ Single Choice</option>
                                                 <option value="mcq_multiple">MCQ Multiple Choice</option>
@@ -628,7 +634,7 @@ export default function SuperAdminQuestionBankPage() {
                                                 <option value="case_study">Case Study Analysis</option>
                                                 <option value="passage">Passage-Based Block</option>
                                             </select>
-                                            <div className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none text-slate-400 group-hover:text-indigo-600 transition-colors">
+                                            <div className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none text-slate-400 group-hover:text-teal-600 transition-colors">
                                                 <ChevronDown className="w-4 h-4" />
                                             </div>
                                         </div>
@@ -650,7 +656,7 @@ export default function SuperAdminQuestionBankPage() {
                                             </select>
                                             <button
                                                 onClick={() => setIsPassageModalOpen(true)}
-                                                className="px-4 py-3 bg-indigo-50 text-indigo-600 rounded-xl font-black text-[10px] uppercase tracking-widest hover:bg-indigo-100 transition-all"
+                                                className="px-4 py-3 bg-teal-50 text-teal-600 rounded-xl font-black text-[10px] uppercase tracking-widest hover:bg-teal-100 transition-all"
                                             >
                                                 <Plus className="w-4 h-4" />
                                             </button>
@@ -660,11 +666,11 @@ export default function SuperAdminQuestionBankPage() {
                                     {/* Question Text */}
                                     <div>
                                         <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">Question Prompt</label>
-                                        <textarea
+                                        <RichTextEditor
                                             value={mcqForm.question}
-                                            onChange={(e) => setMcqForm({ ...mcqForm, question: e.target.value })}
-                                            className="w-full px-5 py-4 bg-slate-50 border border-gray-100 rounded-2xl text-slate-800 font-bold focus:ring-2 focus:ring-indigo-500/20 outline-none h-32 resize-none"
-                                            placeholder="Enter the question text..."
+                                            onChange={(val) => setMcqForm({ ...mcqForm, question: val })}
+                                            placeholder="Enter the question text (Markdown & LaTeX supported)..."
+                                            height="h-64"
                                         />
                                     </div>
 
@@ -688,7 +694,7 @@ export default function SuperAdminQuestionBankPage() {
                                                     <button
                                                         key={opt}
                                                         onClick={() => setMcqForm({ ...mcqForm, correct_option: opt as any })}
-                                                        className={`flex-1 py-1.5 rounded-lg text-xs font-black transition-all ${mcqForm.correct_option === opt ? 'bg-indigo-600 text-white shadow-md' : 'text-slate-400 hover:text-slate-600'}`}
+                                                        className={`flex-1 py-1.5 rounded-lg text-xs font-black transition-all ${mcqForm.correct_option === opt ? 'bg-teal-600 text-white shadow-md' : 'text-slate-400 hover:text-slate-600'}`}
                                                     >
                                                         {opt}
                                                     </button>
@@ -708,7 +714,7 @@ export default function SuperAdminQuestionBankPage() {
                                                         type="text"
                                                         value={(mcqForm as any)[`option_${opt}`]}
                                                         onChange={(e) => setMcqForm({ ...mcqForm, [`option_${opt}`]: e.target.value })}
-                                                        className="w-full pl-10 pr-5 py-3 bg-slate-50 border border-gray-100 rounded-xl text-slate-800 font-bold focus:ring-2 focus:ring-indigo-500/20 outline-none"
+                                                        className="w-full pl-10 pr-5 py-3 bg-slate-50 border border-gray-100 rounded-xl text-slate-800 font-bold focus:ring-2 focus:ring-teal-500/20 outline-none"
                                                         placeholder={`Option ${opt.toUpperCase()}`}
                                                     />
                                                 </div>
@@ -723,14 +729,14 @@ export default function SuperAdminQuestionBankPage() {
                                             <button
                                                 type="button"
                                                 onClick={() => setMcqForm({ ...mcqForm, question_image_type: 'direct' })}
-                                                className={`flex-1 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all ${mcqForm.question_image_type === 'direct' ? 'bg-white shadow-sm text-indigo-600' : 'text-slate-400'}`}
+                                                className={`flex-1 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all ${mcqForm.question_image_type === 'direct' ? 'bg-white shadow-sm text-teal-600' : 'text-slate-400'}`}
                                             >
                                                 Direct Link
                                             </button>
                                             <button
                                                 type="button"
                                                 onClick={() => setMcqForm({ ...mcqForm, question_image_type: 'drive' })}
-                                                className={`flex-1 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all ${mcqForm.question_image_type === 'drive' ? 'bg-white shadow-sm text-indigo-600' : 'text-slate-400'}`}
+                                                className={`flex-1 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all ${mcqForm.question_image_type === 'drive' ? 'bg-white shadow-sm text-teal-600' : 'text-slate-400'}`}
                                             >
                                                 Google Drive
                                             </button>
@@ -756,11 +762,11 @@ export default function SuperAdminQuestionBankPage() {
                                     {/* Explanation */}
                                     <div>
                                         <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">Academic Rationale (Explanation)</label>
-                                        <textarea
+                                        <RichTextEditor
                                             value={mcqForm.explanation}
-                                            onChange={(e) => setMcqForm({ ...mcqForm, explanation: e.target.value })}
-                                            className="w-full px-5 py-4 bg-slate-50 border border-gray-100 rounded-2xl text-slate-800 font-medium focus:ring-2 focus:ring-indigo-500/20 outline-none h-24 resize-none"
+                                            onChange={(val) => setMcqForm({ ...mcqForm, explanation: val })}
                                             placeholder="Explain why the correct option is right..."
+                                            height="h-48"
                                         />
                                     </div>
 
@@ -771,14 +777,14 @@ export default function SuperAdminQuestionBankPage() {
                                             <button
                                                 type="button"
                                                 onClick={() => setMcqForm({ ...mcqForm, explanation_image_type: 'direct' })}
-                                                className={`flex-1 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all ${mcqForm.explanation_image_type === 'direct' ? 'bg-white shadow-sm text-indigo-600' : 'text-slate-400'}`}
+                                                className={`flex-1 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all ${mcqForm.explanation_image_type === 'direct' ? 'bg-white shadow-sm text-teal-600' : 'text-slate-400'}`}
                                             >
                                                 Direct Link
                                             </button>
                                             <button
                                                 type="button"
                                                 onClick={() => setMcqForm({ ...mcqForm, explanation_image_type: 'drive' })}
-                                                className={`flex-1 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all ${mcqForm.explanation_image_type === 'drive' ? 'bg-white shadow-sm text-indigo-600' : 'text-slate-400'}`}
+                                                className={`flex-1 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all ${mcqForm.explanation_image_type === 'drive' ? 'bg-white shadow-sm text-teal-600' : 'text-slate-400'}`}
                                             >
                                                 Google Drive
                                             </button>
@@ -811,7 +817,7 @@ export default function SuperAdminQuestionBankPage() {
                                     </button>
                                     <button
                                         onClick={handleSaveMcq}
-                                        className="flex items-center gap-2 px-8 py-2.5 bg-indigo-600 text-white font-black rounded-xl hover:bg-indigo-700 transition-all shadow-lg shadow-indigo-600/20 text-sm"
+                                        className="flex items-center gap-2 px-8 py-2.5 bg-teal-600 text-white font-black rounded-xl hover:bg-teal-700 transition-all shadow-lg shadow-teal-600/20 text-sm"
                                     >
                                         <Save className="w-4 h-4" />
                                         {editingMcq ? 'Save Changes' : 'Initialize MCQ'}
@@ -838,21 +844,21 @@ export default function SuperAdminQuestionBankPage() {
                                             value={passageForm.title}
                                             onChange={e => setPassageForm({ ...passageForm, title: e.target.value })}
                                             placeholder="Enter passage title (e.g. Reading Comprehension 1)"
-                                            className="w-full px-6 py-4 bg-slate-50 border border-gray-100 rounded-2xl font-bold outline-none focus:ring-2 focus:ring-indigo-600/20"
+                                            className="w-full px-6 py-4 bg-slate-50 border border-gray-100 rounded-2xl font-bold outline-none focus:ring-2 focus:ring-teal-600/20"
                                         />
                                     </div>
                                     <div className="space-y-2">
                                         <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Passage Content</label>
-                                        <textarea
+                                        <RichTextEditor
                                             value={passageForm.content}
-                                            onChange={e => setPassageForm({ ...passageForm, content: e.target.value })}
-                                            placeholder="Enter the full passage content here..."
-                                            className="w-full h-64 px-6 py-4 bg-slate-50 border border-gray-100 rounded-2xl font-bold resize-none outline-none focus:ring-2 focus:ring-indigo-600/20"
+                                            onChange={(val) => setPassageForm({ ...passageForm, content: val })}
+                                            placeholder="Enter the full passage content (Markdown & LaTeX supported)..."
+                                            height="h-64"
                                         />
                                     </div>
                                     <button
                                         onClick={handleSavePassage}
-                                        className="w-full py-5 bg-indigo-600 text-white rounded-2xl font-black uppercase tracking-widest text-xs shadow-xl shadow-indigo-600/20 hover:scale-[1.02] active:scale-[0.98] transition-all"
+                                        className="w-full py-5 bg-teal-600 text-white rounded-2xl font-black uppercase tracking-widest text-xs shadow-xl shadow-teal-600/20 hover:scale-[1.02] active:scale-[0.98] transition-all"
                                     >
                                         Deploy Passage to Repository
                                     </button>

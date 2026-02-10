@@ -45,10 +45,10 @@ export default function ForgotPasswordPage() {
 
                 {success ? (
                     <div className="text-center space-y-6">
-                        <div className="bg-green-50 rounded-2xl p-6 border border-green-100">
-                            <CheckCircle className="w-12 h-12 text-green-500 mx-auto mb-3" />
-                            <h3 className="font-bold text-green-800 text-lg">Check your email</h3>
-                            <p className="text-green-700 text-sm mt-1">
+                        <div className="bg-green-50 rounded-2xl p-6 border border-emerald-100">
+                            <CheckCircle className="w-12 h-12 text-emerald-500 mx-auto mb-3" />
+                            <h3 className="font-bold text-emerald-800 text-lg">Check your email</h3>
+                            <p className="text-emerald-700 text-sm mt-1">
                                 We've sent a password reset link to <span className="font-bold">{email}</span>
                             </p>
                         </div>
@@ -77,7 +77,7 @@ export default function ForgotPasswordPage() {
                                     value={email}
                                     onChange={(e) => setEmail(e.target.value)}
                                     required
-                                    className="w-full pl-11 pr-5 py-3.5 bg-slate-50 border border-slate-100 rounded-2xl text-xs text-slate-900 focus:outline-none focus:ring-4 focus:ring-green-500/5 focus:border-[#4CAF50] transition-all font-medium placeholder:text-slate-300"
+                                    className="w-full pl-11 pr-5 py-3.5 bg-slate-50 border border-slate-100 rounded-2xl text-xs text-slate-900 focus:outline-none focus:ring-4 focus:ring-blue-500/5 focus:border-[#4CAF50] transition-all font-medium placeholder:text-slate-300"
                                     placeholder="name@example.com"
                                 />
                             </div>

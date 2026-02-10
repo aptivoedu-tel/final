@@ -286,7 +286,7 @@ export default function UniversityContentMapper() {
                             </button>
                             <div>
                                 <h1 className="text-3xl font-bold text-slate-900">Content Mapping</h1>
-                                <p className="text-slate-500">Configure which subjects and sub-topics are available for <span className="text-indigo-600 font-bold">{university?.name}</span>.</p>
+                                <p className="text-slate-500">Configure which subjects and sub-topics are available for <span className="text-teal-600 font-bold">{university?.name}</span>.</p>
                             </div>
                             <div className="ml-auto">
                                 <button
@@ -303,7 +303,7 @@ export default function UniversityContentMapper() {
                         <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
                             <div className="p-6 border-b border-gray-100 bg-gray-50/50 flex flex-col md:flex-row md:items-center justify-between gap-4">
                                 <div className="flex items-center gap-2">
-                                    <BookOpen className="w-5 h-5 text-indigo-600" />
+                                    <BookOpen className="w-5 h-5 text-teal-600" />
                                     <h2 className="font-bold text-slate-800 text-lg">Curriculum Tree</h2>
                                 </div>
                                 <div className="flex flex-wrap items-center gap-6">
@@ -313,12 +313,12 @@ export default function UniversityContentMapper() {
                                             type="number"
                                             value={globalSessionLimit}
                                             onChange={(e) => setGlobalSessionLimit(parseInt(e.target.value) || 10)}
-                                            className="w-16 bg-transparent border-b-2 border-indigo-100 focus:border-indigo-600 outline-none text-center font-bold text-slate-900"
+                                            className="w-16 bg-transparent border-b-2 border-teal-100 focus:border-teal-600 outline-none text-center font-bold text-slate-900"
                                         />
                                     </div>
                                     <div className="flex items-center gap-4 text-xs font-bold text-slate-400 uppercase tracking-widest">
                                         <div className="flex items-center gap-1.5">
-                                            <div className="w-3 h-3 bg-indigo-600 rounded-sm" /> Selected
+                                            <div className="w-3 h-3 bg-teal-600 rounded-sm" /> Selected
                                         </div>
                                         <div className="flex items-center gap-1.5">
                                             <div className="w-3 h-3 border-2 border-slate-200 rounded-sm" /> Unselected
@@ -334,8 +334,8 @@ export default function UniversityContentMapper() {
                                     const subPartial = isSubjectPartial(subject);
 
                                     return (
-                                        <div key={subject.id} className="border border-gray-100 rounded-2xl overflow-hidden bg-white shadow-sm transition-all hover:border-indigo-100">
-                                            <div className={`flex items-center p-5 transition-colors ${subjectOpen ? 'bg-indigo-50/30' : ''}`}>
+                                        <div key={subject.id} className="border border-gray-100 rounded-2xl overflow-hidden bg-white shadow-sm transition-all hover:border-teal-100">
+                                            <div className={`flex items-center p-5 transition-colors ${subjectOpen ? 'bg-teal-50/30' : ''}`}>
                                                 <button
                                                     onClick={() => {
                                                         const newExpanded = new Set(expandedSubjects);
@@ -345,18 +345,18 @@ export default function UniversityContentMapper() {
                                                     }}
                                                     className="p-1 hover:bg-white rounded transition-colors mr-2"
                                                 >
-                                                    {subjectOpen ? <ChevronDown className="w-5 h-5 text-indigo-600" /> : <ChevronRight className="w-5 h-5 text-slate-400" />}
+                                                    {subjectOpen ? <ChevronDown className="w-5 h-5 text-teal-600" /> : <ChevronRight className="w-5 h-5 text-slate-400" />}
                                                 </button>
 
                                                 <button
                                                     onClick={() => toggleSubject(subject, !subSelected)}
                                                     className="flex items-center gap-3 flex-1 text-left group"
                                                 >
-                                                    <div className="text-indigo-600">
-                                                        {subSelected ? <CheckSquare className="w-6 h-6 fill-current" /> : (subPartial ? <div className="w-6 h-6 border-2 border-indigo-600 rounded bg-indigo-100 flex items-center justify-center"><div className="w-3.5 h-0.5 bg-indigo-600" /></div> : <Square className="w-6 h-6 text-slate-300 group-hover:text-indigo-300" />)}
+                                                    <div className="text-teal-600">
+                                                        {subSelected ? <CheckSquare className="w-6 h-6 fill-current" /> : (subPartial ? <div className="w-6 h-6 border-2 border-teal-600 rounded bg-teal-100 flex items-center justify-center"><div className="w-3.5 h-0.5 bg-teal-600" /></div> : <Square className="w-6 h-6 text-slate-300 group-hover:text-teal-300" />)}
                                                     </div>
                                                     <div className="flex items-center gap-3">
-                                                        <div className="w-10 h-10 bg-indigo-50 rounded-xl flex items-center justify-center text-indigo-600 font-bold group-hover:bg-indigo-600 group-hover:text-white transition-all">
+                                                        <div className="w-10 h-10 bg-teal-50 rounded-xl flex items-center justify-center text-teal-600 font-bold group-hover:bg-teal-600 group-hover:text-white transition-all">
                                                             <Layers className="w-5 h-5" />
                                                         </div>
                                                         <div>
@@ -397,7 +397,7 @@ export default function UniversityContentMapper() {
                                                                             className="flex items-center gap-3 flex-1 text-left group"
                                                                         >
                                                                             <div className="text-slate-600">
-                                                                                {topSelected ? <CheckSquare className="w-5 h-5 fill-indigo-600 text-white" /> : (topPartial ? <div className="w-5 h-5 border-2 border-indigo-600 rounded bg-indigo-50 flex items-center justify-center"><div className="w-2.5 h-0.5 bg-indigo-600" /></div> : <Square className="w-5 h-5 text-slate-300 group-hover:text-indigo-300" />)}
+                                                                                {topSelected ? <CheckSquare className="w-5 h-5 fill-indigo-600 text-white" /> : (topPartial ? <div className="w-5 h-5 border-2 border-teal-600 rounded bg-teal-50 flex items-center justify-center"><div className="w-2.5 h-0.5 bg-teal-600" /></div> : <Square className="w-5 h-5 text-slate-300 group-hover:text-teal-300" />)}
                                                                             </div>
                                                                             <div className="flex items-center gap-2">
                                                                                 <Lightbulb className="w-4 h-4 text-amber-500" />
@@ -408,10 +408,10 @@ export default function UniversityContentMapper() {
 
                                                                         {topSelected && (
                                                                             <div className="relative ml-4">
-                                                                                <div className="flex items-center gap-2 bg-white px-4 py-2 rounded-full border border-gray-100 shadow-sm group/dropdown cursor-pointer hover:border-indigo-600 transition-all">
+                                                                                <div className="flex items-center gap-2 bg-white px-4 py-2 rounded-full border border-gray-100 shadow-sm group/dropdown cursor-pointer hover:border-teal-600 transition-all">
                                                                                     <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest mr-1">Difficulty:</span>
                                                                                     <div className="flex items-center gap-1.5 min-w-[100px] justify-between">
-                                                                                        <span className="text-[11px] font-black text-indigo-600 uppercase tracking-widest">
+                                                                                        <span className="text-[11px] font-black text-teal-600 uppercase tracking-widest">
                                                                                             {(() => {
                                                                                                 const selectedCount = ['easy', 'medium', 'hard'].filter(diff =>
                                                                                                     topic.subtopics.every(st => selectedSubtopics[st.id]?.includes(diff))
@@ -421,7 +421,7 @@ export default function UniversityContentMapper() {
                                                                                                 return `${selectedCount} Selected`;
                                                                                             })()}
                                                                                         </span>
-                                                                                        <ChevronDown className="w-3.5 h-3.5 text-indigo-600 group-hover/dropdown:rotate-180 transition-transform" />
+                                                                                        <ChevronDown className="w-3.5 h-3.5 text-teal-600 group-hover/dropdown:rotate-180 transition-transform" />
                                                                                     </div>
 
                                                                                     {/* Dropdown Menu */}
@@ -439,12 +439,12 @@ export default function UniversityContentMapper() {
                                                                                                         e.stopPropagation();
                                                                                                         toggleDifficulty(topic, diff.id);
                                                                                                     }}
-                                                                                                    className="px-4 py-2.5 hover:bg-indigo-50 flex items-center justify-between group/item transition-colors"
+                                                                                                    className="px-4 py-2.5 hover:bg-teal-50 flex items-center justify-between group/item transition-colors"
                                                                                                 >
-                                                                                                    <span className={`text-[11px] font-bold ${isDiffSelected ? 'text-indigo-600' : 'text-slate-600'}`}>
+                                                                                                    <span className={`text-[11px] font-bold ${isDiffSelected ? 'text-teal-600' : 'text-slate-600'}`}>
                                                                                                         {diff.label}
                                                                                                     </span>
-                                                                                                    {isDiffSelected && <CheckSquare className="w-3.5 h-3.5 text-indigo-600 fill-current" />}
+                                                                                                    {isDiffSelected && <CheckSquare className="w-3.5 h-3.5 text-teal-600 fill-current" />}
                                                                                                 </div>
                                                                                             );
                                                                                         })}
@@ -463,11 +463,11 @@ export default function UniversityContentMapper() {
                                                                                 onClick={() => toggleSubtopic(subtopic.id)}
                                                                                 className="flex items-center gap-3 w-full p-2.5 rounded-lg hover:bg-white hover:shadow-sm transition-all group group-hover:translate-x-1"
                                                                             >
-                                                                                <div className="text-slate-400 group-hover:text-indigo-400">
+                                                                                <div className="text-slate-400 group-hover:text-teal-400">
                                                                                     {selectedSubtopics[subtopic.id] ? (
                                                                                         <CheckSquare className="w-4 h-4 fill-indigo-600 text-white group-hover:scale-110 transition-transform" />
                                                                                     ) : (
-                                                                                        <Square className="w-4 h-4 group-hover:border-indigo-300" />
+                                                                                        <Square className="w-4 h-4 group-hover:border-teal-300" />
                                                                                     )}
                                                                                 </div>
                                                                                 <span className={`text-sm ${selectedSubtopics[subtopic.id] ? 'font-bold text-slate-900' : 'text-slate-500 group-hover:text-slate-700'}`}>

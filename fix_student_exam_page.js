@@ -38,9 +38,9 @@ if (startIndex !== -1 && endIndex !== -1) {
                                                                 handleAnswer(activeQuestion.id, next);
                                                             }
                                                         }}
-                                                        className={\`p-6 rounded-[2rem] border-2 text-left transition-all flex items-center gap-5 group \${isSelected ? 'bg-indigo-600 border-indigo-600 text-white shadow-2xl shadow-indigo-200' : 'bg-white border-slate-100 hover:border-indigo-200 hover:bg-indigo-50/50'}\`}
+                                                        className={\`p-6 rounded-[2rem] border-2 text-left transition-all flex items-center gap-5 group \${isSelected ? 'bg-teal-600 border-teal-600 text-white shadow-2xl shadow-teal-200' : 'bg-white border-slate-100 hover:border-teal-200 hover:bg-teal-50/50'}\`}
                                                     >
-                                                        <div className={\`w-8 h-8 rounded-full border-2 flex items-center justify-center font-black text-xs transition-all \${isSelected ? 'bg-white text-indigo-600 border-white' : 'bg-slate-50 text-slate-400 border-slate-200 group-hover:bg-white group-hover:text-indigo-600 group-hover:border-indigo-600'}\`}>
+                                                        <div className={\`w-8 h-8 rounded-full border-2 flex items-center justify-center font-black text-xs transition-all \${isSelected ? 'bg-white text-teal-600 border-white' : 'bg-slate-50 text-slate-400 border-slate-200 group-hover:bg-white group-hover:text-teal-600 group-hover:border-teal-600'}\`}>
                                                             {opt.id.toUpperCase()}
                                                         </div>
                                                         <span className="text-sm font-bold">{opt.text}</span>
@@ -56,7 +56,7 @@ if (startIndex !== -1 && endIndex !== -1) {
                                                 <button
                                                     key={val}
                                                     onClick={() => handleAnswer(activeQuestion.id, val)}
-                                                    className={\`flex-1 py-8 rounded-[2.5rem] border-2 font-black text-sm uppercase tracking-widest transition-all \${answers[activeQuestion.id] === val ? 'bg-indigo-600 border-indigo-600 text-white shadow-2xl shadow-indigo-200' : 'bg-white border-slate-100 hover:border-indigo-200'}\`}
+                                                    className={\`flex-1 py-8 rounded-[2.5rem] border-2 font-black text-sm uppercase tracking-widest transition-all \${answers[activeQuestion.id] === val ? 'bg-teal-600 border-teal-600 text-white shadow-2xl shadow-teal-200' : 'bg-white border-slate-100 hover:border-teal-200'}\`}
                                                 >
                                                     {val}
                                                 </button>
@@ -69,7 +69,7 @@ if (startIndex !== -1 && endIndex !== -1) {
                                             <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-4">Numerical Response</label>
                                             <input
                                                 type="text"
-                                                className="w-full p-8 bg-white border-2 border-slate-100 rounded-[2.5rem] outline-none focus:border-indigo-600 focus:ring-4 focus:ring-indigo-600/10 font-black text-2xl text-slate-900 shadow-sm"
+                                                className="w-full p-8 bg-white border-2 border-slate-100 rounded-[2.5rem] outline-none focus:border-teal-600 focus:ring-4 focus:ring-teal-600/10 font-black text-2xl text-slate-900 shadow-sm"
                                                 placeholder="Enter value..."
                                                 value={answers[activeQuestion.id] || ''}
                                                 onChange={(e) => handleAnswer(activeQuestion.id, e.target.value)}
@@ -81,7 +81,7 @@ if (startIndex !== -1 && endIndex !== -1) {
                                         <div className="space-y-4">
                                             <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-4">Essay / Long Answer</label>
                                             <textarea
-                                                className="w-full p-8 bg-white border-2 border-slate-100 rounded-[2.5rem] outline-none focus:border-indigo-600 focus:ring-4 focus:ring-indigo-600/10 font-bold text-lg text-slate-700 shadow-sm min-h-[400px]"
+                                                className="w-full p-8 bg-white border-2 border-slate-100 rounded-[2.5rem] outline-none focus:border-teal-600 focus:ring-4 focus:ring-teal-600/10 font-bold text-lg text-slate-700 shadow-sm min-h-[400px]"
                                                 placeholder="Begin typing your response here..."
                                                 value={answers[activeQuestion.id] || ''}
                                                 onChange={(e) => handleAnswer(activeQuestion.id, e.target.value)}

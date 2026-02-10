@@ -249,8 +249,8 @@ export default function SuperAdminContentLibraryPage() {
             <div key={item.id} className="select-none">
                 <div
                     className={`
-                        group flex items-center gap-3 py-2.5 px-4 border-b border-slate-800/20 hover:bg-indigo-600/10 transition-all cursor-pointer
-                        ${selectedItem?.id === item.id ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-600/20' : 'bg-transparent text-slate-400'}
+                        group flex items-center gap-3 py-2.5 px-4 border-b border-slate-800/20 hover:bg-teal-600/10 transition-all cursor-pointer
+                        ${selectedItem?.id === item.id ? 'bg-teal-600 text-white shadow-lg shadow-teal-600/20' : 'bg-transparent text-slate-400'}
                     `}
                     style={{ paddingLeft: `${level * 16 + 16}px` }}
                     onClick={() => {
@@ -270,7 +270,7 @@ export default function SuperAdminContentLibraryPage() {
                         w-6 h-6 rounded flex items-center justify-center
                         ${selectedItem?.id === item.id ? 'bg-white/20 text-white' :
                             item.type === 'subject' ? 'bg-purple-500/10 text-purple-400' :
-                                item.type === 'topic' ? 'bg-blue-500/10 text-blue-400' :
+                                item.type === 'topic' ? 'bg-emerald-500/10 text-emerald-400' :
                                     'bg-emerald-500/10 text-emerald-400'}
                     `}>
                         {item.type === 'subject' && <Layers className="w-3 h-3" />}
@@ -329,7 +329,7 @@ export default function SuperAdminContentLibraryPage() {
                                         placeholder="Filter global tree..."
                                         value={searchQuery}
                                         onChange={(e) => setSearchQuery(e.target.value)}
-                                        className="w-full pl-9 pr-4 py-2 bg-white border border-slate-200 rounded-xl text-xs font-bold text-slate-700 focus:ring-2 focus:ring-indigo-500/20 outline-none transition-all placeholder:text-slate-300"
+                                        className="w-full pl-9 pr-4 py-2 bg-white border border-slate-200 rounded-xl text-xs font-bold text-slate-700 focus:ring-2 focus:ring-teal-500/20 outline-none transition-all placeholder:text-slate-300"
                                     />
                                 </div>
                             </div>
@@ -363,7 +363,7 @@ export default function SuperAdminContentLibraryPage() {
                                         </div>
                                         <button
                                             onClick={handleOpenEditor}
-                                            className="flex items-center gap-2 px-6 py-2.5 bg-slate-900 text-white font-black uppercase tracking-wider text-[11px] rounded-xl hover:bg-indigo-600 transition-all shadow-lg active:scale-95"
+                                            className="flex items-center gap-2 px-6 py-2.5 bg-slate-900 text-white font-black uppercase tracking-wider text-[11px] rounded-xl hover:bg-teal-600 transition-all shadow-lg active:scale-95"
                                         >
                                             <Edit3 className="w-4 h-4" />
                                             Edit Content
@@ -384,8 +384,8 @@ export default function SuperAdminContentLibraryPage() {
                                 </>
                             ) : (
                                 <div className="flex-1 flex flex-col items-center justify-center text-center p-12 bg-white">
-                                    <div className="w-32 h-32 bg-indigo-50 rounded-full flex items-center justify-center mb-10">
-                                        <BookOpen className="w-16 h-16 text-indigo-600 opacity-20" />
+                                    <div className="w-32 h-32 bg-teal-50 rounded-full flex items-center justify-center mb-10">
+                                        <BookOpen className="w-16 h-16 text-teal-600 opacity-20" />
                                     </div>
                                     <h3 className="text-3xl font-black text-slate-900 mb-4 tracking-tight">Audit Global Content</h3>
                                     <p className="text-slate-500 max-w-sm font-medium leading-relaxed">
@@ -413,44 +413,44 @@ export default function SuperAdminContentLibraryPage() {
                                     <div className="flex-1 flex flex-col border-r border-gray-100">
                                         <div className="px-4 py-2 bg-white border-b border-gray-100 flex items-center justify-between">
                                             <div className="flex items-center gap-1">
-                                                <button onClick={() => insertFormat('bold')} className="p-1.5 hover:bg-slate-100 rounded text-slate-500 hover:text-indigo-600" title="Bold">
+                                                <button onClick={() => insertFormat('bold')} className="p-1.5 hover:bg-slate-100 rounded text-slate-500 hover:text-teal-600" title="Bold">
                                                     <Bold className="w-3.5 h-3.5" />
                                                 </button>
-                                                <button onClick={() => insertFormat('italic')} className="p-1.5 hover:bg-slate-100 rounded text-slate-500 hover:text-indigo-600" title="Italic">
+                                                <button onClick={() => insertFormat('italic')} className="p-1.5 hover:bg-slate-100 rounded text-slate-500 hover:text-teal-600" title="Italic">
                                                     <Italic className="w-3.5 h-3.5" />
                                                 </button>
                                                 <div className="w-px h-4 bg-slate-200 mx-1"></div>
-                                                <button onClick={() => insertFormat('h2')} className="p-1.5 hover:bg-slate-100 rounded text-slate-500 hover:text-indigo-600" title="Heading">
+                                                <button onClick={() => insertFormat('h2')} className="p-1.5 hover:bg-slate-100 rounded text-slate-500 hover:text-teal-600" title="Heading">
                                                     <Heading2 className="w-3.5 h-3.5" />
                                                 </button>
-                                                <button onClick={() => insertFormat('quote')} className="p-1.5 hover:bg-slate-100 rounded text-slate-500 hover:text-indigo-600" title="Quote">
+                                                <button onClick={() => insertFormat('quote')} className="p-1.5 hover:bg-slate-100 rounded text-slate-500 hover:text-teal-600" title="Quote">
                                                     <Quote className="w-3.5 h-3.5" />
                                                 </button>
                                                 <div className="w-px h-4 bg-slate-200 mx-1"></div>
-                                                <button onClick={() => insertFormat('bullet')} className="p-1.5 hover:bg-slate-100 rounded text-slate-500 hover:text-indigo-600" title="Bullet List">
+                                                <button onClick={() => insertFormat('bullet')} className="p-1.5 hover:bg-slate-100 rounded text-slate-500 hover:text-teal-600" title="Bullet List">
                                                     <List className="w-3.5 h-3.5" />
                                                 </button>
-                                                <button onClick={() => insertFormat('number')} className="p-1.5 hover:bg-slate-100 rounded text-slate-500 hover:text-indigo-600" title="Numbered List">
+                                                <button onClick={() => insertFormat('number')} className="p-1.5 hover:bg-slate-100 rounded text-slate-500 hover:text-teal-600" title="Numbered List">
                                                     <ListOrdered className="w-3.5 h-3.5" />
                                                 </button>
                                                 <div className="w-px h-4 bg-slate-200 mx-1"></div>
-                                                <button onClick={() => insertFormat('code')} className="p-1.5 hover:bg-slate-100 rounded text-slate-500 hover:text-indigo-600" title="Inline Code">
+                                                <button onClick={() => insertFormat('code')} className="p-1.5 hover:bg-slate-100 rounded text-slate-500 hover:text-teal-600" title="Inline Code">
                                                     <Terminal className="w-3.5 h-3.5" />
                                                 </button>
-                                                <button onClick={() => insertFormat('codeblock')} className="p-1.5 hover:bg-slate-100 rounded text-slate-500 hover:text-indigo-600" title="Code Block">
+                                                <button onClick={() => insertFormat('codeblock')} className="p-1.5 hover:bg-slate-100 rounded text-slate-500 hover:text-teal-600" title="Code Block">
                                                     <Code className="w-3.5 h-3.5" />
                                                 </button>
                                                 <div className="w-px h-4 bg-slate-200 mx-1"></div>
-                                                <button onClick={() => insertFormat('math')} className="p-1.5 hover:bg-slate-100 rounded text-slate-500 hover:text-indigo-600" title="Inline Math">
+                                                <button onClick={() => insertFormat('math')} className="p-1.5 hover:bg-slate-100 rounded text-slate-500 hover:text-teal-600" title="Inline Math">
                                                     <Sigma className="w-3.5 h-3.5" />
                                                 </button>
-                                                <button onClick={() => insertFormat('mathblock')} className="p-1.5 hover:bg-slate-100 rounded text-slate-500 hover:text-indigo-600" title="Math Block">
+                                                <button onClick={() => insertFormat('mathblock')} className="p-1.5 hover:bg-slate-100 rounded text-slate-500 hover:text-teal-600" title="Math Block">
                                                     <div className="flex text-[10px] font-bold">$$</div>
                                                 </button>
                                                 <div className="w-px h-4 bg-slate-200 mx-1"></div>
                                                 <button
                                                     onClick={() => document.getElementById('lib-image-upload')?.click()}
-                                                    className="p-1.5 hover:bg-slate-100 rounded text-slate-500 hover:text-indigo-600 flex items-center gap-1"
+                                                    className="p-1.5 hover:bg-slate-100 rounded text-slate-500 hover:text-teal-600 flex items-center gap-1"
                                                     title="Upload Image"
                                                 >
                                                     <ImageIcon className="w-3.5 h-3.5" />
@@ -466,7 +466,7 @@ export default function SuperAdminContentLibraryPage() {
                                             </div>
                                         </div>
 
-                                        <div className="px-3 py-1 bg-slate-100 rounded text-[9px] font-black uppercase text-indigo-600">
+                                        <div className="px-3 py-1 bg-slate-100 rounded text-[9px] font-black uppercase text-teal-600">
                                             Markdown
                                         </div>
                                         <textarea
@@ -509,7 +509,7 @@ export default function SuperAdminContentLibraryPage() {
                                     <button
                                         onClick={handleSaveContent}
                                         disabled={loading}
-                                        className="flex items-center gap-2 px-8 py-2.5 bg-indigo-600 text-white font-black rounded-xl hover:bg-indigo-700 transition-all shadow-lg shadow-indigo-600/20 text-sm disabled:opacity-50"
+                                        className="flex items-center gap-2 px-8 py-2.5 bg-teal-600 text-white font-black rounded-xl hover:bg-teal-700 transition-all shadow-lg shadow-teal-600/20 text-sm disabled:opacity-50"
                                     >
                                         <Save className="w-4 h-4" />
                                         Sync Content

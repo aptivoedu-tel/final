@@ -266,7 +266,7 @@ export default function StudentManagerPage() {
                         className="flex items-center justify-center gap-2 px-3 lg:px-4 py-2 bg-white border border-gray-200 text-slate-700 rounded-xl hover:bg-gray-50 font-bold transition-all shadow-sm text-xs sm:text-sm"
                         title="Download Excel Template"
                     >
-                        <FileSpreadsheet className="w-4 h-4 text-green-600" />
+                        <FileSpreadsheet className="w-4 h-4 text-emerald-600" />
                         <span>Template</span>
                     </button>
                     <button
@@ -279,7 +279,7 @@ export default function StudentManagerPage() {
                     </button>
                     <button
                         onClick={() => setShowAddModal(true)}
-                        className="col-span-2 lg:flex-none flex items-center justify-center gap-2 px-5 py-2.5 bg-indigo-600 text-white rounded-xl hover:bg-indigo-700 font-black shadow-lg shadow-indigo-100 transition-all hover:scale-[1.02] active:scale-95 text-sm"
+                        className="col-span-2 lg:flex-none flex items-center justify-center gap-2 px-5 py-2.5 bg-teal-600 text-white rounded-xl hover:bg-teal-700 font-black shadow-lg shadow-teal-100 transition-all hover:scale-[1.02] active:scale-95 text-sm"
                     >
                         <Plus className="w-5 h-5" />
                         Add Student Account
@@ -296,13 +296,13 @@ export default function StudentManagerPage() {
                         placeholder="Search name, roll no, or email..."
                         value={search}
                         onChange={(e) => setSearch(e.target.value)}
-                        className="w-full pl-10 pr-4 py-2 bg-gray-50 border border-gray-200 rounded-xl outline-none focus:ring-2 focus:ring-indigo-500 text-sm transition-all shadow-inner"
+                        className="w-full pl-10 pr-4 py-2 bg-gray-50 border border-gray-200 rounded-xl outline-none focus:ring-2 focus:ring-teal-500 text-sm transition-all shadow-inner"
                     />
                 </div>
                 <div className="flex items-center justify-between sm:justify-end gap-3 text-[10px] lg:text-sm font-black uppercase tracking-widest text-slate-400">
                     <div>Total: <span className="text-slate-900">{students.length}</span></div>
                     <div className="w-1 h-1 rounded-full bg-slate-200" />
-                    <div>Active: <span className="text-green-600">{students.filter(s => s.status !== 'blocked').length}</span></div>
+                    <div>Active: <span className="text-emerald-600">{students.filter(s => s.status !== 'blocked').length}</span></div>
                 </div>
             </div>
 
@@ -330,7 +330,7 @@ export default function StudentManagerPage() {
                             <tr key={student.id} className={`hover:bg-gray-50/50 transition-colors ${student.status === 'blocked' ? 'bg-red-50/30' : ''}`}>
                                 <td className="py-4 px-6">
                                     <div className="flex items-center gap-3">
-                                        <div className={`w-10 h-10 rounded-full flex items-center justify-center font-bold ${student.status === 'blocked' ? 'bg-red-100 text-red-600' : 'bg-indigo-100 text-indigo-600'
+                                        <div className={`w-10 h-10 rounded-full flex items-center justify-center font-bold ${student.status === 'blocked' ? 'bg-red-100 text-red-600' : 'bg-teal-100 text-teal-600'
                                             }`}>
                                             {(student.full_name || student.name || 'S')[0]}
                                         </div>
@@ -352,7 +352,7 @@ export default function StudentManagerPage() {
                                         {student.initial_password && (
                                             <button
                                                 onClick={() => togglePassword(student.id)}
-                                                className="text-gray-400 hover:text-indigo-600"
+                                                className="text-gray-400 hover:text-teal-600"
                                             >
                                                 {passwordVisible[student.id] ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                                             </button>
@@ -367,7 +367,7 @@ export default function StudentManagerPage() {
                                         onClick={() => handleToggleStatus(student.id, student.status || 'active')}
                                         className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold cursor-pointer hover:opacity-80 transition-opacity ${student.status === 'blocked'
                                             ? 'bg-red-100 text-red-800'
-                                            : 'bg-green-100 text-green-800'
+                                            : 'bg-emerald-100 text-emerald-800'
                                             }`}>
                                         {student.status === 'blocked' ? 'Blocked' : 'Active'}
                                     </button>
@@ -377,7 +377,7 @@ export default function StudentManagerPage() {
                                         onClick={() => handleToggleStatus(student.id, student.status || 'active')}
                                         title={student.status === 'blocked' ? "Unblock" : "Block"}
                                         className={`p-2 rounded-lg transition-colors ${student.status === 'blocked'
-                                            ? 'text-green-600 hover:bg-green-50'
+                                            ? 'text-emerald-600 hover:bg-green-50'
                                             : 'text-orange-500 hover:bg-orange-50'
                                             }`}
                                     >
@@ -410,7 +410,7 @@ export default function StudentManagerPage() {
                                 <label className="block text-sm font-bold text-slate-700 mb-1">Full Name</label>
                                 <input
                                     required
-                                    className="w-full p-3 bg-gray-50 border border-gray-200 rounded-lg outline-none focus:ring-2 focus:ring-indigo-500"
+                                    className="w-full p-3 bg-gray-50 border border-gray-200 rounded-lg outline-none focus:ring-2 focus:ring-teal-500"
                                     placeholder="e.g. John Smith"
                                     value={newStudent.name}
                                     onChange={e => setNewStudent({ ...newStudent, name: e.target.value })}
@@ -420,7 +420,7 @@ export default function StudentManagerPage() {
                                 <label className="block text-sm font-bold text-slate-700 mb-1">Roll Number (ID)</label>
                                 <input
                                     required
-                                    className="w-full p-3 bg-gray-50 border border-gray-200 rounded-lg outline-none focus:ring-2 focus:ring-indigo-500 font-mono"
+                                    className="w-full p-3 bg-gray-50 border border-gray-200 rounded-lg outline-none focus:ring-2 focus:ring-teal-500 font-mono"
                                     placeholder="e.g. 2024-001"
                                     value={newStudent.studentId}
                                     onChange={e => setNewStudent({ ...newStudent, studentId: e.target.value })}
@@ -431,7 +431,7 @@ export default function StudentManagerPage() {
                                 <input
                                     required
                                     type="text"
-                                    className="w-full p-3 bg-gray-50 border border-gray-200 rounded-lg outline-none focus:ring-2 focus:ring-indigo-500 font-mono"
+                                    className="w-full p-3 bg-gray-50 border border-gray-200 rounded-lg outline-none focus:ring-2 focus:ring-teal-500 font-mono"
                                     placeholder="Initial password"
                                     value={newStudent.password}
                                     onChange={e => setNewStudent({ ...newStudent, password: e.target.value })}
@@ -449,7 +449,7 @@ export default function StudentManagerPage() {
                                 <button
                                     type="submit"
                                     disabled={creating}
-                                    className="flex-1 py-3 bg-indigo-600 text-white font-bold rounded-xl hover:bg-indigo-700 transition-colors disabled:opacity-50 flex justify-center items-center gap-2"
+                                    className="flex-1 py-3 bg-teal-600 text-white font-bold rounded-xl hover:bg-teal-700 transition-colors disabled:opacity-50 flex justify-center items-center gap-2"
                                 >
                                     {creating ? 'Creating...' : 'Create'}
                                 </button>

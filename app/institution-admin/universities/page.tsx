@@ -95,10 +95,10 @@ export default function UniversitySelectorPage() {
                         placeholder="Search universities by name or location..."
                         value={search}
                         onChange={(e) => setSearch(e.target.value)}
-                        className="w-full pl-12 pr-4 py-3.5 bg-slate-50 border-none rounded-2xl outline-none focus:ring-2 focus:ring-indigo-500/20 text-sm font-semibold transition-all"
+                        className="w-full pl-12 pr-4 py-3.5 bg-slate-50 border-none rounded-2xl outline-none focus:ring-2 focus:ring-teal-500/20 text-sm font-semibold transition-all"
                     />
                 </div>
-                <div className="flex items-center gap-2 px-4 py-2 bg-indigo-50 text-indigo-600 rounded-2xl text-[10px] font-black uppercase tracking-widest border border-indigo-100">
+                <div className="flex items-center gap-2 px-4 py-2 bg-teal-50 text-teal-600 rounded-2xl text-[10px] font-black uppercase tracking-widest border border-teal-100">
                     <Building2 className="w-3.5 h-3.5" />
                     {filteredUnis.length} Active Listings
                 </div>
@@ -107,7 +107,7 @@ export default function UniversitySelectorPage() {
             <div className="grid grid-cols-1 gap-6">
                 {loading ? (
                     <div className="p-20 text-center">
-                        <div className="animate-spin w-10 h-10 border-4 border-indigo-600 border-t-transparent rounded-full mx-auto mb-4"></div>
+                        <div className="animate-spin w-10 h-10 border-4 border-teal-600 border-t-transparent rounded-full mx-auto mb-4"></div>
                         <p className="text-slate-400 font-black uppercase tracking-widest text-[10px]">Synchronizing Catalog...</p>
                     </div>
                 ) : filteredUnis.length === 0 ? (
@@ -120,7 +120,7 @@ export default function UniversitySelectorPage() {
                     filteredUnis.map(uni => {
                         const isLocked = lockedStates[uni.id] ?? true;
                         return (
-                            <div key={uni.id} className="bg-white border border-slate-100 rounded-[2.5rem] p-8 flex flex-col xl:flex-row xl:items-center justify-between shadow-sm hover:shadow-2xl hover:shadow-indigo-50/50 transition-all gap-8 group">
+                            <div key={uni.id} className="bg-white border border-slate-100 rounded-[2.5rem] p-8 flex flex-col xl:flex-row xl:items-center justify-between shadow-sm hover:shadow-2xl hover:shadow-teal-50/50 transition-all gap-8 group">
                                 <div className="flex items-center gap-6 flex-1 min-w-0">
                                     <div className="w-20 h-20 rounded-3xl bg-slate-50 flex items-center justify-center text-slate-300 overflow-hidden border border-slate-100 shrink-0 group-hover:scale-105 transition-transform duration-500 shadow-inner">
                                         {uni.logo_url ? (

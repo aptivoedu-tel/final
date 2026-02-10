@@ -76,7 +76,7 @@ if (saveNextIdx !== -1) {
                                 }
                             }
                         }}
-                        className="flex items-center gap-3 px-10 py-4 bg-slate-900 text-white rounded-2xl text-xs font-black uppercase tracking-widest hover:bg-indigo-600 transition-all shadow-xl active:scale-95"
+                        className="flex items-center gap-3 px-10 py-4 bg-slate-900 text-white rounded-2xl text-xs font-black uppercase tracking-widest hover:bg-teal-600 transition-all shadow-xl active:scale-95"
                     >
                         {activeQuestionIdx < currentSectionQuestions.length - 1 ? 'Save & Next' : 'Finish Section'}
                         <ChevronRight className="w-5 h-5" />
@@ -94,7 +94,7 @@ if (timerViewIdx !== -1) {
     for (let i = timerViewIdx; i < lines.length; i++) { if (lines[i].includes('</div>')) { divEnd = i; break; } }
 
     if (divStart !== -1 && divEnd !== -1) {
-        const newTimer = `                    <div className={\`flex items-center gap-3 px-6 py-2.5 rounded-2xl border-2 transition-all \${timeLeft < 300 ? 'bg-rose-500/20 border-rose-500 animate-pulse text-rose-400' : 'bg-slate-800 border-slate-700 text-indigo-400'}\`}>
+        const newTimer = `                    <div className={\`flex items-center gap-3 px-6 py-2.5 rounded-2xl border-2 transition-all \${timeLeft < 300 ? 'bg-rose-500/20 border-rose-500 animate-pulse text-rose-400' : 'bg-slate-800 border-slate-700 text-teal-400'}\`}>
                         <Clock className="w-5 h-5" />
                         <div className="flex flex-col items-start leading-none">
                             <span className="text-xl font-black font-mono tracking-widest">{formatTime(timeLeft)}</span>

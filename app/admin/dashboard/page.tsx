@@ -109,14 +109,14 @@ export default function AdminDashboard() {
                             value: stats.totalQuestions.toLocaleString(),
                             change: stats.changePercentages.questions,
                             icon: BookOpen,
-                            color: 'bg-blue-100 text-blue-600'
+                            color: 'bg-emerald-100 text-emerald-600'
                         },
                         {
                             label: 'Active Students',
                             value: stats.activeStudents.toLocaleString(),
                             change: stats.changePercentages.students,
                             icon: Users,
-                            color: 'bg-green-100 text-green-600'
+                            color: 'bg-emerald-100 text-emerald-600'
                         },
                         {
                             label: 'Subjects',
@@ -138,7 +138,7 @@ export default function AdminDashboard() {
                                 <div className={`w-12 h-12 rounded-xl flex items-center justify-center ${stat.color}`}>
                                     <stat.icon className="w-6 h-6" />
                                 </div>
-                                <span className={`text-xs font-bold px-2 py-1 rounded-full ${stat.change.startsWith('+') ? 'bg-green-50 text-green-600' :
+                                <span className={`text-xs font-bold px-2 py-1 rounded-full ${stat.change.startsWith('+') ? 'bg-green-50 text-emerald-600' :
                                     stat.change === '0%' ? 'bg-gray-50 text-gray-500' : 'bg-red-50 text-red-600'
                                     }`}>
                                     {stat.change}
@@ -153,13 +153,13 @@ export default function AdminDashboard() {
                 {/* Main Action Cards */}
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
                     {/* Upload MCQs */}
-                    <a href="/admin/excel-uploader" className="group relative overflow-hidden bg-blue-600 rounded-2xl p-8 text-white shadow-lg shadow-blue-600/20 hover:shadow-blue-600/30 transition-all hover:-translate-y-1 block">
+                    <a href="/admin/excel-uploader" className="group relative overflow-hidden bg-emerald-600 rounded-2xl p-8 text-white shadow-lg shadow-emerald-600/20 hover:shadow-emerald-600/30 transition-all hover:-translate-y-1 block">
                         <div className="relative z-10">
                             <div className="w-14 h-14 bg-white/20 rounded-2xl flex items-center justify-center backdrop-blur-sm mb-6 group-hover:bg-white/30 transition-colors">
                                 <UploadCloud className="w-7 h-7" />
                             </div>
                             <h3 className="text-xl font-bold mb-2">Upload MCQs</h3>
-                            <p className="text-blue-100 text-sm leading-relaxed">
+                            <p className="text-emerald-100 text-sm leading-relaxed">
                                 Import questions from Excel with validation
                             </p>
                         </div>
@@ -181,7 +181,7 @@ export default function AdminDashboard() {
                     </a>
 
                     {/* Manage Hierarchy */}
-                    <a href="/admin/hierarchy-manager" className="group relative overflow-hidden bg-green-500 rounded-2xl p-8 text-white shadow-lg shadow-green-500/20 hover:shadow-green-500/30 transition-all hover:-translate-y-1 block">
+                    <a href="/admin/hierarchy-manager" className="group relative overflow-hidden bg-emerald-500 rounded-2xl p-8 text-white shadow-lg shadow-emerald-500/20 hover:shadow-emerald-500/30 transition-all hover:-translate-y-1 block">
                         <div className="relative z-10">
                             <div className="w-14 h-14 bg-white/20 rounded-2xl flex items-center justify-center backdrop-blur-sm mb-6 group-hover:bg-white/30 transition-colors">
                                 <Network className="w-7 h-7" />

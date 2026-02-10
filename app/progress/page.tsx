@@ -99,7 +99,7 @@ export default function ProgressPage() {
                     ['Total Questions Solved', stats?.questionsSolved || 0]
                 ],
                 theme: 'striped',
-                headStyles: { fillColor: [15, 118, 110] }, // Aptivo Teal
+                headStyles: { fillColor: [15, 118, 110] }, // Aptivo indigo
                 styles: { textColor: [71, 85, 105] } // Slate-600
             });
 
@@ -235,8 +235,8 @@ export default function ProgressPage() {
                                 }))}>
                                     <defs>
                                         <linearGradient id="colorHours" x1="0" y1="0" x2="0" y2="1">
-                                            <stop offset="5%" stopColor="#0D9488" stopOpacity={0.2} />
-                                            <stop offset="95%" stopColor="#0D9488" stopOpacity={0} />
+                                            <stop offset="5%" stopColor="#0d9488" stopOpacity={0.2} />
+                                            <stop offset="95%" stopColor="#0d9488" stopOpacity={0} />
                                         </linearGradient>
                                     </defs>
                                     <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
@@ -245,7 +245,7 @@ export default function ProgressPage() {
                                     <Tooltip
                                         contentStyle={{ backgroundColor: '#fff', borderRadius: '12px', border: 'none', boxShadow: '0 4px 12px rgba(0,0,0,0.05)' }}
                                     />
-                                    <Area type="monotone" dataKey="hours" stroke="#0D9488" strokeWidth={3} fillOpacity={1} fill="url(#colorHours)" />
+                                    <Area type="monotone" dataKey="hours" stroke="#0d9488" strokeWidth={3} fillOpacity={1} fill="url(#colorHours)" />
                                 </AreaChart>
                             </ResponsiveContainer>
                         </div>

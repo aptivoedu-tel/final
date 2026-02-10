@@ -405,7 +405,7 @@ Conclusion here...`;
                                             <p className="font-medium text-gray-900 mb-3">{index + 1}. {mcq.question}</p>
                                             <div className="grid grid-cols-2 gap-2 mb-2">
                                                 {['A', 'B', 'C', 'D'].map((opt) => (
-                                                    <div key={opt} className={`p-2 rounded text-sm ${mcq.correct_option === opt ? 'bg-green-100 border border-green-200 text-green-800' : 'bg-white border border-gray-200'
+                                                    <div key={opt} className={`p-2 rounded text-sm ${mcq.correct_option === opt ? 'bg-emerald-100 border border-emerald-200 text-emerald-800' : 'bg-white border border-gray-200'
                                                         }`}>
                                                         <span className="font-bold mr-2">{opt})</span>
                                                         {mcq[`option_${opt.toLowerCase()}` as keyof MCQRow]}
@@ -433,7 +433,7 @@ Conclusion here...`;
                 {/* Success/Error States */}
                 {uploadStatus === 'success' && (
                     <div className="text-center py-12 animate-scale-in">
-                        <CheckCircle className="w-16 h-16 text-green-500 mx-auto mb-4" />
+                        <CheckCircle className="w-16 h-16 text-emerald-500 mx-auto mb-4" />
                         <h3 className="text-2xl font-bold text-gray-900 mb-2">Upload Successful!</h3>
                         <p className="text-gray-600 mb-6">
                             {activeTab === 'excel'

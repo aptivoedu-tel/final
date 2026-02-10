@@ -71,14 +71,14 @@ if (startReturnIdx !== -1) {
                     <div className="flex items-center gap-3 pr-6 border-r border-slate-700">
                         <button
                             onClick={toggleFullScreen}
-                            className="w-10 h-10 bg-indigo-600 rounded-xl flex items-center justify-center shadow-lg hover:bg-indigo-700 transition-all active:scale-95"
+                            className="w-10 h-10 bg-teal-600 rounded-xl flex items-center justify-center shadow-lg hover:bg-teal-700 transition-all active:scale-95"
                             title="Toggle Fullscreen"
                         >
                             <Maximize2 className="w-5 h-5" />
                         </button>
                         <div>
                             <h1 className="text-sm font-black uppercase tracking-widest">{exam?.name}</h1>
-                            <p className="text-[10px] font-black text-indigo-400 uppercase tracking-tighter">Official Examination Environment</p>
+                            <p className="text-[10px] font-black text-teal-400 uppercase tracking-tighter">Official Examination Environment</p>
                         </div>
                     </div>
 
@@ -105,7 +105,7 @@ if (startReturnIdx !== -1) {
                 </div>
 
                 <div className="flex items-center gap-8">
-                    <div className={\`flex items-center gap-3 px-6 py-2.5 rounded-2xl border-2 transition-all \${timeLeft < 300 ? 'bg-rose-500/20 border-rose-500 animate-pulse text-rose-400' : 'bg-slate-800 border-slate-700 text-indigo-400'}\`}>
+                    <div className={\`flex items-center gap-3 px-6 py-2.5 rounded-2xl border-2 transition-all \${timeLeft < 300 ? 'bg-rose-500/20 border-rose-500 animate-pulse text-rose-400' : 'bg-slate-800 border-slate-700 text-teal-400'}\`}>
                         <Clock className="w-5 h-5" />
                         <div className="flex flex-col items-start leading-none">
                             <span className="text-xl font-black font-mono tracking-widest">{formatTime(timeLeft)}</span>
@@ -135,7 +135,7 @@ if (startReturnIdx !== -1) {
                                     {activeQuestionIdx + 1}
                                 </div>
                                 <div>
-                                    <h4 className="text-[10px] font-black text-indigo-600 uppercase tracking-widest">Question Workspace</h4>
+                                    <h4 className="text-[10px] font-black text-teal-600 uppercase tracking-widest">Question Workspace</h4>
                                     <p className="text-xs font-bold text-slate-400">{activeQuestion.marks} Mark(s) Assigned</p>
                                 </div>
                             </div>
@@ -187,9 +187,9 @@ if (startReturnIdx !== -1) {
                                                                 handleAnswer(activeQuestion.id, next);
                                                             }
                                                         }}
-                                                        className={\`p-6 rounded-[2rem] border-2 text-left transition-all flex items-center gap-5 group \${isSelected ? 'bg-indigo-600 border-indigo-600 text-white shadow-2xl shadow-indigo-200' : 'bg-white border-slate-100 hover:border-indigo-200 hover:bg-indigo-50/50'}\`}
+                                                        className={\`p-6 rounded-[2rem] border-2 text-left transition-all flex items-center gap-5 group \${isSelected ? 'bg-teal-600 border-teal-600 text-white shadow-2xl shadow-teal-200' : 'bg-white border-slate-100 hover:border-teal-200 hover:bg-teal-50/50'}\`}
                                                     >
-                                                        <div className={\`w-8 h-8 rounded-full border-2 flex items-center justify-center font-black text-xs transition-all \${isSelected ? 'bg-white text-indigo-600 border-white' : 'bg-slate-50 text-slate-400 border-slate-200 group-hover:bg-white group-hover:text-indigo-600 group-hover:border-indigo-600'}\`}>
+                                                        <div className={\`w-8 h-8 rounded-full border-2 flex items-center justify-center font-black text-xs transition-all \${isSelected ? 'bg-white text-teal-600 border-white' : 'bg-slate-50 text-slate-400 border-slate-200 group-hover:bg-white group-hover:text-teal-600 group-hover:border-teal-600'}\`}>
                                                             {opt.id.toUpperCase()}
                                                         </div>
                                                         <span className="text-sm font-bold">{opt.text}</span>
@@ -205,7 +205,7 @@ if (startReturnIdx !== -1) {
                                                 <button
                                                     key={val}
                                                     onClick={() => handleAnswer(activeQuestion.id, val)}
-                                                    className={\`flex-1 py-8 rounded-[2.5rem] border-2 font-black text-sm uppercase tracking-widest transition-all \${answers[activeQuestion.id] === val ? 'bg-indigo-600 border-indigo-600 text-white shadow-2xl shadow-indigo-200' : 'bg-white border-slate-100 hover:border-indigo-200'}\`}
+                                                    className={\`flex-1 py-8 rounded-[2.5rem] border-2 font-black text-sm uppercase tracking-widest transition-all \${answers[activeQuestion.id] === val ? 'bg-teal-600 border-teal-600 text-white shadow-2xl shadow-teal-200' : 'bg-white border-slate-100 hover:border-teal-200'}\`}
                                                 >
                                                     {val}
                                                 </button>
@@ -218,7 +218,7 @@ if (startReturnIdx !== -1) {
                                             <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-4">Numerical Response</label>
                                             <input
                                                 type="text"
-                                                className="w-full p-8 bg-white border-2 border-slate-100 rounded-[2.5rem] outline-none focus:border-indigo-600 focus:ring-4 focus:ring-indigo-600/10 font-black text-2xl text-slate-900 shadow-sm"
+                                                className="w-full p-8 bg-white border-2 border-slate-100 rounded-[2.5rem] outline-none focus:border-teal-600 focus:ring-4 focus:ring-teal-600/10 font-black text-2xl text-slate-900 shadow-sm"
                                                 placeholder="Enter value..."
                                                 value={answers[activeQuestion.id] || ''}
                                                 onChange={(e) => handleAnswer(activeQuestion.id, e.target.value)}
@@ -230,7 +230,7 @@ if (startReturnIdx !== -1) {
                                         <div className="space-y-4">
                                             <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-4">Essay / Long Answer</label>
                                             <textarea
-                                                className="w-full p-8 bg-white border-2 border-slate-100 rounded-[2.5rem] outline-none focus:border-indigo-600 focus:ring-4 focus:ring-indigo-600/10 font-bold text-lg text-slate-700 shadow-sm min-h-[400px]"
+                                                className="w-full p-8 bg-white border-2 border-slate-100 rounded-[2.5rem] outline-none focus:border-teal-600 focus:ring-4 focus:ring-teal-600/10 font-bold text-lg text-slate-700 shadow-sm min-h-[400px]"
                                                 placeholder="Begin typing your response here..."
                                                 value={answers[activeQuestion.id] || ''}
                                                 onChange={(e) => handleAnswer(activeQuestion.id, e.target.value)}
@@ -265,7 +265,7 @@ if (startReturnIdx !== -1) {
                                             }
                                         }
                                     }}
-                                    className="flex items-center gap-3 px-10 py-4 bg-slate-900 text-white rounded-2xl text-xs font-black uppercase tracking-widest hover:bg-indigo-600 transition-all shadow-xl active:scale-95"
+                                    className="flex items-center gap-3 px-10 py-4 bg-slate-900 text-white rounded-2xl text-xs font-black uppercase tracking-widest hover:bg-teal-600 transition-all shadow-xl active:scale-95"
                                 >
                                     {activeQuestionIdx < currentSectionQuestions.length - 1 ? 'Save & Next' : 'Finish Section'}
                                     <ChevronRight className="w-5 h-5" />
@@ -285,7 +285,7 @@ if (startReturnIdx !== -1) {
                         <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-4">Question Navigator</h4>
                         <div className="flex items-center gap-4">
                             <div className="flex items-center gap-2">
-                                <div className="w-3 h-3 bg-indigo-600 rounded-sm" />
+                                <div className="w-3 h-3 bg-teal-600 rounded-sm" />
                                 <span className="text-[9px] font-black text-slate-500 uppercase">Answered</span>
                             </div>
                             <div className="flex items-center gap-2">
@@ -304,7 +304,7 @@ if (startReturnIdx !== -1) {
                                         key={q.id}
                                         onClick={() => setActiveQuestionIdx(idx)}
                                         className={\`w-full aspect-square rounded-xl flex items-center justify-center text-xs font-black border-2 transition-all \${activeQuestionIdx === idx ? 'scale-110 shadow-lg border-slate-900 bg-slate-900 text-white' :
-                                            isAnswered ? 'bg-indigo-50 border-indigo-200 text-indigo-600' :
+                                            isAnswered ? 'bg-teal-50 border-teal-200 text-teal-600' :
                                                 'bg-white border-slate-100 text-slate-400 hover:border-slate-300'
                                             }\`}
                                     >
@@ -325,7 +325,7 @@ if (startReturnIdx !== -1) {
                             </div>
                             <div className="w-full h-2 bg-slate-100 rounded-full overflow-hidden">
                                 <div
-                                    className="h-full bg-indigo-600 transition-all duration-1000"
+                                    className="h-full bg-teal-600 transition-all duration-1000"
                                     style={{ width: \`\${(Object.keys(answers).length / questions.length) * 100}%\` }}
                                 />
                             </div>
@@ -350,7 +350,7 @@ if (startReturnIdx !== -1) {
                                 {exam?.allow_continue_after_time_up && (
                                     <button
                                         onClick={() => setIsTimeUpModalOpen(false)}
-                                        className="w-full py-5 bg-indigo-600 text-white rounded-2xl font-black uppercase text-xs tracking-widest hover:bg-indigo-700 transition-all shadow-xl active:scale-95"
+                                        className="w-full py-5 bg-teal-600 text-white rounded-2xl font-black uppercase text-xs tracking-widest hover:bg-teal-700 transition-all shadow-xl active:scale-95"
                                     >
                                         Continue Effort (Mark Lated)
                                     </button>

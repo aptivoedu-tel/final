@@ -256,7 +256,7 @@ export class DashboardService {
 
             if (error) throw error;
 
-            const colors = ['text-indigo-600', 'text-orange-600', 'text-teal-600', 'text-purple-600'];
+            const colors = ['text-teal-600', 'text-orange-600', 'text-teal-600', 'text-purple-600'];
 
             const items: ContinueLearningItem[] = (data || []).map((item: any, index: number) => ({
                 title: item.subtopics?.name || 'Unknown',

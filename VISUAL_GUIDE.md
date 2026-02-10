@@ -226,7 +226,7 @@ Primary (Mint):      ████ #88D1B1
 Primary Light:       ████ #A3E4C7
 Primary Dark:        ████ #6DB89F
 
-Secondary (Indigo):  ████ #6366F1
+Secondary (Indigo):  ████ #14b8a6
 Secondary Light:     ████ #818CF8
 
 Background:          ████ #F8FAFC

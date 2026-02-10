@@ -36,7 +36,7 @@ export default function SettingsPage() {
                         <button
                             onClick={handleSave}
                             disabled={loading}
-                            className="w-full sm:w-auto flex items-center justify-center gap-2 px-6 py-2.5 bg-indigo-600 text-white font-black uppercase tracking-wider text-[11px] rounded-xl hover:bg-slate-900 transition-all shadow-lg shadow-indigo-100 active:scale-95"
+                            className="w-full sm:w-auto flex items-center justify-center gap-2 px-6 py-2.5 bg-teal-600 text-white font-black uppercase tracking-wider text-[11px] rounded-xl hover:bg-slate-900 transition-all shadow-lg shadow-teal-100 active:scale-95"
                         >
                             {loading ? null : <Save className="w-4 h-4" />}
                             Save Changes
@@ -56,7 +56,7 @@ export default function SettingsPage() {
                                         key={item.id}
                                         onClick={() => setActiveTab(item.id)}
                                         className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all ${activeTab === item.id
-                                            ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-100'
+                                            ? 'bg-teal-600 text-white shadow-lg shadow-teal-100'
                                             : 'text-slate-500 hover:bg-slate-50'
                                             }`}
                                     >
@@ -80,12 +80,12 @@ export default function SettingsPage() {
                                         <div className="space-y-4">
                                             <div>
                                                 <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">Institution Identity</label>
-                                                <input type="text" defaultValue="Aptivo University" className="w-full px-5 py-3 bg-slate-50 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-indigo-500/20 font-bold text-slate-700" />
+                                                <input type="text" defaultValue="Aptivo University" className="w-full px-5 py-3 bg-slate-50 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-teal-500/20 font-bold text-slate-700" />
                                             </div>
 
                                             <div>
                                                 <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">Primary Academic Domain</label>
-                                                <input type="text" defaultValue="aptivo.edu" className="w-full px-5 py-3 bg-slate-50 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-indigo-500/20 font-bold text-slate-700" />
+                                                <input type="text" defaultValue="aptivo.edu" className="w-full px-5 py-3 bg-slate-50 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-teal-500/20 font-bold text-slate-700" />
                                             </div>
                                         </div>
 
@@ -128,7 +128,7 @@ export default function SettingsPage() {
                                                 </div>
                                                 <label className="relative inline-flex items-center cursor-pointer">
                                                     <input type="checkbox" className="sr-only peer" defaultChecked />
-                                                    <div className="w-11 h-6 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-indigo-600"></div>
+                                                    <div className="w-11 h-6 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-teal-600"></div>
                                                 </label>
                                             </div>
                                         </div>
@@ -144,9 +144,9 @@ export default function SettingsPage() {
 
                                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                                             {['Registration Alerts', 'Upload Verification', 'System Diagnostics', 'Performance Reports'].map((item, i) => (
-                                                <label key={i} className="flex items-center gap-4 p-4 rounded-2xl bg-slate-50 border border-slate-100 cursor-pointer hover:bg-white hover:border-indigo-100 transition-all group">
-                                                    <input type="checkbox" id={`notif-${item}`} defaultChecked className="w-5 h-5 text-indigo-600 rounded-lg border-slate-200 focus:ring-indigo-500/20" />
-                                                    <span className="text-xs font-bold text-slate-600 group-hover:text-indigo-600 transition-colors uppercase tracking-widest">{item}</span>
+                                                <label key={i} className="flex items-center gap-4 p-4 rounded-2xl bg-slate-50 border border-slate-100 cursor-pointer hover:bg-white hover:border-teal-100 transition-all group">
+                                                    <input type="checkbox" id={`notif-${item}`} defaultChecked className="w-5 h-5 text-teal-600 rounded-lg border-slate-200 focus:ring-teal-500/20" />
+                                                    <span className="text-xs font-bold text-slate-600 group-hover:text-teal-600 transition-colors uppercase tracking-widest">{item}</span>
                                                 </label>
                                             ))}
                                         </div>

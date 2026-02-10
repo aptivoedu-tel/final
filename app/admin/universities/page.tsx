@@ -261,7 +261,7 @@ export default function UniversitiesPage() {
                                         </div>
 
                                         <div className="mt-6 pt-6 border-t border-gray-50 flex items-center justify-between">
-                                            <span className={`flex items-center gap-1.5 text-xs font-bold ${u.is_active ? 'text-green-600' : 'text-gray-400'}`}>
+                                            <span className={`flex items-center gap-1.5 text-xs font-bold ${u.is_active ? 'text-emerald-600' : 'text-gray-400'}`}>
                                                 <CheckCircle className="w-3.5 h-3.5" /> {u.is_active ? 'ACTIVE' : 'INACTIVE'}
                                             </span>
                                             {/* Visibility Indicator */}

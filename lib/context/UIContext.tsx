@@ -18,12 +18,16 @@ const UIContext = createContext<UIContextType | undefined>(undefined);
 export const UIProvider = ({ children }: { children: ReactNode }) => {
     const [isSidebarOpen, setIsSidebarOpen] = useState(false);
     const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(true);
-    const [isDarkMode, setIsDarkMode] = useState(() => {
+    const [isDarkMode, setIsDarkMode] = useState(false);
+
+    // Hydrate state from local storage on mount
+    useEffect(() => {
         if (typeof window !== 'undefined') {
-            return localStorage.getItem('aptivo_dark_mode') === 'true';
+            const stored = localStorage.getItem('aptivo_dark_mode');
+            if (stored) setIsDarkMode(stored === 'true');
         }
-        return false;
-    });
+    }, []
+    );
 
     const toggleSidebar = () => setIsSidebarOpen(prev => !prev);
     const closeSidebar = () => setIsSidebarOpen(false);

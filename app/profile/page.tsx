@@ -175,7 +175,7 @@ export default function ProfilePage() {
                     </div>
 
                     {message && (
-                        <div className={`mb-6 p-4 rounded-xl flex items-center gap-3 ${message.type === 'success' ? 'bg-green-50 text-green-700 border border-green-200' : 'bg-red-50 text-red-700 border border-red-200'
+                        <div className={`mb-6 p-4 rounded-xl flex items-center gap-3 ${message.type === 'success' ? 'bg-green-50 text-emerald-700 border border-emerald-200' : 'bg-red-50 text-red-700 border border-red-200'
                             }`}>
                             {message.type === 'success' ? <CheckCircle className="w-5 h-5" /> : <XCircle className="w-5 h-5" />}
                             <span className="font-medium">{message.text}</span>
@@ -192,7 +192,7 @@ export default function ProfilePage() {
                                                 {profile?.avatar_url ? (
                                                     <img src={profile.avatar_url} alt="Profile" className="w-full h-full object-cover" />
                                                 ) : (
-                                                    <div className="w-full h-full flex items-center justify-center bg-indigo-50 text-indigo-300">
+                                                    <div className="w-full h-full flex items-center justify-center bg-teal-50 text-teal-300">
                                                         <User className="w-16 h-16" />
                                                     </div>
                                                 )}
@@ -200,7 +200,7 @@ export default function ProfilePage() {
                                             <button
                                                 type="button"
                                                 onClick={() => fileInputRef.current?.click()}
-                                                className="absolute bottom-0 right-0 bg-indigo-600 text-white p-2.5 rounded-full shadow-lg hover:bg-indigo-700 transition-colors"
+                                                className="absolute bottom-0 right-0 bg-teal-600 text-white p-2.5 rounded-full shadow-lg hover:bg-teal-700 transition-colors"
                                                 disabled={loading}
                                             >
                                                 <Camera className="w-5 h-5" />
@@ -221,7 +221,7 @@ export default function ProfilePage() {
                                                 <span>{profile?.email}</span>
                                             </div>
                                             <div className="flex flex-wrap gap-2 justify-center sm:justify-start">
-                                                <span className="px-3 py-1 bg-indigo-50 text-indigo-700 rounded-full text-xs font-bold uppercase tracking-wider">
+                                                <span className="px-3 py-1 bg-teal-50 text-teal-700 rounded-full text-xs font-bold uppercase tracking-wider">
                                                     {profile?.role}
                                                 </span>
                                             </div>
@@ -235,7 +235,7 @@ export default function ProfilePage() {
                                                 type="text"
                                                 value={fullName}
                                                 onChange={(e) => setFullName(e.target.value)}
-                                                className="w-full px-4 py-3 rounded-lg border border-gray-200 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100 outline-none transition-all"
+                                                className="w-full px-4 py-3 rounded-lg border border-gray-200 focus:border-teal-500 focus:ring-2 focus:ring-teal-100 outline-none transition-all"
                                                 placeholder="Enter your full name"
                                             />
                                         </div>
@@ -267,7 +267,7 @@ export default function ProfilePage() {
                                                 type="password"
                                                 value={currentPassword}
                                                 onChange={(e) => setCurrentPassword(e.target.value)}
-                                                className="w-full px-4 py-3 rounded-lg border border-gray-200 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100 outline-none transition-all"
+                                                className="w-full px-4 py-3 rounded-lg border border-gray-200 focus:border-teal-500 focus:ring-2 focus:ring-teal-100 outline-none transition-all"
                                                 placeholder="••••••••"
                                             />
                                         </div>
@@ -277,7 +277,7 @@ export default function ProfilePage() {
                                                 type="password"
                                                 value={newPassword}
                                                 onChange={(e) => setNewPassword(e.target.value)}
-                                                className="w-full px-4 py-3 rounded-lg border border-gray-200 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100 outline-none transition-all"
+                                                className="w-full px-4 py-3 rounded-lg border border-gray-200 focus:border-teal-500 focus:ring-2 focus:ring-teal-100 outline-none transition-all"
                                                 placeholder="••••••••"
                                             />
                                         </div>
@@ -296,7 +296,7 @@ export default function ProfilePage() {
 
                             <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-4 md:p-8">
                                 <h3 className="text-lg font-bold text-slate-800 mb-2 flex items-center gap-2">
-                                    <Star className="w-5 h-5 text-teal-600 fill-teal-600" />
+                                    <Star className="w-5 h-5 text-teal-600 fill-indigo-600" />
                                     Feedback
                                 </h3>
                                 <p className="text-slate-500 text-sm mb-6 font-medium">Have suggestions? Let us know how we can improve.</p>
@@ -349,13 +349,13 @@ export default function ProfilePage() {
                         <div className="space-y-8">
                             <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
                                 <h3 className="text-lg font-bold text-slate-800 mb-6 flex items-center gap-2">
-                                    <Activity className="w-5 h-5 text-indigo-500" />
+                                    <Activity className="w-5 h-5 text-teal-500" />
                                     Learning Overview
                                 </h3>
                                 <div className="space-y-4">
                                     <div className="flex items-center justify-between p-4 bg-gray-50 rounded-xl">
                                         <div className="flex items-center gap-3">
-                                            <div className="w-10 h-10 rounded-lg bg-indigo-100 flex items-center justify-center text-indigo-600">
+                                            <div className="w-10 h-10 rounded-lg bg-teal-100 flex items-center justify-center text-teal-600">
                                                 <CheckCircle className="w-5 h-5" />
                                             </div>
                                             <div>
@@ -377,7 +377,7 @@ export default function ProfilePage() {
                                     </div>
                                     <div className="flex items-center justify-between p-4 bg-gray-50 rounded-xl">
                                         <div className="flex items-center gap-3">
-                                            <div className="w-10 h-10 rounded-lg bg-green-100 flex items-center justify-center text-green-600">
+                                            <div className="w-10 h-10 rounded-lg bg-emerald-100 flex items-center justify-center text-emerald-600">
                                                 <TrophyIcon className="w-5 h-5" />
                                             </div>
                                             <div>
@@ -409,7 +409,7 @@ export default function ProfilePage() {
                                                         <MapPin className="w-3 h-3" />
                                                         {item.universities.city}, {item.universities.country}
                                                     </div>
-                                                    <span className="inline-block mt-2 px-2 py-0.5 bg-green-50 text-green-700 rounded text-xs font-bold">
+                                                    <span className="inline-block mt-2 px-2 py-0.5 bg-green-50 text-emerald-700 rounded text-xs font-bold">
                                                         Active
                                                     </span>
                                                 </div>
@@ -433,7 +433,7 @@ export default function ProfilePage() {
                                     <div className="relative pl-4 border-l-2 border-gray-100 space-y-6">
                                         {activity.map((item, i) => (
                                             <div key={i} className="relative">
-                                                <div className="absolute -left-[21px] top-1 w-3 h-3 rounded-full bg-indigo-600 border-2 border-white shadow-sm"></div>
+                                                <div className="absolute -left-[21px] top-1 w-3 h-3 rounded-full bg-teal-600 border-2 border-white shadow-sm"></div>
                                                 <p className="text-sm text-slate-800 font-medium">{item.activity_type.replace(/_/g, ' ')}</p>
                                                 <p className="text-xs text-slate-500 mt-1">
                                                     {new Date(item.created_at).toLocaleDateString()}

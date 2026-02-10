@@ -308,7 +308,7 @@ export default function UniversityExamManager({ uniId, userRole, onBack }: Unive
                 }
             } else {
                 // EDITING - Preserving existing ownership unless explicitly transferred (not implemented here)
-                // We do NOT overwrite institution_id here to avoid "stealing" exams or breaking global status
+                // We do NOT overwrite institution_id here to avoid "sindigoing" exams or breaking global status
             }
 
             // Handle Dates
@@ -644,7 +644,7 @@ export default function UniversityExamManager({ uniId, userRole, onBack }: Unive
                                         {filteredExams.filter(e => e.institution_id !== null).map(exam => (
                                             <div
                                                 key={exam.id}
-                                                className="group relative bg-gradient-to-br from-emerald-600 to-green-600 p-10 rounded-xl shadow-2xl hover:shadow-amber-500/20 transition-all duration-500 overflow-hidden flex flex-col min-h-[350px]"
+                                                className="group relative bg-gradient-to-br from-blue-600 to-blue-600 p-10 rounded-xl shadow-2xl hover:shadow-amber-500/20 transition-all duration-500 overflow-hidden flex flex-col min-h-[350px]"
                                             >
                                                 <div className="absolute top-0 right-0 w-48 h-48 bg-white/10 rounded-full -translate-y-1/2 translate-x-1/2 group-hover:scale-150 transition-transform duration-700" />
                                                 <div className="absolute top-4 left-4 z-20">
@@ -1065,7 +1065,7 @@ export default function UniversityExamManager({ uniId, userRole, onBack }: Unive
                                         type="text"
                                         value={examForm.name}
                                         onChange={(e) => setExamForm({ ...examForm, name: e.target.value })}
-                                        className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-emerald-500 outline-none transition-all font-medium"
+                                        className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none transition-all font-medium"
                                         placeholder="e.g. Final Semester Physics"
                                     />
                                 </div>
@@ -1075,7 +1075,7 @@ export default function UniversityExamManager({ uniId, userRole, onBack }: Unive
                                     <select
                                         value={examForm.exam_type}
                                         onChange={(e) => setExamForm({ ...examForm, exam_type: e.target.value })}
-                                        className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-emerald-500 outline-none transition-all font-medium"
+                                        className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none transition-all font-medium"
                                     >
                                         <option value="mock">Mock Test</option>
                                         <option value="module">Module Assessment</option>
@@ -1089,7 +1089,7 @@ export default function UniversityExamManager({ uniId, userRole, onBack }: Unive
                                         type="number"
                                         value={examForm.total_duration}
                                         onChange={(e) => setExamForm({ ...examForm, total_duration: parseInt(e.target.value) })}
-                                        className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-emerald-500 outline-none transition-all font-medium"
+                                        className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none transition-all font-medium"
                                     />
                                 </div>
 
@@ -1099,7 +1099,7 @@ export default function UniversityExamManager({ uniId, userRole, onBack }: Unive
                                         type="datetime-local"
                                         value={examForm.start_time}
                                         onChange={(e) => setExamForm({ ...examForm, start_time: e.target.value })}
-                                        className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-emerald-500 outline-none transition-all font-medium"
+                                        className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none transition-all font-medium"
                                     />
                                 </div>
 
@@ -1109,7 +1109,7 @@ export default function UniversityExamManager({ uniId, userRole, onBack }: Unive
                                         type="datetime-local"
                                         value={examForm.end_time}
                                         onChange={(e) => setExamForm({ ...examForm, end_time: e.target.value })}
-                                        className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-emerald-500 outline-none transition-all font-medium"
+                                        className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none transition-all font-medium"
                                     />
                                 </div>
                             </div>
@@ -1190,7 +1190,7 @@ export default function UniversityExamManager({ uniId, userRole, onBack }: Unive
                                     type="text"
                                     value={sectionForm.name}
                                     onChange={(e) => setSectionForm({ ...sectionForm, name: e.target.value })}
-                                    className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-emerald-500 outline-none transition-all font-medium"
+                                    className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none transition-all font-medium"
                                     placeholder="e.g. Physics Section A"
                                 />
                             </div>
@@ -1202,7 +1202,7 @@ export default function UniversityExamManager({ uniId, userRole, onBack }: Unive
                                         type="number"
                                         value={sectionForm.num_questions}
                                         onChange={(e) => setSectionForm({ ...sectionForm, num_questions: parseInt(e.target.value) })}
-                                        className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-emerald-500 outline-none transition-all font-medium"
+                                        className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none transition-all font-medium"
                                     />
                                 </div>
                                 <div>
@@ -1211,7 +1211,7 @@ export default function UniversityExamManager({ uniId, userRole, onBack }: Unive
                                         type="number"
                                         value={sectionForm.weightage}
                                         onChange={(e) => setSectionForm({ ...sectionForm, weightage: parseInt(e.target.value) })}
-                                        className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-emerald-500 outline-none transition-all font-medium"
+                                        className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none transition-all font-medium"
                                     />
                                 </div>
                             </div>
@@ -1256,7 +1256,7 @@ export default function UniversityExamManager({ uniId, userRole, onBack }: Unive
                                         <textarea
                                             value={questionForm.question_text}
                                             onChange={(e) => setQuestionForm({ ...questionForm, question_text: e.target.value })}
-                                            className="w-full p-4 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-emerald-500 outline-none transition-all font-medium min-h-[120px] resize-none"
+                                            className="w-full p-4 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none transition-all font-medium min-h-[120px] resize-none"
                                             placeholder="Enter your question here..."
                                         />
                                     </div>
@@ -1267,7 +1267,7 @@ export default function UniversityExamManager({ uniId, userRole, onBack }: Unive
                                             <select
                                                 value={questionForm.question_type}
                                                 onChange={(e) => setQuestionForm({ ...questionForm, question_type: e.target.value })}
-                                                className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-emerald-500 outline-none transition-all font-medium"
+                                                className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none transition-all font-medium"
                                             >
                                                 <option value="mcq_single">Single Choice MCQ</option>
                                                 <option value="true_false">True / False</option>
@@ -1280,7 +1280,7 @@ export default function UniversityExamManager({ uniId, userRole, onBack }: Unive
                                                 type="number"
                                                 value={questionForm.marks}
                                                 onChange={(e) => setQuestionForm({ ...questionForm, marks: parseInt(e.target.value) })}
-                                                className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-emerald-500 outline-none transition-all font-medium"
+                                                className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none transition-all font-medium"
                                             />
                                         </div>
                                     </div>
@@ -1320,7 +1320,7 @@ export default function UniversityExamManager({ uniId, userRole, onBack }: Unive
                                                                 newOptions[idx] = e.target.value;
                                                                 setQuestionForm({ ...questionForm, options: newOptions });
                                                             }}
-                                                            className="flex-1 p-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-emerald-500 outline-none transition-all font-medium text-sm"
+                                                            className="flex-1 p-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none transition-all font-medium text-sm"
                                                             placeholder={`Option ${idx + 1}`}
                                                         />
                                                         <input
@@ -1328,7 +1328,7 @@ export default function UniversityExamManager({ uniId, userRole, onBack }: Unive
                                                             name="correct_answer"
                                                             checked={parseInt(questionForm.correct_answer) === idx + 1}
                                                             onChange={() => setQuestionForm({ ...questionForm, correct_answer: idx + 1 })}
-                                                            className="w-5 h-5 text-emerald-600 focus:ring-emerald-500 border-gray-300"
+                                                            className="w-5 h-5 text-emerald-600 focus:ring-blue-500 border-gray-300"
                                                         />
                                                     </div>
                                                 ))}
@@ -1341,7 +1341,7 @@ export default function UniversityExamManager({ uniId, userRole, onBack }: Unive
                                         <textarea
                                             value={questionForm.explanation}
                                             onChange={(e) => setQuestionForm({ ...questionForm, explanation: e.target.value })}
-                                            className="w-full p-4 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-emerald-500 outline-none transition-all font-medium min-h-[100px] resize-none"
+                                            className="w-full p-4 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none transition-all font-medium min-h-[100px] resize-none"
                                             placeholder="Explain why the answer is correct..."
                                         />
                                     </div>

@@ -19,7 +19,7 @@ A comprehensive educational platform implementing ALL requested high-priority fe
 
 ### Design Philosophy
 - **Glassmorphism UI**: Soft, translucent cards with backdrop blur
-- **Mint Green Theme**: `#88D1B1` primary, `#6366F1` secondary
+- **Mint Green Theme**: `#88D1B1` primary, `#14b8a6` secondary
 - **Responsive**: Mobile-first approach
 - **Accessible**: Semantic HTML, ARIA labels, keyboard navigation
 - **Performant**: Code splitting, lazy loading, optimized images

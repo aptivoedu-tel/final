@@ -100,7 +100,7 @@ export default function InstitutionAnalyticsPage() {
                                 <select
                                     value={selectedInstId || ''}
                                     onChange={(e) => setSelectedInstId(Number(e.target.value))}
-                                    className="appearance-none bg-white border border-gray-200 rounded-xl px-5 py-3 pr-12 font-bold text-slate-700 shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-100 focus:border-indigo-400 transition-all cursor-pointer"
+                                    className="appearance-none bg-white border border-gray-200 rounded-xl px-5 py-3 pr-12 font-bold text-slate-700 shadow-sm focus:outline-none focus:ring-2 focus:ring-teal-100 focus:border-teal-400 transition-all cursor-pointer"
                                 >
                                     {institutions.map((item) => (
                                         <option key={item.institutions.id} value={item.institutions.id}>
@@ -130,14 +130,14 @@ export default function InstitutionAnalyticsPage() {
                                         label: 'Total Students',
                                         value: stats?.totalStudents || 0,
                                         icon: Users,
-                                        color: 'bg-blue-600',
+                                        color: 'bg-emerald-600',
                                         trend: '+5%'
                                     },
                                     {
                                         label: 'Active Today',
                                         value: stats?.activeToday || 0,
                                         icon: Activity,
-                                        color: 'bg-green-500',
+                                        color: 'bg-emerald-500',
                                         trend: '+12%'
                                     },
                                     {
@@ -160,7 +160,7 @@ export default function InstitutionAnalyticsPage() {
                                             <div className={`w-12 h-12 rounded-xl flex items-center justify-center ${card.color} text-white shadow-lg`}>
                                                 <card.icon className="w-6 h-6" />
                                             </div>
-                                            <span className="text-xs font-bold text-green-600 bg-green-50 px-2 py-1 rounded-full group-hover:scale-110 transition-transform">
+                                            <span className="text-xs font-bold text-emerald-600 bg-green-50 px-2 py-1 rounded-full group-hover:scale-110 transition-transform">
                                                 {card.trend}
                                             </span>
                                         </div>
@@ -179,7 +179,7 @@ export default function InstitutionAnalyticsPage() {
                                     <div className="bg-white p-8 rounded-2xl shadow-sm border border-gray-100">
                                         <div className="flex justify-between items-center mb-8">
                                             <h3 className="font-bold text-slate-800 text-lg flex items-center gap-2">
-                                                <Target className="w-5 h-5 text-indigo-600" />
+                                                <Target className="w-5 h-5 text-teal-600" />
                                                 Performance Trend
                                             </h3>
                                             <div className="text-xs font-medium text-slate-400 bg-gray-50 px-3 py-1.5 rounded-lg border border-gray-100">
@@ -200,8 +200,8 @@ export default function InstitutionAnalyticsPage() {
                                                 ]}>
                                                     <defs>
                                                         <linearGradient id="colorScore" x1="0" y1="0" x2="0" y2="1">
-                                                            <stop offset="5%" stopColor="#6366f1" stopOpacity={0.1} />
-                                                            <stop offset="95%" stopColor="#6366f1" stopOpacity={0} />
+                                                            <stop offset="5%" stopColor="#14b8a6" stopOpacity={0.1} />
+                                                            <stop offset="95%" stopColor="#14b8a6" stopOpacity={0} />
                                                         </linearGradient>
                                                     </defs>
                                                     <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
@@ -210,7 +210,7 @@ export default function InstitutionAnalyticsPage() {
                                                     <Tooltip
                                                         contentStyle={{ borderRadius: '16px', border: 'none', boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1)' }}
                                                     />
-                                                    <Area type="monotone" dataKey="score" stroke="#6366f1" strokeWidth={4} fillOpacity={1} fill="url(#colorScore)" />
+                                                    <Area type="monotone" dataKey="score" stroke="#14b8a6" strokeWidth={4} fillOpacity={1} fill="url(#colorScore)" />
                                                 </AreaChart>
                                             </ResponsiveContainer>
                                         </div>
@@ -238,7 +238,7 @@ export default function InstitutionAnalyticsPage() {
                                                         <tr key={i} className="hover:bg-gray-50 transition-colors">
                                                             <td className="py-4">
                                                                 <div className="flex items-center gap-3">
-                                                                    <div className="w-8 h-8 rounded-full bg-indigo-50 flex items-center justify-center text-indigo-600 font-bold text-xs">
+                                                                    <div className="w-8 h-8 rounded-full bg-teal-50 flex items-center justify-center text-teal-600 font-bold text-xs">
                                                                         {student.name.charAt(0)}
                                                                     </div>
                                                                     <span className="font-bold text-slate-700">{student.name}</span>
@@ -247,7 +247,7 @@ export default function InstitutionAnalyticsPage() {
                                                             <td className="py-4">
                                                                 <div className="flex items-center gap-2">
                                                                     <div className="w-16 h-2 bg-gray-100 rounded-full overflow-hidden">
-                                                                        <div className="h-full bg-green-500 rounded-full" style={{ width: `${student.score}%` }}></div>
+                                                                        <div className="h-full bg-emerald-500 rounded-full" style={{ width: `${student.score}%` }}></div>
                                                                     </div>
                                                                     <span className="font-medium text-slate-600">{student.score}%</span>
                                                                 </div>
@@ -269,7 +269,7 @@ export default function InstitutionAnalyticsPage() {
                                 <div className="space-y-8">
                                     <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
                                         <h3 className="font-bold text-slate-800 mb-6 flex items-center gap-2">
-                                            <TrendingUp className="w-5 h-5 text-indigo-600" />
+                                            <TrendingUp className="w-5 h-5 text-teal-600" />
                                             Subject Distribution
                                         </h3>
                                         <div className="h-64">
@@ -287,7 +287,7 @@ export default function InstitutionAnalyticsPage() {
                                                         paddingAngle={5}
                                                         dataKey="value"
                                                     >
-                                                        <Cell fill="#6366f1" />
+                                                        <Cell fill="#14b8a6" />
                                                         <Cell fill="#10b981" />
                                                         <Cell fill="#f59e0b" />
                                                         <Cell fill="#ec4899" />
@@ -298,8 +298,8 @@ export default function InstitutionAnalyticsPage() {
                                         </div>
                                         <div className="space-y-3 mt-4">
                                             {[
-                                                { name: 'Mathematics', color: 'bg-indigo-600', val: '45%' },
-                                                { name: 'Physics', color: 'bg-green-500', val: '25%' },
+                                                { name: 'Mathematics', color: 'bg-teal-600', val: '45%' },
+                                                { name: 'Physics', color: 'bg-emerald-500', val: '25%' },
                                                 { name: 'Chemistry', color: 'bg-yellow-500', val: '20%' },
                                                 { name: 'Biology', color: 'bg-pink-500', val: '10%' },
                                             ].map((item, i) => (
@@ -330,7 +330,7 @@ export default function InstitutionAnalyticsPage() {
                                                     Email to Students
                                                     <ChevronDown className="w-4 h-4 -rotate-90 group-hover:translate-x-1 transition-transform" />
                                                 </button>
-                                                <button className="w-full py-3 px-4 bg-indigo-600 hover:bg-indigo-700 rounded-xl text-sm font-bold text-white transition-all text-left flex items-center justify-between group shadow-xl shadow-indigo-900/40">
+                                                <button className="w-full py-3 px-4 bg-teal-600 hover:bg-teal-700 rounded-xl text-sm font-bold text-white transition-all text-left flex items-center justify-between group shadow-xl shadow-teal-900/40">
                                                     Schedule Announcement
                                                     <ChevronDown className="w-4 h-4 -rotate-90 group-hover:translate-x-1 transition-transform" />
                                                 </button>

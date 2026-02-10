@@ -94,8 +94,8 @@ export default function NotificationsPage() {
     const getIcon = (category: string) => {
         switch (category) {
             case 'alert': return <AlertTriangle className="w-5 h-5 text-red-500" />;
-            case 'success': return <CheckCircle className="w-5 h-5 text-green-500" />;
-            case 'info': default: return <Info className="w-5 h-5 text-blue-500" />;
+            case 'success': return <CheckCircle className="w-5 h-5 text-emerald-500" />;
+            case 'info': default: return <Info className="w-5 h-5 text-emerald-500" />;
         }
     };
 
@@ -103,8 +103,8 @@ export default function NotificationsPage() {
         if (read) return 'bg-white hover:bg-gray-50';
         switch (category) {
             case 'alert': return 'bg-red-50/50 hover:bg-red-50 border-l-4 border-red-500';
-            case 'success': return 'bg-green-50/50 hover:bg-green-50 border-l-4 border-green-500';
-            case 'info': default: return 'bg-blue-50/50 hover:bg-blue-50 border-l-4 border-blue-500';
+            case 'success': return 'bg-green-50/50 hover:bg-green-50 border-l-4 border-emerald-500';
+            case 'info': default: return 'bg-emerald-50/50 hover:bg-emerald-50 border-l-4 border-emerald-500';
         }
     };
 
@@ -152,7 +152,7 @@ export default function NotificationsPage() {
                                 </button>
                                 <button
                                     onClick={() => setFilter('unread')}
-                                    className={`px-3 py-1.5 text-sm font-medium rounded-md transition-colors ${filter === 'unread' ? 'bg-indigo-50 text-indigo-700' : 'text-slate-500 hover:text-slate-700'}`}
+                                    className={`px-3 py-1.5 text-sm font-medium rounded-md transition-colors ${filter === 'unread' ? 'bg-teal-50 text-teal-700' : 'text-slate-500 hover:text-slate-700'}`}
                                 >
                                     Unread
                                 </button>
@@ -215,7 +215,7 @@ export default function NotificationsPage() {
 
                                             {!notification.read_at && (
                                                 <div className="flex justify-end">
-                                                    <div className="text-[10px] font-black text-indigo-600 uppercase tracking-widest flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                                                    <div className="text-[10px] font-black text-teal-600 uppercase tracking-widest flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                                                         <CheckCircle className="w-3 h-3" /> Click to mark as read
                                                     </div>
                                                 </div>
@@ -234,7 +234,7 @@ export default function NotificationsPage() {
                                 {filter !== 'all' && (
                                     <button
                                         onClick={() => setFilter('all')}
-                                        className="mt-4 px-4 py-2 text-indigo-600 font-medium text-sm hover:underline"
+                                        className="mt-4 px-4 py-2 text-teal-600 font-medium text-sm hover:underline"
                                     >
                                         View all history
                                     </button>

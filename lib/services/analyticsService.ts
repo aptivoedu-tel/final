@@ -325,7 +325,7 @@ export class AnalyticsService {
 
             if (error) throw error;
 
-            const colors = ['#6366f1', '#10b981', '#f59e0b', '#ec4899', '#8b5cf6', '#f43f5e', '#06b6d4'];
+            const colors = ['#14b8a6', '#10b981', '#f59e0b', '#ec4899', '#8b5cf6', '#f43f5e', '#06b6d4'];
             const distribution: SubjectDistribution[] = (data || []).map((subject: any, idx: number) => ({
                 name: subject.name,
                 value: subject.topics?.[0]?.count || 0,

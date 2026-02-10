@@ -1409,19 +1409,19 @@
     }
   }
 
-  .bg-blue-50 {
+  .bg-emerald-50 {
     background-color: var(--color-blue-50);
   }
 
-  .bg-blue-100 {
+  .bg-emerald-100 {
     background-color: var(--color-blue-100);
   }
 
-  .bg-blue-500 {
+  .bg-emerald-500 {
     background-color: var(--color-blue-500);
   }
 
-  .bg-blue-600 {
+  .bg-emerald-600 {
     background-color: var(--color-blue-600);
   }
 
@@ -1463,11 +1463,11 @@
     background-color: var(--color-green-500);
   }
 
-  .bg-indigo-500 {
+  .bg-teal-500 {
     background-color: var(--color-indigo-500);
   }
 
-  .bg-indigo-600 {
+  .bg-teal-600 {
     background-color: var(--color-indigo-600);
   }
 
@@ -1610,7 +1610,7 @@
     background-image: url("https://www.transparenttextures.com/patterns/cubes.png");
   }
 
-  .from-indigo-600 {
+  .from-teal-600 {
     --tw-gradient-from: var(--color-indigo-600);
     --tw-gradient-stops: var(--tw-gradient-via-stops, var(--tw-gradient-position), var(--tw-gradient-from) var(--tw-gradient-from-position), var(--tw-gradient-to) var(--tw-gradient-to-position));
   }
@@ -1911,19 +1911,19 @@
     white-space: nowrap;
   }
 
-  .text-blue-100 {
+  .text-emerald-100 {
     color: var(--color-blue-100);
   }
 
-  .text-blue-500 {
+  .text-emerald-500 {
     color: var(--color-blue-500);
   }
 
-  .text-blue-600 {
+  .text-emerald-600 {
     color: var(--color-blue-600);
   }
 
-  .text-blue-800 {
+  .text-emerald-800 {
     color: var(--color-blue-800);
   }
 
@@ -1971,15 +1971,15 @@
     color: var(--color-green-800);
   }
 
-  .text-indigo-100 {
+  .text-teal-100 {
     color: var(--color-indigo-100);
   }
 
-  .text-indigo-200 {
+  .text-teal-200 {
     color: var(--color-indigo-200);
   }
 
-  .text-indigo-600 {
+  .text-teal-600 {
     color: var(--color-indigo-600);
   }
 
@@ -2138,12 +2138,12 @@
     box-shadow: var(--tw-inset-shadow), var(--tw-inset-ring-shadow), var(--tw-ring-offset-shadow), var(--tw-ring-shadow), var(--tw-shadow);
   }
 
-  .shadow-blue-600\/20 {
+  .shadow-emerald-600\/20 {
     --tw-shadow-color: #155dfc33;
   }
 
   @supports (color: color-mix(in lab, red, red)) {
-    .shadow-blue-600\/20 {
+    .shadow-emerald-600\/20 {
       --tw-shadow-color: color-mix(in oklab, color-mix(in oklab, var(--color-blue-600) 20%, transparent) var(--tw-shadow-alpha), transparent);
     }
   }
@@ -2158,12 +2158,12 @@
     }
   }
 
-  .shadow-indigo-600\/20 {
+  .shadow-teal-600\/20 {
     --tw-shadow-color: #4f39f633;
   }
 
   @supports (color: color-mix(in lab, red, red)) {
-    .shadow-indigo-600\/20 {
+    .shadow-teal-600\/20 {
       --tw-shadow-color: color-mix(in oklab, color-mix(in oklab, var(--color-indigo-600) 20%, transparent) var(--tw-shadow-alpha), transparent);
     }
   }
@@ -2442,13 +2442,13 @@
   }
 
   @media (hover: hover) {
-    .hover\:bg-indigo-50:hover {
+    .hover\:bg-teal-50:hover {
       background-color: var(--color-indigo-50);
     }
   }
 
   @media (hover: hover) {
-    .hover\:bg-indigo-700:hover {
+    .hover\:bg-teal-700:hover {
       background-color: var(--color-indigo-700);
     }
   }
@@ -2502,7 +2502,7 @@
   }
 
   @media (hover: hover) {
-    .hover\:text-indigo-600:hover {
+    .hover\:text-teal-600:hover {
       color: var(--color-indigo-600);
     }
   }
@@ -2583,12 +2583,12 @@
   }
 
   @media (hover: hover) {
-    .hover\:shadow-blue-600\/30:hover {
+    .hover\:shadow-emerald-600\/30:hover {
       --tw-shadow-color: #155dfc4d;
     }
 
     @supports (color: color-mix(in lab, red, red)) {
-      .hover\:shadow-blue-600\/30:hover {
+      .hover\:shadow-emerald-600\/30:hover {
         --tw-shadow-color: color-mix(in oklab, color-mix(in oklab, var(--color-blue-600) 30%, transparent) var(--tw-shadow-alpha), transparent);
       }
     }
@@ -2630,7 +2630,7 @@
     }
   }
 
-  .focus\:border-indigo-500:focus {
+  .focus\:border-teal-500:focus {
     border-color: var(--color-indigo-500);
   }
 
@@ -2643,12 +2643,12 @@
     box-shadow: var(--tw-inset-shadow), var(--tw-inset-ring-shadow), var(--tw-ring-offset-shadow), var(--tw-ring-shadow), var(--tw-shadow);
   }
 
-  .focus\:ring-indigo-500\/20:focus {
+  .focus\:ring-teal-500\/20:focus {
     --tw-ring-color: #625fff33;
   }
 
   @supports (color: color-mix(in lab, red, red)) {
-    .focus\:ring-indigo-500\/20:focus {
+    .focus\:ring-teal-500\/20:focus {
       --tw-ring-color: color-mix(in oklab, var(--color-indigo-500) 20%, transparent);
     }
   }
@@ -2808,9 +2808,9 @@
   --primary-light: #a3e4c7;
   --primary-dark: #6db89f;
   --primary-glow: #88d1b126;
-  --secondary: #6366f1;
+  --secondary: #14b8a6;
   --secondary-light: #818cf8;
-  --secondary-dark: #4f46e5;
+  --secondary-dark: #0d9488;
   --background: #f8fafc;
   --foreground: #1e293b;
   --surface: #fff;
@@ -2865,7 +2865,7 @@ html {
 body {
   background: var(--background);
   color: var(--foreground);
-  background-image: radial-gradient(at 0 0, #88d1b11a 0, #0000 50%), radial-gradient(at 100% 0, #6366f114 0, #0000 50%), radial-gradient(at 100% 100%, #88d1b10d 0, #0000 50%);
+  background-image: radial-gradient(at 0 0, #88d1b11a 0, #0000 50%), radial-gradient(at 100% 0, #14b8a614 0, #0000 50%), radial-gradient(at 100% 100%, #88d1b10d 0, #0000 50%);
   font-family: Inter, -apple-system, BlinkMacSystemFont, Segoe UI, sans-serif;
   font-size: 16px;
   line-height: 1.6;
@@ -3060,7 +3060,7 @@ body {
 }
 
 .bg-mesh-gradient {
-  background: radial-gradient(at 0 0, #88d1b126 0, #0000 50%), radial-gradient(at 100% 0, #6366f11a 0, #0000 50%), radial-gradient(at 100% 100%, #88d1b114 0, #0000 50%);
+  background: radial-gradient(at 0 0, #88d1b126 0, #0000 50%), radial-gradient(at 100% 0, #14b8a61a 0, #0000 50%), radial-gradient(at 100% 100%, #88d1b114 0, #0000 50%);
 }
 
 .gradient-text {

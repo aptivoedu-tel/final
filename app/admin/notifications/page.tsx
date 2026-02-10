@@ -258,12 +258,12 @@ export default function AdminNotificationsPage() {
                     {activeTab === 'compose' ? (
                         <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-8">
                             <h3 className="text-lg font-bold text-slate-800 mb-6 flex items-center gap-2">
-                                <Send className="w-5 h-5 text-indigo-600" />
+                                <Send className="w-5 h-5 text-teal-600" />
                                 Compose Notification
                             </h3>
 
                             {statusMsg && (
-                                <div className={`mb-6 p-4 rounded-xl flex items-center gap-3 ${statusMsg.type === 'success' ? 'bg-green-50 text-green-700 border border-green-200' : 'bg-red-50 text-red-700 border border-red-200'
+                                <div className={`mb-6 p-4 rounded-xl flex items-center gap-3 ${statusMsg.type === 'success' ? 'bg-green-50 text-emerald-700 border border-emerald-200' : 'bg-red-50 text-red-700 border border-red-200'
                                     }`}>
                                     {statusMsg.type === 'success' ? <CheckCircle className="w-5 h-5" /> : <XCircle className="w-5 h-5" />}
                                     <span className="font-medium">{statusMsg.text}</span>
@@ -273,20 +273,20 @@ export default function AdminNotificationsPage() {
                             <form onSubmit={handleSend} className="space-y-6">
                                 {/* Target Selection */}
                                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4">
-                                    <label className={`cursor-pointer border-2 rounded-xl p-4 flex flex-col items-center gap-2 hover:bg-gray-50 transition-all ${targetType === 'all' ? 'border-indigo-500 bg-indigo-50/50' : 'border-gray-100'}`}>
+                                    <label className={`cursor-pointer border-2 rounded-xl p-4 flex flex-col items-center gap-2 hover:bg-gray-50 transition-all ${targetType === 'all' ? 'border-teal-500 bg-teal-50/50' : 'border-gray-100'}`}>
                                         <input type="radio" name="target" className="hidden" checked={targetType === 'all'} onChange={() => setTargetType('all')} />
-                                        <Users className={`w-5 h-5 sm:w-6 sm:h-6 ${targetType === 'all' ? 'text-indigo-600' : 'text-slate-400'}`} />
-                                        <span className={`text-xs sm:text-sm font-bold ${targetType === 'all' ? 'text-indigo-900' : 'text-slate-500'}`}>All Users</span>
+                                        <Users className={`w-5 h-5 sm:w-6 sm:h-6 ${targetType === 'all' ? 'text-teal-600' : 'text-slate-400'}`} />
+                                        <span className={`text-xs sm:text-sm font-bold ${targetType === 'all' ? 'text-teal-900' : 'text-slate-500'}`}>All Users</span>
                                     </label>
-                                    <label className={`cursor-pointer border-2 rounded-xl p-4 flex flex-col items-center gap-2 hover:bg-gray-50 transition-all ${targetType === 'role' ? 'border-indigo-500 bg-indigo-50/50' : 'border-gray-100'}`}>
+                                    <label className={`cursor-pointer border-2 rounded-xl p-4 flex flex-col items-center gap-2 hover:bg-gray-50 transition-all ${targetType === 'role' ? 'border-teal-500 bg-teal-50/50' : 'border-gray-100'}`}>
                                         <input type="radio" name="target" className="hidden" checked={targetType === 'role'} onChange={() => setTargetType('role')} />
-                                        <Users className={`w-5 h-5 sm:w-6 sm:h-6 ${targetType === 'role' ? 'text-indigo-600' : 'text-slate-400'}`} />
-                                        <span className={`text-xs sm:text-sm font-bold ${targetType === 'role' ? 'text-indigo-900' : 'text-slate-500'}`}>By Role</span>
+                                        <Users className={`w-5 h-5 sm:w-6 sm:h-6 ${targetType === 'role' ? 'text-teal-600' : 'text-slate-400'}`} />
+                                        <span className={`text-xs sm:text-sm font-bold ${targetType === 'role' ? 'text-teal-900' : 'text-slate-500'}`}>By Role</span>
                                     </label>
-                                    <label className={`cursor-pointer border-2 rounded-xl p-4 flex flex-col items-center gap-2 hover:bg-gray-50 transition-all ${targetType === 'institution' ? 'border-indigo-500 bg-indigo-50/50' : 'border-gray-100'}`}>
+                                    <label className={`cursor-pointer border-2 rounded-xl p-4 flex flex-col items-center gap-2 hover:bg-gray-50 transition-all ${targetType === 'institution' ? 'border-teal-500 bg-teal-50/50' : 'border-gray-100'}`}>
                                         <input type="radio" name="target" className="hidden" checked={targetType === 'institution'} onChange={() => setTargetType('institution')} />
-                                        <Building2 className={`w-5 h-5 sm:w-6 sm:h-6 ${targetType === 'institution' ? 'text-indigo-600' : 'text-slate-400'}`} />
-                                        <span className={`text-xs sm:text-sm font-bold ${targetType === 'institution' ? 'text-indigo-900' : 'text-slate-500'}`}>By Institution</span>
+                                        <Building2 className={`w-5 h-5 sm:w-6 sm:h-6 ${targetType === 'institution' ? 'text-teal-600' : 'text-slate-400'}`} />
+                                        <span className={`text-xs sm:text-sm font-bold ${targetType === 'institution' ? 'text-teal-900' : 'text-slate-500'}`}>By Institution</span>
                                     </label>
                                 </div>
 
@@ -297,7 +297,7 @@ export default function AdminNotificationsPage() {
                                         <select
                                             value={targetRole}
                                             onChange={(e) => setTargetRole(e.target.value as any)}
-                                            className="w-full px-4 py-2 rounded-lg border border-gray-200 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100 outline-none"
+                                            className="w-full px-4 py-2 rounded-lg border border-gray-200 focus:border-teal-500 focus:ring-2 focus:ring-teal-100 outline-none"
                                         >
                                             <option value="student">Student</option>
                                             <option value="institution_admin">Institution Admin</option>
@@ -317,7 +317,7 @@ export default function AdminNotificationsPage() {
                                                 value={targetInstitution}
                                                 onChange={(e) => setTargetInstitution(e.target.value)}
                                                 required
-                                                className="w-full px-4 py-2 rounded-lg border border-gray-200 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100 outline-none"
+                                                className="w-full px-4 py-2 rounded-lg border border-gray-200 focus:border-teal-500 focus:ring-2 focus:ring-teal-100 outline-none"
                                             >
                                                 <option value="">Select an institution...</option>
                                                 {institutions.map(inst => (
@@ -335,7 +335,7 @@ export default function AdminNotificationsPage() {
                                         <button
                                             type="button"
                                             onClick={() => setCategory('info')}
-                                            className={`py-2 px-3 rounded-xl text-xs sm:text-sm font-black uppercase tracking-wider border transition-colors flex items-center justify-center gap-2 ${category === 'info' ? 'bg-blue-50 border-blue-200 text-blue-700' : 'border-gray-200 text-slate-500 hover:bg-gray-50'}`}
+                                            className={`py-2 px-3 rounded-xl text-xs sm:text-sm font-black uppercase tracking-wider border transition-colors flex items-center justify-center gap-2 ${category === 'info' ? 'bg-emerald-50 border-emerald-200 text-emerald-700' : 'border-gray-200 text-slate-500 hover:bg-gray-50'}`}
                                         >
                                             <Info className="w-4 h-4" /> Info
                                         </button>
@@ -349,7 +349,7 @@ export default function AdminNotificationsPage() {
                                         <button
                                             type="button"
                                             onClick={() => setCategory('success')}
-                                            className={`py-2 px-3 rounded-xl text-xs sm:text-sm font-black uppercase tracking-wider border transition-colors flex items-center justify-center gap-2 ${category === 'success' ? 'bg-green-50 border-green-200 text-green-700' : 'border-gray-200 text-slate-500 hover:bg-gray-50'}`}
+                                            className={`py-2 px-3 rounded-xl text-xs sm:text-sm font-black uppercase tracking-wider border transition-colors flex items-center justify-center gap-2 ${category === 'success' ? 'bg-green-50 border-emerald-200 text-emerald-700' : 'border-gray-200 text-slate-500 hover:bg-gray-50'}`}
                                         >
                                             <CheckCircle className="w-4 h-4" /> Success
                                         </button>
@@ -363,7 +363,7 @@ export default function AdminNotificationsPage() {
                                         value={title}
                                         onChange={(e) => setTitle(e.target.value)}
                                         required
-                                        className="w-full px-4 py-3 rounded-lg border border-gray-200 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100 outline-none transition-all"
+                                        className="w-full px-4 py-3 rounded-lg border border-gray-200 focus:border-teal-500 focus:ring-2 focus:ring-teal-100 outline-none transition-all"
                                         placeholder="Overview of incoming updates..."
                                     />
                                 </div>
@@ -388,7 +388,7 @@ export default function AdminNotificationsPage() {
                                         onChange={(e) => setMessage(e.target.value)}
                                         required
                                         rows={5}
-                                        className="w-full px-4 py-3 rounded-lg border border-gray-200 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100 outline-none transition-all resize-none"
+                                        className="w-full px-4 py-3 rounded-lg border border-gray-200 focus:border-teal-500 focus:ring-2 focus:ring-teal-100 outline-none transition-all resize-none"
                                         placeholder="Write your message here... (Use **text** for bold)"
                                     />
                                 </div>
@@ -451,8 +451,8 @@ export default function AdminNotificationsPage() {
                                         <div key={i} className="p-4 bg-gray-50 rounded-xl border border-gray-100">
                                             <div className="flex justify-between items-start mb-2">
                                                 <span className={`text-xs font-bold px-2 py-0.5 rounded uppercase tracking-wider ${item.category === 'alert' ? 'bg-red-100 text-red-700' :
-                                                    item.category === 'success' ? 'bg-green-100 text-green-700' :
-                                                        'bg-blue-100 text-blue-700'
+                                                    item.category === 'success' ? 'bg-emerald-100 text-emerald-700' :
+                                                        'bg-emerald-100 text-emerald-700'
                                                     }`}>
                                                     {item.category}
                                                 </span>
