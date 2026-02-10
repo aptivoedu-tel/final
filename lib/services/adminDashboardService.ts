@@ -106,7 +106,12 @@ export class AdminDashboardService {
                 }
             };
         } catch (error: any) {
-            console.error('Error fetching admin stats:', error);
+            console.error('Error fetching admin stats details:', {
+                message: error.message,
+                code: error.code,
+                details: error.details,
+                hint: error.hint
+            });
             return {
                 stats: {
                     totalQuestions: 0,
@@ -120,7 +125,7 @@ export class AdminDashboardService {
                         topics: '0'
                     }
                 },
-                error: error.message
+                error: error.message || 'Unknown error'
             };
         }
     }
@@ -197,8 +202,13 @@ export class AdminDashboardService {
 
             return { activities };
         } catch (error: any) {
-            console.error('Error fetching recent activity:', error);
-            return { activities: [], error: error.message };
+            console.error('Error fetching recent activity details:', {
+                message: error.message,
+                code: error.code,
+                details: error.details,
+                hint: error.hint
+            });
+            return { activities: [], error: error.message || 'Unknown error' };
         }
     }
 

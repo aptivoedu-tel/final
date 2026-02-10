@@ -80,6 +80,8 @@ export default function StudentExamPage() {
     const [completedSectionIds, setCompletedSectionIds] = useState<number[]>([]);
     const [sectionTimeLeft, setSectionTimeLeft] = useState<number | null>(null);
     const [showNavMatrix, setShowNavMatrix] = useState(false);
+    const [markedForReview, setMarkedForReview] = useState<Record<number, boolean>>({});
+    const [visitedQuestions, setVisitedQuestions] = useState<Record<number, boolean>>({});
 
     const toggleFullScreen = () => {
         if (!document.fullscreenElement) {
@@ -112,10 +114,15 @@ export default function StudentExamPage() {
 
     const loadExamData = async (userId: string) => {
         try {
+            console.log("[loadExamData] Starting fetch for Exam ID:", examId);
             const { data: ex, error: exError } = await supabase.from('university_exams').select('*').eq('id', Number(examId)).single();
-            if (exError) throw new Error(`Fetch Exam Error: ${exError.message} (${exError.details || exError.hint || exError.code})`);
+            if (exError) {
+                console.error("[loadExamData] Exam fetch error:", exError);
+                throw new Error(`Fetch Exam Error: ${exError.message} (${exError.code})`);
+            }
             if (!ex) throw new Error('Exam not found');
             setExam(ex);
+            console.log("[loadExamData] Exam found:", ex.name);
 
             const { data: sects, error: sectsError } = await supabase.from('exam_sections').select('*').eq('exam_id', Number(examId)).order('order_index');
             if (sectsError) throw new Error(`Fetch Sections Error: ${sectsError.message}`);
@@ -143,8 +150,12 @@ export default function StudentExamPage() {
             await handleAttemptSession(userId, ex);
             setGlobalLoading(false);
         } catch (err: any) {
-            console.error('Exam initialization failed:', err);
-            toast.error(`Session Error: ${err.message || JSON.stringify(err)}`);
+            console.error('Exam initialization failed details:', {
+                message: err.message,
+                stack: err.stack,
+                code: err.code
+            });
+            toast.error(`Session Error: ${err.message || 'Unknown error'}`);
             setGlobalLoading(false);
         }
     };
@@ -158,6 +169,7 @@ export default function StudentExamPage() {
             throw new Error(`Exam starts at ${new Date(ex.start_time).toLocaleString()}`);
         }
 
+        console.log("[handleAttemptSession] Checking existing attempt for Student ID:", userId, "Exam ID:", ex.id);
         const { data: existing, error: existingError } = await supabase
             .from('exam_attempts')
             .select('*')
@@ -166,8 +178,13 @@ export default function StudentExamPage() {
             .maybeSingle();
 
         if (existingError) {
-            console.error("[AttemptSession] Fetch error:", existingError);
-            throw existingError;
+            console.error("[AttemptSession] Fetch error details:", {
+                message: existingError.message,
+                code: existingError.code,
+                details: existingError.details,
+                hint: existingError.hint
+            });
+            throw new Error(`Attempt Sync Error: ${existingError.message}`);
         }
 
         // Check End Time compliance
@@ -299,12 +316,24 @@ export default function StudentExamPage() {
 
     const handleAnswer = async (questionId: number, answer: any) => {
         setAnswers(prev => ({ ...prev, [questionId]: answer }));
+        // Also ensure it's marked as visited when answered
+        setVisitedQuestions(prev => ({ ...prev, [questionId]: true }));
         await supabase.from('exam_answers').upsert([{
             attempt_id: attemptId,
             question_id: questionId,
             answer: answer
         }], { onConflict: 'attempt_id, question_id' });
     };
+
+    const toggleMarkForReview = (questionId: number) => {
+        setMarkedForReview(prev => ({ ...prev, [questionId]: !prev[questionId] }));
+    };
+
+    useEffect(() => {
+        if (activeQuestion) {
+            setVisitedQuestions(prev => ({ ...prev, [activeQuestion.id]: true }));
+        }
+    }, [activeQuestion?.id]);
 
     const finalizeAttempt = async (attId: number) => {
         setGlobalLoading(true, 'Calculating Results & Finalizing Session...');
@@ -460,192 +489,180 @@ export default function StudentExamPage() {
     }
 
     return (
-        <div className="h-screen flex flex-col bg-[#f8fafc] overflow-hidden select-none font-sans">
-            {/* Top Navigation / Status Bar - SLEEK DARK THEME */}
-            <div className="bg-[#0f172a] text-white px-3 md:px-10 h-16 lg:h-20 flex items-center justify-between shadow-2xl z-40 relative gap-2">
-                <div className="absolute bottom-0 left-0 h-[0.5px] bg-gradient-to-r from-transparent via-teal-500/30 to-transparent w-full" />
-
-                <div className="flex items-center gap-2 lg:gap-10 overflow-hidden">
-                    <div className="flex items-center gap-2 lg:gap-5 lg:pr-8 lg:border-r lg:border-slate-800 shrink-0">
-                        <div className="w-8 h-8 lg:w-12 lg:h-12 bg-teal-600 rounded-lg lg:rounded-2xl flex items-center justify-center shadow-lg shadow-teal-900/40 border border-teal-500/30 shrink-0">
-                            <GraduationCap className="w-4 h-4 lg:w-6 lg:h-6 text-white" />
+        <div className="h-screen flex flex-col bg-white overflow-hidden font-sans text-slate-900">
+            {/* TOP BAR */}
+            <header className="h-16 border-b border-gray-200 bg-white flex items-center justify-between px-6 shrink-0 z-50">
+                <div className="flex items-center gap-3">
+                    <div className="flex flex-col">
+                        <span className="text-[10px] font-black text-green-600 uppercase tracking-widest leading-none mb-1">
+                            {exam?.name || 'University Exam'}
+                        </span>
+                        <div className="flex items-center gap-1.5">
+                            <span className="w-1.5 h-1.5 bg-green-500 rounded-full animate-pulse" />
+                            <span className="text-xs font-bold text-slate-400 uppercase tracking-tighter">LIVE</span>
                         </div>
-                        <div className="min-w-0 max-w-[80px] sm:max-w-none">
-                            <h1 className="text-[10px] lg:text-sm font-black uppercase tracking-widest text-slate-100 truncate">
-                                {exam?.name === 'testing' ? 'University Exam' : exam?.name || 'Exam'}
-                            </h1>
-                            <div className="flex items-center gap-1.5 mt-0.5">
-                                <span className="w-1 h-1 bg-teal-500 rounded-full animate-pulse" />
-                                <p className="text-[8px] lg:text-[10px] font-black text-slate-500 uppercase tracking-widest leading-none">Live</p>
-                            </div>
-                        </div>
-                    </div>
-
-                    {/* Section Switcher - Scrollable horizontal on mobile */}
-                    <div className="flex items-center gap-1 lg:gap-1.5 bg-slate-900/50 p-1 rounded-xl border border-slate-800 overflow-x-auto no-scrollbar max-w-[100px] sm:max-w-none">
-                        {sections.map(s => {
-                            const isLocked = completedSectionIds.includes(s.id);
-                            const isActive = activeSectionId === s.id;
-                            return (
-                                <button
-                                    key={s.id}
-                                    disabled={isLocked}
-                                    onClick={() => {
-                                        setActiveSectionId(s.id);
-                                        setActiveQuestionIdx(0);
-                                    }}
-                                    className={`
-                                        px-3 lg:px-6 py-1.5 lg:py-2 rounded-lg lg:rounded-xl text-[8px] lg:text-[10px] font-black uppercase tracking-widest transition-all relative overflow-hidden group whitespace-nowrap
-                                        ${isActive
-                                            ? 'bg-white text-slate-900 shadow-xl'
-                                            : isLocked
-                                                ? 'text-slate-600 cursor-not-allowed opacity-50'
-                                                : 'text-slate-500 hover:text-white hover:bg-white/5'
-                                        }
-                                    `}
-                                >
-                                    <span className="relative z-10 flex items-center gap-1">
-                                        {isActive && <div className="w-1 h-1 bg-teal-600 rounded-full sm:hidden" />}
-                                        {s.name}
-                                        {isLocked && <span className="text-[8px]">🔒</span>}
-                                    </span>
-                                </button>
-                            );
-                        })}
                     </div>
                 </div>
 
-                <div className="flex items-center gap-2 lg:gap-6 shrink-0">
-                    {/* Timer */}
-                    <div className={`flex items-center gap-2 lg:gap-3 px-3 lg:px-5 py-1.5 lg:py-2.5 rounded-lg lg:rounded-2xl border transition-all ${timeLeft < 300 ? 'bg-rose-500/10 border-rose-500/50 text-rose-500' : 'bg-slate-900 border-slate-800 text-teal-400'}`}>
-                        <Clock className={`w-3.5 h-3.5 lg:w-5 lg:h-5 ${timeLeft < 300 ? 'animate-pulse' : ''}`} />
-                        <span className="text-sm lg:text-xl font-black font-mono tracking-wider">{formatTime(timeLeft)}</span>
-                    </div>
+                {/* Section Selector Pills */}
+                <div className="hidden md:flex items-center gap-2">
+                    {sections.map((s) => {
+                        const isLocked = completedSectionIds.includes(s.id);
+                        const isActive = activeSectionId === s.id;
+                        return (
+                            <button
+                                key={s.id}
+                                disabled={isLocked}
+                                onClick={() => {
+                                    setActiveSectionId(s.id);
+                                    setActiveQuestionIdx(0);
+                                }}
+                                className={`px-5 py-2 rounded-full text-[10px] font-black uppercase tracking-widest transition-all ${isActive
+                                    ? 'bg-green-600 text-white'
+                                    : isLocked
+                                        ? 'bg-slate-50 text-slate-300 cursor-not-allowed border border-slate-100'
+                                        : 'bg-white text-slate-500 border border-slate-200 hover:border-green-600 hover:text-green-600'
+                                    }`}
+                            >
+                                {s.name}
+                            </button>
+                        );
+                    })}
+                </div>
 
+                <div className="flex items-center gap-4">
+                    <div className={`px-4 py-2 rounded-lg font-mono font-bold text-lg flex items-center gap-2 ${timeLeft < 300 ? 'bg-red-600 text-white animate-pulse' : 'bg-red-50 text-red-600 border border-red-100'
+                        }`}>
+                        <Clock className="w-4 h-4" />
+                        {formatTime(timeLeft)}
+                    </div>
                     <button
                         onClick={() => {
-                            if (confirm('Finish and submit your exam? This cannot be undone.')) finalizeAttempt(attemptId!);
+                            if (confirm('Are you sure you want to finalize and submit?')) finalizeAttempt(attemptId!);
                         }}
-                        className="px-4 lg:px-8 py-2 lg:py-4 bg-teal-600 text-white rounded-lg lg:rounded-2xl text-[9px] lg:text-[10px] font-black uppercase tracking-widest hover:bg-teal-700 transition-all shadow-lg active:scale-95 shrink-0"
+                        className="px-6 py-2 bg-green-600 text-white rounded-lg text-[10px] font-black uppercase tracking-[0.2em] hover:bg-green-700 transition-all shadow-sm active:scale-95"
                     >
                         Finalize
                     </button>
-
-                    {/* Mobile Menu Toggle for Nav Matrix */}
-                    <button
-                        onClick={() => setShowNavMatrix(prev => !prev)}
-                        className="lg:hidden p-2 bg-slate-800 rounded-lg text-white"
-                    >
-                        <Layers className="w-4 h-4" />
-                    </button>
                 </div>
-            </div>
+            </header>
 
-            <div className="flex-1 flex flex-col lg:flex-row overflow-hidden">
-                {/* Main Content Area - Clean Workspace */}
-                <div className="flex-1 overflow-y-auto p-6 lg:p-10 custom-scrollbar relative bg-[#fcfdfe] flex flex-col">
-                    {activeQuestion ? (
-                        <div className="w-full mx-auto my-auto py-10 px-4">
-                            <div className="flex items-center gap-4 mb-8 lg:mb-10">
-                                <div className="w-10 h-10 lg:w-12 lg:h-12 bg-slate-900 text-white rounded-xl lg:rounded-2xl flex items-center justify-center font-black text-lg lg:text-xl shadow-lg shrink-0">
-                                    {activeQuestionIdx + 1}
-                                </div>
-                                <div className="min-w-0">
-                                    <h4 className="text-[9px] lg:text-[10px] font-black text-teal-600 uppercase tracking-widest flex flex-wrap items-center gap-2">
-                                        <span>Question Workspace</span>
-                                        <span className="w-1 h-1 bg-teal-200 rounded-full hidden sm:inline" />
-                                        <span className="bg-teal-50 px-2 py-0.5 rounded text-teal-700">{sections.find(s => s.id === activeSectionId)?.name}</span>
-                                    </h4>
-                                    <p className="text-[10px] lg:text-xs font-bold text-slate-400 mt-0.5 text-wrap">{activeQuestion.marks} Mark(s) • Correct Option Required</p>
-                                </div>
-                            </div>
+            <div className="flex-1 flex overflow-hidden">
+                {/* LEFT: Question Area */}
+                <main className="flex-1 overflow-y-auto custom-scrollbar bg-white flex flex-col">
+                    {/* Mobile Section Selector - Horizontal Scroll */}
+                    <div className="md:hidden flex items-center gap-2 px-4 py-3 bg-slate-50 border-b border-gray-100 overflow-x-auto no-scrollbar">
+                        {sections.map((s) => (
+                            <button
+                                key={s.id}
+                                disabled={completedSectionIds.includes(s.id)}
+                                onClick={() => {
+                                    setActiveSectionId(s.id);
+                                    setActiveQuestionIdx(0);
+                                }}
+                                className={`whitespace-nowrap px-4 py-1.5 rounded-full text-[9px] font-black uppercase tracking-widest transition-all ${activeSectionId === s.id
+                                    ? 'bg-green-600 text-white'
+                                    : 'bg-white text-slate-500 border border-slate-200'
+                                    }`}
+                            >
+                                {s.name}
+                            </button>
+                        ))}
+                    </div>
 
-                            <div className="space-y-8 lg:space-y-10">
-                                <div className="prose prose-slate max-w-none">
-                                    <div className="text-xl lg:text-3xl font-bold text-slate-900 leading-snug tracking-tight">
-                                        <MarkdownRenderer content={activeQuestion.question_text} />
+                    <div className="flex-1 max-w-4xl mx-auto w-full px-6 py-10 lg:py-16">
+                        {activeQuestion ? (
+                            <div className="space-y-10">
+                                <div className="space-y-4">
+                                    <div className="w-10 h-10 rounded-full border-2 border-green-600 text-green-600 flex items-center justify-center font-black text-sm">
+                                        {activeQuestionIdx + 1}
+                                    </div>
+                                    <div className="text-[10px] font-black text-slate-400 uppercase tracking-widest">
+                                        {activeQuestion.marks} Mark(s) • Correct Option Required
+                                    </div>
+                                    <div className="prose prose-slate max-w-none">
+                                        <div className="text-2xl lg:text-3xl font-black text-slate-900 leading-tight">
+                                            <MarkdownRenderer content={activeQuestion.question_text} />
+                                        </div>
                                     </div>
                                 </div>
 
                                 {activeQuestion.image_url && (
-                                    <div className={`relative rounded-3xl lg:rounded-[3rem] overflow-hidden border-4 border-white shadow-2xl transition-all duration-500 ${isZoomed ? 'scale-100 z-50 fixed inset-0 lg:inset-10 bg-white' : 'w-full max-w-lg'}`}>
+                                    <div className="rounded-xl overflow-hidden border border-gray-100 max-w-2xl bg-slate-50">
                                         <img
                                             src={activeQuestion.image_url}
-                                            alt="Figure"
-                                            className={`w-full h-auto cursor-zoom-in rounded-3xl lg:rounded-[2.5rem] ${isZoomed ? 'h-full object-contain' : ''}`}
+                                            alt="Question Visualization"
+                                            className="w-full h-auto object-contain cursor-zoom-in"
                                             onClick={() => setIsZoomed(!isZoomed)}
                                         />
-                                        <button
-                                            onClick={() => setIsZoomed(!isZoomed)}
-                                            className="absolute top-4 right-4 lg:top-6 lg:right-6 p-3 lg:p-4 bg-white/90 backdrop-blur rounded-xl lg:rounded-2xl shadow-xl text-slate-900"
-                                        >
-                                            {isZoomed ? <X className="w-5 h-5 lg:w-6 lg:h-6" /> : <ZoomIn className="w-5 h-5 lg:w-6 lg:h-6" />}
-                                        </button>
                                     </div>
                                 )}
 
-                                {/* Options & Response Area */}
-                                <div className="space-y-6 lg:space-y-10">
-                                    {(activeQuestion.question_type === 'mcq_single' || activeQuestion.question_type === 'mcq_multiple') && (
-                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 lg:gap-6">
-                                            {activeQuestion.options?.map((opt: any, optIdx: number) => {
-                                                const normalizedOpt = typeof opt === 'string'
-                                                    ? { id: (optIdx + 1).toString(), text: opt }
-                                                    : opt;
+                                {/* OPTIONS GRID */}
+                                <div className={`grid gap-4 ${activeQuestion.question_type === 'numerical' || activeQuestion.question_type?.includes('essay')
+                                    ? 'grid-cols-1'
+                                    : 'grid-cols-1 md:grid-cols-2'
+                                    }`}>
+                                    {(activeQuestion.question_type === 'mcq_single' || activeQuestion.question_type === 'mcq_multiple') &&
+                                        activeQuestion.options?.map((opt: any, optIdx: number) => {
+                                            const normalizedOpt = typeof opt === 'string'
+                                                ? { id: (optIdx + 1).toString(), text: opt }
+                                                : opt;
 
-                                                const isSelected = activeQuestion.question_type === 'mcq_single'
-                                                    ? (answers[activeQuestion.id] !== undefined && answers[activeQuestion.id]?.toString() === normalizedOpt.id?.toString())
-                                                    : (answers[activeQuestion.id] || []).map((id: any) => id?.toString()).includes(normalizedOpt.id?.toString());
+                                            const isSelected = activeQuestion.question_type === 'mcq_single'
+                                                ? (answers[activeQuestion.id] !== undefined && answers[activeQuestion.id]?.toString() === normalizedOpt.id?.toString())
+                                                : (answers[activeQuestion.id] || []).map((id: any) => id?.toString()).includes(normalizedOpt.id?.toString());
 
-                                                return (
-                                                    <button
-                                                        key={optIdx}
-                                                        onClick={() => {
-                                                            if (activeQuestion.question_type === 'mcq_single') {
-                                                                handleAnswer(activeQuestion.id, normalizedOpt.id);
-                                                            } else {
-                                                                const current = answers[activeQuestion.id] || [];
-                                                                const next = current.includes(normalizedOpt.id)
-                                                                    ? current.filter((i: any) => i !== normalizedOpt.id)
-                                                                    : [...current, normalizedOpt.id];
-                                                                handleAnswer(activeQuestion.id, next);
-                                                            }
-                                                        }}
-                                                        className={`p-5 lg:p-7 rounded-2xl lg:rounded-[2.5rem] border-2 text-left transition-all flex items-center gap-4 lg:gap-6 group ${isSelected ? 'bg-teal-600 border-teal-600 text-white shadow-2xl shadow-teal-100' : 'bg-white border-slate-100 hover:border-teal-200 hover:bg-teal-50/30'}`}
-                                                    >
-                                                        <div className={`w-8 h-8 lg:w-10 lg:h-10 rounded-xl lg:rounded-2xl border-2 flex items-center justify-center font-black text-xs lg:text-sm transition-all ${isSelected ? 'bg-white text-teal-600 border-white shadow-sm' : 'bg-slate-50 text-slate-400 border-slate-200 group-hover:bg-white group-hover:text-teal-600 group-hover:border-teal-600'}`}>
-                                                            {String.fromCharCode(65 + optIdx)}
-                                                        </div>
-                                                        <div className="text-sm lg:text-base font-semibold">
-                                                            <MarkdownRenderer content={normalizedOpt.text} />
-                                                        </div>
-                                                    </button>
-                                                );
-                                            })}
-                                        </div>
-                                    )}
-
-                                    {activeQuestion.question_type === 'true_false' && (
-                                        <div className="flex flex-col sm:flex-row gap-4 lg:gap-6">
-                                            {['true', 'false'].map((val) => (
+                                            return (
                                                 <button
-                                                    key={val}
-                                                    onClick={() => handleAnswer(activeQuestion.id, val)}
-                                                    className={`flex-1 py-6 lg:py-8 rounded-2xl lg:rounded-[2.5rem] border-2 font-black text-xs lg:text-sm uppercase tracking-widest transition-all ${answers[activeQuestion.id] === val ? 'bg-teal-600 border-teal-600 text-white shadow-2xl shadow-teal-200' : 'bg-white border-slate-100 hover:border-teal-200'}`}
+                                                    key={optIdx}
+                                                    onClick={() => {
+                                                        if (activeQuestion.question_type === 'mcq_single') {
+                                                            handleAnswer(activeQuestion.id, normalizedOpt.id);
+                                                        } else {
+                                                            const current = answers[activeQuestion.id] || [];
+                                                            const next = current.includes(normalizedOpt.id)
+                                                                ? current.filter((i: any) => i !== normalizedOpt.id)
+                                                                : [...current, normalizedOpt.id];
+                                                            handleAnswer(activeQuestion.id, next);
+                                                        }
+                                                    }}
+                                                    className={`p-5 rounded-lg border text-left transition-all flex items-center gap-4 group ${isSelected
+                                                        ? 'bg-green-50 border-green-600 shadow-sm'
+                                                        : 'bg-white border-gray-200 hover:border-green-300'
+                                                        }`}
                                                 >
-                                                    {val}
+                                                    <div className={`w-8 h-8 rounded shrink-0 flex items-center justify-center font-black text-xs transition-colors ${isSelected ? 'bg-green-600 text-white' : 'bg-slate-100 text-slate-400 group-hover:bg-green-100 group-hover:text-green-600'
+                                                        }`}>
+                                                        {String.fromCharCode(65 + optIdx)}
+                                                    </div>
+                                                    <div className="text-sm font-bold text-slate-700">
+                                                        <MarkdownRenderer content={normalizedOpt.text} />
+                                                    </div>
                                                 </button>
-                                            ))}
-                                        </div>
-                                    )}
+                                            );
+                                        })
+                                    }
+
+                                    {activeQuestion.question_type === 'true_false' && ['true', 'false'].map((val) => (
+                                        <button
+                                            key={val}
+                                            onClick={() => handleAnswer(activeQuestion.id, val)}
+                                            className={`p-6 rounded-lg border font-black text-xs uppercase tracking-widest transition-all ${answers[activeQuestion.id] === val
+                                                ? 'bg-green-50 border-green-600 text-green-700'
+                                                : 'bg-white border-gray-200 hover:border-green-300'
+                                                }`}
+                                        >
+                                            {val}
+                                        </button>
+                                    ))}
 
                                     {activeQuestion.question_type === 'numerical' && (
                                         <div className="max-w-md">
-                                            <label className="block text-[9px] lg:text-[10px] font-black text-slate-400 uppercase tracking-widest mb-4">Numerical Response</label>
                                             <input
                                                 type="text"
-                                                className="w-full p-6 lg:p-10 bg-white border-2 border-slate-100 rounded-2xl lg:rounded-[3rem] outline-none focus:border-teal-600 focus:ring-[8px] lg:focus:ring-[12px] focus:ring-teal-600/5 font-black text-2xl lg:text-4xl text-slate-900 shadow-sm transition-all"
-                                                placeholder="0.00"
+                                                className="w-full p-5 bg-white border border-gray-200 rounded-lg outline-none focus:border-green-600 font-bold text-2xl text-slate-900 transition-all"
+                                                placeholder="Enter numerical answer..."
                                                 value={answers[activeQuestion.id] || ''}
                                                 onChange={(e) => handleAnswer(activeQuestion.id, e.target.value)}
                                             />
@@ -653,184 +670,203 @@ export default function StudentExamPage() {
                                     )}
 
                                     {(activeQuestion.question_type === 'essay' || activeQuestion.question_type === 'short_answer') && (
-                                        <div className="space-y-4">
-                                            <label className="block text-[9px] lg:text-[10px] font-black text-slate-400 uppercase tracking-widest mb-4">
-                                                {activeQuestion.question_type === 'essay' ? 'Essay / Long Answer' : 'Short Answer Response'}
-                                            </label>
-                                            <textarea
-                                                className={`w-full p-6 lg:p-8 bg-white border-2 border-slate-100 rounded-2xl lg:rounded-[2.5rem] outline-none focus:border-teal-600 focus:ring-4 focus:ring-teal-600/10 font-bold text-base lg:text-lg text-slate-700 shadow-sm leading-relaxed ${activeQuestion.question_type === 'essay' ? 'min-h-[300px] lg:min-h-[400px]' : 'min-h-[150px] lg:min-h-[200px]'}`}
-                                                placeholder="Begin typing your response here..."
-                                                value={answers[activeQuestion.id] || ''}
-                                                onChange={(e) => handleAnswer(activeQuestion.id, e.target.value)}
-                                            />
-                                            <div className="flex flex-col sm:flex-row justify-between items-center gap-4 px-4">
-                                                <div className="bg-slate-900 text-white px-6 py-2 rounded-full text-[9px] lg:text-[10px] font-black uppercase tracking-widest shadow-lg">
-                                                    Word Count: {(answers[activeQuestion.id] || '').trim() ? (answers[activeQuestion.id] || '').trim().split(/\s+/).length : 0}
-                                                </div>
-                                                <p className="text-[9px] lg:text-[10px] font-black text-slate-400 uppercase tracking-widest">Progress saved automatically</p>
-                                            </div>
-                                        </div>
-                                    )}
-
-                                    {activeQuestion.question_type === 'fill_blank' && (
-                                        <div className="max-w-xl">
-                                            <label className="block text-[9px] lg:text-[10px] font-black text-slate-400 uppercase tracking-widest mb-4">Missing Words</label>
-                                            <input
-                                                type="text"
-                                                className="w-full p-6 lg:p-8 bg-white border-2 border-slate-100 rounded-2xl lg:rounded-[2.5rem] outline-none focus:border-teal-600 focus:ring-4 focus:ring-teal-600/10 font-black text-lg lg:text-xl text-slate-900 shadow-sm transition-all"
-                                                placeholder="Enter the missing content..."
-                                                value={answers[activeQuestion.id] || ''}
-                                                onChange={(e) => handleAnswer(activeQuestion.id, e.target.value)}
-                                            />
-                                        </div>
+                                        <textarea
+                                            className={`w-full p-5 bg-white border border-gray-200 rounded-lg outline-none focus:border-green-600 font-bold text-base text-slate-700 leading-relaxed min-h-[300px]`}
+                                            placeholder="Write your response here..."
+                                            value={answers[activeQuestion.id] || ''}
+                                            onChange={(e) => handleAnswer(activeQuestion.id, e.target.value)}
+                                        />
                                     )}
                                 </div>
                             </div>
-
-                            {/* Navigation Controls */}
-                            <div className="max-w-4xl mx-auto mt-12 lg:mt-20 flex flex-col sm:flex-row justify-between items-center gap-6 border-t border-slate-200 pt-8 lg:pt-10 px-4">
-                                <button
-                                    disabled={activeQuestionIdx === 0}
-                                    onClick={() => setActiveQuestionIdx(prev => prev - 1)}
-                                    className="w-full sm:w-auto flex items-center justify-center gap-3 px-8 py-4 bg-white border border-slate-200 rounded-2xl text-[10px] lg:text-xs font-black uppercase tracking-widest text-slate-500 hover:bg-slate-50 disabled:opacity-30 disabled:grayscale transition-all"
-                                >
-                                    <ChevronLeft className="w-5 h-5" />
-                                    Previous
-                                </button>
-                                <button
-                                    onClick={() => {
-                                        if (activeQuestionIdx < currentSectionQuestions.length - 1) {
-                                            setActiveQuestionIdx(prev => prev + 1);
-                                        } else {
-                                            if (confirm(`Do you want to finish ${sections.find(s => s.id === activeSectionId)?.name} and proceed? You won't be able to return to this section.`)) {
-                                                handleFinishSection(activeSectionId!);
-                                            }
-                                        }
-                                    }}
-                                    className="w-full sm:w-auto flex items-center justify-center gap-4 px-10 lg:px-12 py-4 lg:py-5 bg-[#0f172a] text-white rounded-2xl lg:rounded-[2rem] text-[10px] lg:text-xs font-black uppercase tracking-[0.2em] hover:bg-teal-600 transition-all shadow-2xl shadow-slate-200 active:scale-95 group"
-                                >
-                                    {activeQuestionIdx < currentSectionQuestions.length - 1 ? 'Save & Next' : 'Finish Section'}
-                                    <ChevronRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
-                                </button>
+                        ) : (
+                            <div className="h-full flex items-center justify-center text-slate-300 font-black uppercase tracking-widest">
+                                Loading question...
                             </div>
-                        </div>
-                    ) : (
-                        <div className="h-full flex items-center justify-center text-slate-400 font-black uppercase tracking-widest">
-                            No questions selected...
-                        </div>
-                    )}
-                </div>
-
-                {/* Right Sidebar - Navigation Matrix (Responsive Drawer/Sidebar) */}
-                <div className={`
-                    w-full lg:w-[380px] bg-white border-t lg:border-t-0 lg:border-l border-slate-100 flex flex-col z-50 
-                    fixed inset-x-0 bottom-0 lg:relative lg:translate-y-0 transition-transform duration-300 ease-in-out
-                    ${showNavMatrix ? 'translate-y-0' : 'translate-y-full lg:translate-y-0'}
-                    lg:flex max-h-[70vh] lg:max-h-none overflow-hidden shadow-2xl lg:shadow-none
-                `}>
-                    <div className="p-4 lg:p-10 border-b border-slate-50 bg-slate-50/30 flex items-center justify-between">
-                        <div className="flex flex-col">
-                            <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-[0.3em] mb-1">Navigation Matrix</h4>
-                            <div className="flex items-center gap-4">
-                                <div className="flex items-center gap-1.5">
-                                    <div className="w-2 h-2 bg-teal-600 rounded-full" />
-                                    <span className="text-[8px] font-black text-slate-500 uppercase tracking-widest">Logged</span>
-                                </div>
-                                <div className="flex items-center gap-1.5">
-                                    <div className="w-2 h-2 bg-slate-100 border border-slate-300 rounded-full" />
-                                    <span className="text-[8px] font-black text-slate-500 uppercase tracking-widest">Pending</span>
-                                </div>
-                            </div>
-                        </div>
-                        <button
-                            onClick={() => setShowNavMatrix(false)}
-                            className="lg:hidden p-2 text-slate-400 hover:text-slate-900"
-                        >
-                            <ChevronDown className="w-6 h-6" />
-                        </button>
+                        )}
                     </div>
 
-                    <div className="flex-1 overflow-y-auto p-6 lg:p-10 custom-scrollbar">
-                        <div className="grid grid-cols-6 sm:grid-cols-8 lg:grid-cols-5 gap-2 lg:gap-3">
+                    {/* BOTTOM BAR - STICKY */}
+                    <div className="sticky bottom-0 bg-white border-t border-gray-200 px-6 py-4 flex items-center justify-between shrink-0 z-40">
+                        <button
+                            disabled={activeQuestionIdx === 0 || !activeQuestion}
+                            onClick={() => setActiveQuestionIdx(prev => prev - 1)}
+                            className="px-6 py-2.5 bg-white border border-gray-200 rounded-lg text-[10px] font-black uppercase tracking-widest text-slate-500 hover:bg-slate-50 disabled:opacity-30 transition-all flex items-center gap-2"
+                        >
+                            <ChevronLeft className="w-4 h-4" />
+                            Previous
+                        </button>
+
+                        <button
+                            disabled={!activeQuestion}
+                            onClick={() => activeQuestion && toggleMarkForReview(activeQuestion.id)}
+                            className={`px-6 py-2.5 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all flex items-center gap-2 ${activeQuestion && markedForReview[activeQuestion.id]
+                                ? 'bg-orange-600 text-white'
+                                : 'bg-slate-100 text-slate-600 border border-slate-200 hover:bg-slate-200 disabled:opacity-50'
+                                }`}
+                        >
+                            <Flag className="w-4 h-4" />
+                            {activeQuestion && markedForReview[activeQuestion.id] ? 'Marked' : 'Mark for Review'}
+                        </button>
+
+                        <button
+                            disabled={!activeQuestion}
+                            onClick={() => {
+                                if (!activeQuestion) return;
+                                if (activeQuestionIdx < currentSectionQuestions.length - 1) {
+                                    setActiveQuestionIdx(prev => prev + 1);
+                                } else {
+                                    if (confirm(`Finish ${sections.find(s => s.id === activeSectionId)?.name}? You will not be able to change answers in this section later.`)) {
+                                        handleFinishSection(activeSectionId!);
+                                    }
+                                }
+                            }}
+                            className="px-8 py-2.5 bg-green-600 text-white rounded-lg text-[10px] font-black uppercase tracking-[0.2em] hover:bg-green-700 transition-all flex items-center gap-2 group disabled:opacity-50"
+                        >
+                            {activeQuestionIdx < currentSectionQuestions.length - 1 ? 'Save & Next' : 'Finish Section'}
+                            <ChevronRight className="w-4 h-4 group-hover:translate-x-0.5 transition-transform" />
+                        </button>
+                    </div>
+                </main>
+
+                {/* RIGHT SIDEBAR: Navigation Matrix */}
+                <aside className={`
+                    w-[320px] bg-slate-50 border-l border-gray-200 overflow-y-auto hidden lg:flex flex-col p-8 custom-scrollbar
+                `}>
+                    <div className="flex items-center justify-between mb-8">
+                        <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Question Navigation</h3>
+                        <div className="flex items-center gap-2">
+                            <Layers className="w-4 h-4 text-slate-300" />
+                        </div>
+                    </div>
+
+                    <div className="grid grid-cols-5 gap-2 pb-10">
+                        {currentSectionQuestions.map((q, idx) => {
+                            const isAnswered = answers[q.id] !== undefined && answers[q.id] !== '' && answers[q.id] !== null;
+                            const isMarked = markedForReview[q.id];
+                            const isVisited = visitedQuestions[q.id];
+
+                            let bgColor = 'bg-white text-slate-400 border-gray-200';
+                            if (isAnswered) bgColor = 'bg-green-600 text-white border-green-600 shadow-sm';
+                            else if (isMarked) bgColor = 'bg-orange-500 text-white border-orange-500 shadow-sm';
+                            else if (isVisited) bgColor = 'bg-slate-100 text-slate-500 border-slate-200';
+
+                            return (
+                                <button
+                                    key={q.id}
+                                    onClick={() => setActiveQuestionIdx(idx)}
+                                    className={`w-full aspect-square rounded-full flex items-center justify-center text-[10px] font-black border-2 transition-all relative ${bgColor} ${activeQuestionIdx === idx ? 'ring-2 ring-green-600 ring-offset-2 scale-110' : ''
+                                        }`}
+                                >
+                                    {idx + 1}
+                                </button>
+                            );
+                        })}
+                    </div>
+
+                    <div className="mt-auto pt-8 border-t border-gray-200 space-y-4">
+                        <div className="flex items-center justify-between text-[9px] font-black text-slate-400 uppercase tracking-widest px-1">
+                            <span>Exam Progress</span>
+                            <span className="text-green-600">
+                                {questions.length > 0 ? Math.round((Object.keys(answers).length / questions.length) * 100) : 0}%
+                            </span>
+                        </div>
+                        <div className="h-1.5 w-full bg-gray-200 rounded-full overflow-hidden">
+                            <div
+                                className="h-full bg-green-600 rounded-full transition-all duration-500"
+                                style={{ width: `${questions.length > 0 ? (Object.keys(answers).length / questions.length) * 100 : 0}%` }}
+                            />
+                        </div>
+                    </div>
+                </aside>
+
+                {/* Mobile Drawer Trigger for Navigation */}
+                <button
+                    onClick={() => setShowNavMatrix(true)}
+                    className="lg:hidden fixed bottom-24 right-6 w-12 h-12 bg-green-600 text-white rounded-full shadow-lg flex items-center justify-center z-50 animate-bounce active:scale-90"
+                >
+                    <Layers className="w-5 h-5" />
+                </button>
+            </div>
+
+            {/* Mobile Navigation Matrix Drawer */}
+            {showNavMatrix && (
+                <div className="lg:hidden fixed inset-0 z-[100] flex flex-col">
+                    <div className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm" onClick={() => setShowNavMatrix(false)} />
+                    <div className="relative mt-auto bg-white rounded-t-[2rem] p-8 max-h-[80vh] overflow-y-auto animate-in slide-in-from-bottom duration-300">
+                        <div className="flex items-center justify-between mb-8">
+                            <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Select Question</h3>
+                            <button onClick={() => setShowNavMatrix(false)} className="p-2 bg-slate-100 rounded-full">
+                                <X className="w-4 h-4 text-slate-600" />
+                            </button>
+                        </div>
+
+                        <div className="grid grid-cols-6 gap-3 mb-10">
                             {currentSectionQuestions.map((q, idx) => {
                                 const isAnswered = answers[q.id] !== undefined && answers[q.id] !== '';
+                                const isMarked = markedForReview[q.id];
                                 return (
                                     <button
                                         key={q.id}
                                         onClick={() => {
                                             setActiveQuestionIdx(idx);
-                                            if (window.innerWidth < 1024) setShowNavMatrix(false);
+                                            setShowNavMatrix(false);
                                         }}
-                                        className={`w-full aspect-square rounded-xl lg:rounded-2xl flex items-center justify-center text-[10px] font-black border-2 transition-all relative
-                                            ${activeQuestionIdx === idx
-                                                ? 'scale-110 shadow-2xl z-10 border-slate-900 bg-slate-900 text-white'
-                                                : isAnswered
-                                                    ? 'bg-teal-50 border-teal-100 text-teal-700 hover:border-teal-300'
-                                                    : 'bg-white border-slate-50 text-slate-400 hover:bg-slate-50 hover:border-slate-200'
-                                            }`}
+                                        className={`w-full aspect-square rounded-full flex items-center justify-center text-[10px] font-black border-2 transition-all ${isAnswered ? 'bg-green-600 text-white border-green-600' :
+                                            isMarked ? 'bg-orange-500 text-white border-orange-500' :
+                                                'bg-slate-50 text-slate-400 border-slate-200'
+                                            } ${activeQuestionIdx === idx ? 'ring-2 ring-green-600 ring-offset-2' : ''}`}
                                     >
                                         {idx + 1}
-                                        {isAnswered && activeQuestionIdx !== idx && (
-                                            <div className="absolute -top-1 -right-1 w-2 h-2 bg-teal-500 rounded-full border-2 border-white" />
-                                        )}
                                     </button>
                                 );
                             })}
                         </div>
                     </div>
-
-                    <div className="p-4 lg:p-10 bg-slate-50/50 border-t border-slate-100">
-                        <div className="p-4 lg:p-8 bg-white rounded-2xl lg:rounded-[2.5rem] border border-slate-100 shadow-xl overflow-hidden">
-                            <div className="flex items-center justify-between mb-2 lg:mb-4">
-                                <span className="text-[9px] lg:text-[10px] font-black text-slate-400 uppercase tracking-widest">Overall Progress</span>
-                                <span className="text-sm lg:text-xl font-black text-teal-600">
-                                    {questions.length > 0 ? Math.round((Object.keys(answers).length / questions.length) * 100) : 0}%
-                                </span>
-                            </div>
-                            <div className="w-full h-1.5 lg:h-3 bg-slate-100 rounded-full overflow-hidden">
-                                <div
-                                    className="h-full bg-teal-600 rounded-full transition-all duration-1000"
-                                    style={{ width: `${questions.length > 0 ? (Object.keys(answers).length / questions.length) * 100 : 0}%` }}
-                                />
-                            </div>
-                        </div>
-                    </div>
                 </div>
-            </div>
+            )}
 
+            {/* ZOOM OVERLAY */}
+            {isZoomed && activeQuestion?.image_url && (
+                <div
+                    className="fixed inset-0 z-[200] bg-slate-900/95 flex flex-col items-center justify-center p-4 lg:p-10"
+                    onClick={() => setIsZoomed(false)}
+                >
+                    <button className="absolute top-8 right-8 p-4 bg-white/10 hover:bg-white/20 rounded-full text-white transition-all">
+                        <X className="w-6 h-6" />
+                    </button>
+                    <div className="w-full h-full flex items-center justify-center p-4">
+                        <img
+                            src={activeQuestion.image_url}
+                            alt="Question Detailed"
+                            className="max-w-full max-h-full object-contain cursor-zoom-out shadow-2xl"
+                        />
+                    </div>
+                    <p className="mt-4 text-slate-400 font-bold text-xs uppercase tracking-[0.2em]">Click anywhere to exit zoom</p>
+                </div>
+            )}
 
+            {/* TIME UP MODAL */}
             {isTimeUpModalOpen && (
-                <div className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-900/90 backdrop-blur-xl p-4">
-                    <div className="bg-white rounded-[3rem] shadow-2xl w-full max-w-xl overflow-hidden animate-in zoom-in duration-300">
-                        <div className="p-12 text-center">
-                            <div className="w-24 h-24 bg-rose-100 text-rose-600 rounded-full flex items-center justify-center mx-auto mb-8 animate-bounce">
-                                <Clock className="w-12 h-12" />
+                <div className="fixed inset-0 z-[300] flex items-center justify-center bg-slate-900/80 backdrop-blur-md p-4">
+                    <div className="bg-white rounded-3xl shadow-2xl w-full max-w-md overflow-hidden animate-in zoom-in duration-300 border border-red-100">
+                        <div className="p-10 text-center">
+                            <div className="w-20 h-20 bg-red-50 text-red-600 rounded-full flex items-center justify-center mx-auto mb-8">
+                                <Clock className="w-10 h-10" />
                             </div>
-                            <h2 className="text-4xl font-black text-slate-900 mb-4 tracking-tight">Time Exhausted</h2>
-                            <p className="text-slate-500 font-medium leading-relaxed mb-10 px-4">
-                                The allocated duration for this session has reached zero. {exam?.allow_continue_after_time_up ? 'You may continue your effort, but a late submission flag will be appended.' : 'The system will now securely transmit your current responses.'}
+                            <h2 className="text-3xl font-black text-slate-900 mb-2 tracking-tight">Time Exhausted</h2>
+                            <p className="text-slate-500 font-bold text-sm leading-relaxed mb-8 px-4">
+                                The exam duration has reached its limit. Your responses will now be automatically evaluated.
                             </p>
-
-                            <div className="flex flex-col gap-4">
-                                {exam?.allow_continue_after_time_up && (
-                                    <button
-                                        onClick={() => setIsTimeUpModalOpen(false)}
-                                        className="w-full py-5 bg-teal-600 text-white rounded-2xl font-black uppercase text-xs tracking-widest hover:bg-teal-700 transition-all shadow-xl active:scale-95"
-                                    >
-                                        Continue Effort (Mark Lated)
-                                    </button>
-                                )}
-                                <button
-                                    onClick={() => finalizeAttempt(attemptId!)}
-                                    className="w-full py-5 bg-slate-900 text-white rounded-2xl font-black uppercase text-xs tracking-widest hover:bg-slate-800 transition-all shadow-xl active:scale-95"
-                                >
-                                    Finish & Submit Now
-                                </button>
-                            </div>
+                            <button
+                                onClick={() => finalizeAttempt(attemptId!)}
+                                className="w-full py-4 bg-green-600 text-white rounded-xl font-black uppercase text-[10px] tracking-widest hover:bg-green-700 transition-all shadow-md active:scale-95"
+                            >
+                                Submit Exam Now
+                            </button>
                         </div>
                     </div>
                 </div>
-
             )}
         </div>
     );
