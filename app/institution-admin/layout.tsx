@@ -8,6 +8,8 @@ import { AuthService } from '@/lib/services/authService';
 
 import { useUI } from '@/lib/context/UIContext';
 
+import Footer from '@/components/shared/Footer';
+
 export default function InstitutionAdminLayout({ children }: { children: React.ReactNode }) {
     const userRole = 'institution_admin';
     const { isSidebarCollapsed } = useUI();
@@ -33,6 +35,7 @@ export default function InstitutionAdminLayout({ children }: { children: React.R
                 />
                 <main className="flex-1 overflow-auto px-8 pb-8 pt-28 lg:pt-24">
                     {children}
+                    <Footer />
                 </main>
             </div>
             <Toaster position="top-right" />

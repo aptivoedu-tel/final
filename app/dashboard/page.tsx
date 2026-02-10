@@ -13,6 +13,7 @@ import {
 import Link from 'next/link';
 import Sidebar from '@/components/layout/Sidebar';
 import Header from '@/components/layout/Header';
+import Footer from '@/components/shared/Footer';
 import { AuthService } from '@/lib/services/authService';
 import {
     DashboardService,
@@ -284,6 +285,7 @@ export default function StudentDashboard() {
                                 </div>
                             </div>
                         </div>
+                        <Footer />
                     </div>
                 </main>
             </div>

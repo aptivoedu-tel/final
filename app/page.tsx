@@ -26,7 +26,10 @@ import {
   ShieldCheck,
   ChevronRight,
   Menu,
-  X
+  X,
+  Facebook,
+  Instagram,
+  Linkedin
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { supabase } from '@/lib/supabase/client';
@@ -642,9 +645,30 @@ export default function LandingPage() {
                 The world's most advanced aptitude preparation platform. Built for students, loved by educators.
               </p>
               <div className="flex gap-4">
-                {[1, 2, 3, 4].map(i => (
-                  <div key={i} className="w-10 h-10 rounded-full bg-white border border-slate-200 flex items-center justify-center text-slate-400 hover:text-teal-600 hover:border-teal-600 transition-colors cursor-pointer" />
-                ))}
+                <Link
+                  href="https://www.facebook.com/share/17EjFzZJWo/"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="w-10 h-10 rounded-full bg-white border border-slate-200 flex items-center justify-center text-slate-400 hover:text-blue-600 hover:border-blue-600 transition-all cursor-pointer shadow-sm hover:shadow-md"
+                >
+                  <Facebook className="w-5 h-5" />
+                </Link>
+                <Link
+                  href="https://www.instagram.com/aptivo.education"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="w-10 h-10 rounded-full bg-white border border-slate-200 flex items-center justify-center text-slate-400 hover:text-pink-600 hover:border-pink-600 transition-all cursor-pointer shadow-sm hover:shadow-md"
+                >
+                  <Instagram className="w-5 h-5" />
+                </Link>
+                <Link
+                  href="#"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="w-10 h-10 rounded-full bg-white border border-slate-200 flex items-center justify-center text-slate-400 hover:text-blue-700 hover:border-blue-700 transition-all cursor-pointer shadow-sm hover:shadow-md"
+                >
+                  <Linkedin className="w-5 h-5" />
+                </Link>
               </div>
             </div>
 

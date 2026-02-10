@@ -5,6 +5,7 @@ import { useRouter, useParams } from 'next/navigation';
 import { supabase } from '@/lib/supabase/client';
 import Sidebar from '@/components/layout/Sidebar';
 import Header from '@/components/layout/Header';
+import Footer from '@/components/shared/Footer';
 import { AuthService } from '@/lib/services/authService';
 import {
     BookOpen,
@@ -748,6 +749,7 @@ export default function UniversityDetailPage() {
                             </div>
                         </div>
                     )}
+                    <Footer />
                 </main>
             </div>
         </div>

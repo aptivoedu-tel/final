@@ -347,36 +347,53 @@ export class AuthService {
      * Sync session from Supabase to LocalStorage (for OAuth flows)
      */
     static async syncSession(): Promise<User | null> {
-        const { data: { session } } = await supabase.auth.getSession();
-        if (!session) return null;
+        try {
+            const { data: { session }, error } = await supabase.auth.getSession();
 
-        const stored = this.getCurrentUser();
-        if (stored && stored.id === session.user.id) return stored;
+            if (error || !session) {
+                if (typeof window !== 'undefined' && (error?.message?.includes('Refresh Token') || error?.message?.includes('not found'))) {
+                    console.warn("Auth session invalid, clearing local state.");
+                    localStorage.removeItem('aptivo_user');
+                    localStorage.removeItem('aptivo_session');
+                }
+                return null;
+            }
 
-        let { data: user } = await supabase
-            .from('users')
-            .select('*')
-            .eq('id', session.user.id)
-            .single();
+            const stored = this.getCurrentUser();
+            if (stored && stored.id === session.user.id) return stored;
 
-        if (!user) {
-            const { data: newUser } = await supabase.from('users').insert({
-                id: session.user.id,
-                email: session.user.email!,
-                full_name: session.user.user_metadata.full_name || 'User',
-                role: 'student',
-                status: 'active',
-                email_verified: true,
-                is_solo: true
-            }).select().single();
-            user = newUser;
+            let { data: user } = await supabase
+                .from('users')
+                .select('*')
+                .eq('id', session.user.id)
+                .single();
+
+            if (!user) {
+                const { data: newUser } = await supabase.from('users').insert({
+                    id: session.user.id,
+                    email: session.user.email!,
+                    full_name: session.user.user_metadata.full_name || 'User',
+                    role: 'student',
+                    status: 'active',
+                    email_verified: true,
+                    is_solo: true
+                }).select().single();
+                user = newUser;
+            }
+
+            if (user && typeof window !== 'undefined') {
+                localStorage.setItem('aptivo_user', JSON.stringify(user));
+                localStorage.setItem('aptivo_session', JSON.stringify(session));
+            }
+
+            return user;
+        } catch (error) {
+            console.error('Session sync failed:', error);
+            if (typeof window !== 'undefined') {
+                localStorage.removeItem('aptivo_user');
+                localStorage.removeItem('aptivo_session');
+            }
+            return null;
         }
-
-        if (user && typeof window !== 'undefined') {
-            localStorage.setItem('aptivo_user', JSON.stringify(user));
-            localStorage.setItem('aptivo_session', JSON.stringify(session));
-        }
-
-        return user;
     }
 }

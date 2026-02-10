@@ -8,6 +8,7 @@ import {
 import { useUI } from '@/lib/context/UIContext';
 import Sidebar from '@/components/layout/Sidebar';
 import Header from '@/components/layout/Header';
+import Footer from '@/components/shared/Footer';
 import { AuthService } from '@/lib/services/authService';
 import {
     AdminDashboardService,
@@ -296,6 +297,7 @@ export default function AdminDashboard() {
                         )}
                     </div>
                 </div>
+                <Footer />
             </main >
         </div >
     );

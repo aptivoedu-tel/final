@@ -62,13 +62,26 @@ export async function middleware(request: NextRequest) {
     );
 
     // 1. Get Session & User (Double check)
-    const { data: { session } } = await supabase.auth.getSession();
+    let session = null;
+    let user = undefined;
 
-    // Robust User Check (more reliable than session alone in some environments)
-    let user = session?.user;
-    if (!user) {
-        const { data: { user: authUser } } = await supabase.auth.getUser();
-        user = authUser || undefined;
+    try {
+        const { data: { session: currentSession }, error: sessionError } = await supabase.auth.getSession();
+        if (sessionError) throw sessionError;
+        session = currentSession;
+        user = session?.user;
+
+        // Robust User Check (more reliable than session alone in some environments)
+        if (!user) {
+            const { data: { user: authUser }, error: userError } = await supabase.auth.getUser();
+            if (userError) throw userError;
+            user = authUser || undefined;
+        }
+    } catch (error: any) {
+        console.warn("[Middleware] Auth error encountered:", error.message || error);
+        // If it's a refresh token error, we want to clear the 'session' and 'user' to force re-login
+        session = null;
+        user = undefined;
     }
 
     const url = request.nextUrl.clone();
