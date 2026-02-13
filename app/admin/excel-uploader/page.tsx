@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
-import { Download, FileSpreadsheet, Upload, Folder, BookOpen, Layers, CheckCircle, AlertTriangle, Save, X, AlertCircle } from 'lucide-react';
+import { Download, FileSpreadsheet, Upload, Folder, BookOpen, Layers, CheckCircle, AlertTriangle, Save, X, AlertCircle, Info } from 'lucide-react';
 import { useLoading } from '@/lib/context/LoadingContext';
 
 import Sidebar from '@/components/layout/Sidebar';
@@ -152,7 +152,32 @@ export default function ExcelUploaderPage() {
                 // Map the raw preview data to MCQRow objects for the service
                 const mcqRows = previewData.map(row => {
                     const getVal = (patterns: string[]) => {
-                        const key = Object.keys(row).find(k => patterns.some(p => k.toLowerCase().includes(p.toLowerCase())));
+                        const rowKeys = Object.keys(row);
+
+                        // 1. Try exact match first
+                        let key = rowKeys.find(k =>
+                            patterns.some(p => k.toLowerCase().trim() === p.toLowerCase().trim())
+                        );
+
+                        // 2. Specialized handling for single-letter options (A, B, C, D)
+                        if (!key) {
+                            key = rowKeys.find(k => patterns.some(p => {
+                                const kl = k.toLowerCase().trim();
+                                const pl = p.toLowerCase().trim();
+                                if (pl.length === 1 && ['a', 'b', 'c', 'd'].includes(pl)) {
+                                    // Match "Option A", "Option_A", "A", "a" but NOT "Subject"
+                                    return kl === pl ||
+                                        kl === `option ${pl}` ||
+                                        kl === `option_${pl}` ||
+                                        kl === `opt ${pl}` ||
+                                        kl.startsWith(`option ${pl} `) ||
+                                        kl.startsWith(`${pl}.`) ||
+                                        kl.startsWith(`${pl}:`);
+                                }
+                                return kl.includes(pl);
+                            }));
+                        }
+
                         return key ? row[key]?.toString() : undefined;
                     };
 
@@ -216,7 +241,24 @@ export default function ExcelUploaderPage() {
                 // Map and Insert
                 const mcqsToInsert = previewData.map(row => {
                     const getVal = (patterns: string[]) => {
-                        const key = Object.keys(row).find(k => patterns.some(p => k.toLowerCase().includes(p.toLowerCase())));
+                        const rowKeys = Object.keys(row);
+
+                        // 1. Try exact match first
+                        let key = rowKeys.find(k =>
+                            patterns.some(p => k.toLowerCase().trim() === p.toLowerCase().trim())
+                        );
+
+                        // 2. Specialized handling for single-letter options
+                        if (!key) {
+                            key = rowKeys.find(k => patterns.some(p => {
+                                const kl = k.toLowerCase().trim();
+                                const pl = p.toLowerCase().trim();
+                                if (pl.length === 1 && ['a', 'b', 'c', 'd'].includes(pl)) {
+                                    return kl === pl || kl === `option ${pl}` || kl === `option_${pl}` || kl === `opt ${pl}`;
+                                }
+                                return kl.includes(pl);
+                            }));
+                        }
                         return key ? row[key] : null;
                     };
 
@@ -479,7 +521,29 @@ export default function ExcelUploaderPage() {
                                             <tbody className="divide-y divide-gray-50">
                                                 {previewData.map((row, idx) => {
                                                     const getVal = (patterns: string[]) => {
-                                                        const key = Object.keys(row).find(k => patterns.some(p => k.toLowerCase().includes(p.toLowerCase())));
+                                                        const rowKeys = Object.keys(row);
+
+                                                        // 1. Try exact match first
+                                                        let key = rowKeys.find(k =>
+                                                            patterns.some(p => k.toLowerCase().trim() === p.toLowerCase().trim())
+                                                        );
+
+                                                        // 2. Specialized handling for single-letter options
+                                                        if (!key) {
+                                                            key = rowKeys.find(k => patterns.some(p => {
+                                                                const kl = k.toLowerCase().trim();
+                                                                const pl = p.toLowerCase().trim();
+                                                                if (pl.length === 1 && ['a', 'b', 'c', 'd'].includes(pl)) {
+                                                                    return kl === pl ||
+                                                                        kl === `option ${pl}` ||
+                                                                        kl === `option_${pl}` ||
+                                                                        kl === `opt ${pl}` ||
+                                                                        kl.startsWith(`${pl}.`) ||
+                                                                        kl.startsWith(`${pl}:`);
+                                                                }
+                                                                return kl.includes(pl);
+                                                            }));
+                                                        }
                                                         return key ? row[key] : null;
                                                     };
 
@@ -512,6 +576,16 @@ export default function ExcelUploaderPage() {
                                                                     {getVal(['explanation']) && <span className="text-[10px] bg-emerald-50 text-emerald-600 px-1.5 py-0.5 rounded font-bold uppercase">Explanation</span>}
                                                                     {getVal(['image', 'url', 'figure']) && <span className="text-[10px] bg-orange-50 text-orange-600 px-1.5 py-0.5 rounded font-bold uppercase">Image</span>}
                                                                 </div>
+                                                                {getVal(['explanation']) && (
+                                                                    <div className="mt-3 p-3 bg-teal-50/30 rounded-xl border border-teal-100/50">
+                                                                        <p className="text-[9px] font-black text-teal-600 uppercase tracking-widest mb-1 flex items-center gap-1">
+                                                                            <Info className="w-3 h-3" /> Detailed Explanation
+                                                                        </p>
+                                                                        <div className="text-[11px] text-slate-600 leading-relaxed italic">
+                                                                            <MarkdownRenderer content={getVal(['explanation'])?.toString() || ''} />
+                                                                        </div>
+                                                                    </div>
+                                                                )}
                                                             </td>
                                                             <td className="px-6 py-4">
                                                                 <div className="space-y-2">
@@ -522,8 +596,8 @@ export default function ExcelUploaderPage() {
                                                                             <div
                                                                                 key={opt}
                                                                                 className={`text-[11px] flex items-start gap-2 p-2 rounded-lg transition-colors ${isCorrect
-                                                                                        ? 'bg-emerald-50 border border-emerald-200 text-emerald-700 font-bold'
-                                                                                        : 'bg-slate-50 border border-slate-100 text-slate-600'
+                                                                                    ? 'bg-emerald-50 border border-emerald-200 text-emerald-700 font-bold'
+                                                                                    : 'bg-slate-50 border border-slate-100 text-slate-600'
                                                                                     }`}
                                                                             >
                                                                                 <span className="shrink-0 font-bold min-w-[16px]">{opt}.</span>

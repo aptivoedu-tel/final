@@ -452,14 +452,30 @@ export default function UniversityExamManager({ uniId, userRole, onBack }: Unive
                 const ws = wb.Sheets[wsname];
                 const data: any[] = XLSX.utils.sheet_to_json(ws);
 
-                const questions_to_insert = data.map(row => ({
-                    section_id: activeSection.id,
-                    question_text: row.question_text || row.Question || '',
-                    options: [row.option1, row.option2, row.option3, row.option4].filter(Boolean),
-                    correct_answer: row.correct_option?.toString() || row.Answer?.toString() || '1',
-                    marks: row.marks || 1,
-                    question_type: 'mcq_single'
-                }));
+                const questions_to_insert = data.map(row => {
+                    const rawCorrect = (row.correct_option || row.Answer || row.correct_answer || '1').toString().toUpperCase().trim();
+                    let correctIndex = rawCorrect;
+                    if (rawCorrect === 'A') correctIndex = '1';
+                    else if (rawCorrect === 'B') correctIndex = '2';
+                    else if (rawCorrect === 'C') correctIndex = '3';
+                    else if (rawCorrect === 'D') correctIndex = '4';
+
+                    return {
+                        section_id: activeSection.id,
+                        question_text: row.question_text || row.Question || row.question || '',
+                        options: [
+                            row.option1 || row.option_a || row.A || row['Option A'],
+                            row.option2 || row.option_b || row.B || row['Option B'],
+                            row.option3 || row.option_c || row.C || row['Option C'],
+                            row.option4 || row.option_d || row.D || row['Option D']
+                        ].filter(Boolean),
+                        correct_answer: correctIndex,
+                        marks: row.marks || 1,
+                        explanation: row.explanation || row.Explanation || row.reason || '',
+                        image_url: row.image_url || row.question_image || row['Question Image'] || '',
+                        question_type: 'mcq_single'
+                    };
+                });
 
                 const { error } = await supabase.from('exam_questions').insert(questions_to_insert);
                 if (error) throw error;
