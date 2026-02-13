@@ -32,6 +32,7 @@ export default function TopicPracticeSessionPage() {
     const [questions, setQuestions] = useState<MCQ[]>([]);
     const [currentIndex, setCurrentIndex] = useState(0);
     const [answers, setAnswers] = useState<Record<number, string>>({});
+    const [submittedAnswers, setSubmittedAnswers] = useState<Record<number, boolean>>({});
     const [isCompleted, setIsCompleted] = useState(false);
     const [startTime] = useState(new Date());
     const [timeElapsed, setTimeElapsed] = useState(0);
@@ -113,7 +114,7 @@ export default function TopicPracticeSessionPage() {
     }, [topicId, uniId, router]);
 
     const handleSelectOption = (option: string) => {
-        if (isCompleted) return;
+        if (isCompleted || submittedAnswers[currentIndex]) return;
         setAnswers({ ...answers, [currentIndex]: option });
     };
 
@@ -135,6 +136,14 @@ export default function TopicPracticeSessionPage() {
         } else {
             finalizeSession();
         }
+    };
+
+    const handleSubmitAnswer = async () => {
+        if (!answers[currentIndex]) return;
+
+        const currentMCQ = questions[currentIndex];
+        await handleSubmitAttempt(currentMCQ.id, answers[currentIndex]);
+        setSubmittedAnswers({ ...submittedAnswers, [currentIndex]: true });
     };
 
     const prevQuestion = () => {
@@ -315,28 +324,77 @@ export default function TopicPracticeSessionPage() {
                                     { key: 'B', text: currentMCQ.option_b },
                                     { key: 'C', text: currentMCQ.option_c },
                                     { key: 'D', text: currentMCQ.option_d },
-                                ].map((option) => (
-                                    <button
-                                        key={option.key}
-                                        onClick={() => handleSelectOption(option.key)}
-                                        className={`group flex items-center p-6 rounded-2xl border-2 transition-all active:scale-[0.99] text-left ${answers[currentIndex] === option.key
-                                            ? 'bg-teal-50 border-teal-500 shadow-md shadow-teal-100'
-                                            : 'bg-white border-slate-100 hover:border-slate-200 hover:bg-slate-50'
-                                            }`}
-                                    >
-                                        <div className={`w-10 h-10 rounded-xl flex items-center justify-center font-black text-sm shrink-0 transition-all ${answers[currentIndex] === option.key
-                                            ? 'bg-teal-600 text-white'
-                                            : 'bg-slate-100 text-slate-400 group-hover:bg-white group-hover:text-slate-600'
-                                            }`}>
-                                            {option.key}
-                                        </div>
-                                        <span className={`ml-6 text-sm font-bold ${answers[currentIndex] === option.key ? 'text-teal-900' : 'text-slate-600'
-                                            }`}>
-                                            {option.text}
-                                        </span>
-                                    </button>
-                                ))}
+                                ].map((option) => {
+                                    const isSubmitted = submittedAnswers[currentIndex];
+                                    const isSelected = answers[currentIndex] === option.key;
+                                    const isCorrect = option.key === currentMCQ.correct_option;
+                                    const showCorrect = isSubmitted && isCorrect;
+                                    const showWrong = isSubmitted && isSelected && !isCorrect;
+
+                                    return (
+                                        <button
+                                            key={option.key}
+                                            onClick={() => handleSelectOption(option.key)}
+                                            disabled={isSubmitted}
+                                            className={`group flex items-center p-6 rounded-2xl border-2 transition-all active:scale-[0.99] text-left ${showCorrect
+                                                    ? 'bg-emerald-50 border-emerald-500 shadow-md shadow-emerald-100'
+                                                    : showWrong
+                                                        ? 'bg-rose-50 border-rose-500 shadow-md shadow-rose-100'
+                                                        : isSelected
+                                                            ? 'bg-teal-50 border-teal-500 shadow-md shadow-teal-100'
+                                                            : 'bg-white border-slate-100 hover:border-slate-200 hover:bg-slate-50'
+                                                } ${isSubmitted ? 'cursor-default' : ''}`}
+                                        >
+                                            <div className={`w-10 h-10 rounded-xl flex items-center justify-center font-black text-sm shrink-0 transition-all ${showCorrect
+                                                    ? 'bg-emerald-600 text-white'
+                                                    : showWrong
+                                                        ? 'bg-rose-600 text-white'
+                                                        : isSelected
+                                                            ? 'bg-teal-600 text-white'
+                                                            : 'bg-slate-100 text-slate-400 group-hover:bg-white group-hover:text-slate-600'
+                                                }`}>
+                                                {showCorrect ? (
+                                                    <CheckCircle2 className="w-5 h-5" />
+                                                ) : showWrong ? (
+                                                    <XCircle className="w-5 h-5" />
+                                                ) : (
+                                                    option.key
+                                                )}
+                                            </div>
+                                            <span className={`ml-6 text-sm font-bold ${showCorrect
+                                                    ? 'text-emerald-900'
+                                                    : showWrong
+                                                        ? 'text-rose-900'
+                                                        : isSelected
+                                                            ? 'text-teal-900'
+                                                            : 'text-slate-600'
+                                                }`}>
+                                                {option.text}
+                                            </span>
+                                        </button>
+                                    );
+                                })}
                             </div>
+
+                            {/* Explanation */}
+                            {submittedAnswers[currentIndex] && currentMCQ.explanation && (
+                                <div className="mt-8 p-6 bg-slate-50 rounded-2xl border border-slate-200">
+                                    <div className="flex items-start gap-3">
+                                        <div className="w-8 h-8 rounded-lg bg-teal-600 flex items-center justify-center shrink-0">
+                                            <HelpCircle className="w-4 h-4 text-white" />
+                                        </div>
+                                        <div className="flex-1">
+                                            <h4 className="text-xs font-black text-teal-600 uppercase tracking-widest mb-2">Explanation</h4>
+                                            <p className="text-sm text-slate-700 leading-relaxed">{currentMCQ.explanation}</p>
+                                            {currentMCQ.explanation_url && (
+                                                <div className="mt-4 rounded-xl overflow-hidden border border-slate-200">
+                                                    <img src={currentMCQ.explanation_url} alt="Explanation" className="w-full h-auto" />
+                                                </div>
+                                            )}
+                                        </div>
+                                    </div>
+                                </div>
+                            )}
                         </div>
 
                         {/* Navigation Footer */}
@@ -360,32 +418,36 @@ export default function TopicPracticeSessionPage() {
                                 </button>
                             </div>
 
-                            <button
-                                onClick={() => {
-                                    if (answers[currentIndex]) {
-                                        handleSubmitAttempt(currentMCQ.id, answers[currentIndex]);
-                                        nextQuestion();
-                                    } else {
-                                        nextQuestion();
-                                    }
-                                }}
-                                className={`w-full sm:w-auto px-10 py-4 rounded-2xl font-black uppercase tracking-[0.2em] text-[10px] transition-all flex items-center justify-center gap-3 ${answers[currentIndex]
-                                    ? 'bg-slate-900 text-white shadow-xl shadow-slate-200 hover:bg-slate-800 active:scale-95'
-                                    : 'bg-white border border-slate-200 text-slate-400 hover:text-slate-600'
-                                    }`}
-                            >
-                                {currentIndex === questions.length - 1 ? (
-                                    <>
-                                        Finish Practice
-                                        <CheckCircle2 className="w-4 h-4" />
-                                    </>
-                                ) : (
-                                    <>
-                                        {answers[currentIndex] ? 'Commit Answer' : 'Skip Item'}
-                                        <ArrowRight className="w-4 h-4" />
-                                    </>
-                                )}
-                            </button>
+                            {!submittedAnswers[currentIndex] ? (
+                                <button
+                                    onClick={handleSubmitAnswer}
+                                    disabled={!answers[currentIndex]}
+                                    className={`w-full sm:w-auto px-10 py-4 rounded-2xl font-black uppercase tracking-[0.2em] text-[10px] transition-all flex items-center justify-center gap-3 ${answers[currentIndex]
+                                            ? 'bg-teal-600 text-white shadow-xl shadow-teal-200 hover:bg-teal-700 active:scale-95'
+                                            : 'bg-slate-200 text-slate-400 cursor-not-allowed'
+                                        }`}
+                                >
+                                    Submit Answer
+                                    <Send className="w-4 h-4" />
+                                </button>
+                            ) : (
+                                <button
+                                    onClick={nextQuestion}
+                                    className="w-full sm:w-auto px-10 py-4 rounded-2xl font-black uppercase tracking-[0.2em] text-[10px] transition-all flex items-center justify-center gap-3 bg-slate-900 text-white shadow-xl shadow-slate-200 hover:bg-slate-800 active:scale-95"
+                                >
+                                    {currentIndex === questions.length - 1 ? (
+                                        <>
+                                            Finish Practice
+                                            <CheckCircle2 className="w-4 h-4" />
+                                        </>
+                                    ) : (
+                                        <>
+                                            Next Question
+                                            <ArrowRight className="w-4 h-4" />
+                                        </>
+                                    )}
+                                </button>
+                            )}
                         </div>
                     </div>
                 </div>

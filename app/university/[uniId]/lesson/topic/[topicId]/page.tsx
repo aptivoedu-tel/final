@@ -55,13 +55,26 @@ export default function TopicLessonReaderPage() {
             setTopic(t);
             setSubject(t.subject);
 
-            // 2. Fetch MCQ count (direct topic questions)
-            const { count } = await supabase
+            // 2. Fetch MCQ count (including subtopics)
+            const { data: subtopics } = await supabase
+                .from('subtopics')
+                .select('id')
+                .eq('topic_id', topicId);
+
+            const subtopicIds = subtopics?.map(st => st.id) || [];
+
+            let query = supabase
                 .from('mcqs')
                 .select('*', { count: 'exact', head: true })
-                .eq('topic_id', topicId)
-                .is('subtopic_id', null)
                 .eq('is_active', true);
+
+            if (subtopicIds.length > 0) {
+                query = query.or(`topic_id.eq.${topicId},subtopic_id.in.(${subtopicIds.join(',')})`);
+            } else {
+                query = query.eq('topic_id', topicId);
+            }
+
+            const { count } = await query;
             setMcqCount(count || 0);
         } catch (e: any) {
             console.error('Error loading lesson:', e);

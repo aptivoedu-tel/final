@@ -178,7 +178,20 @@ export class PracticeService {
         if (subtopicId) {
             query = query.eq('subtopic_id', subtopicId);
         } else if (topicId) {
-            query = query.eq('topic_id', topicId).is('subtopic_id', null);
+            // Get all subtopics under this topic to include their questions
+            const { data: subtopics } = await supabase
+                .from('subtopics')
+                .select('id')
+                .eq('topic_id', topicId);
+
+            const subtopicIds = subtopics?.map(st => st.id) || [];
+
+            if (subtopicIds.length > 0) {
+                // Query questions in this topic OR in any of its subtopics
+                query = query.or(`topic_id.eq.${topicId},subtopic_id.in.(${subtopicIds.join(',')})`);
+            } else {
+                query = query.eq('topic_id', topicId);
+            }
         }
 
         if (studentId) {
