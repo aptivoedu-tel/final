@@ -44,6 +44,7 @@ export default function SuperAdminQuestionBankPage() {
     const [isPassageModalOpen, setIsPassageModalOpen] = useState(false);
     const [passages, setPassages] = useState<any[]>([]);
     const [editingMcq, setEditingMcq] = useState<any>(null);
+    const [selectedQuestionIds, setSelectedQuestionIds] = useState<number[]>([]);
     const [mcqForm, setMcqForm] = useState({
         question: '',
         question_type: 'mcq_single',
@@ -173,6 +174,7 @@ export default function SuperAdminQuestionBankPage() {
 
     const loadQuestions = async (item: HierarchyItem) => {
         setGlobalLoading(true, 'Accessing Encrypted Archives...');
+        setSelectedQuestionIds([]);
         try {
             let query = supabase.from('mcqs').select('*');
 
@@ -308,6 +310,44 @@ export default function SuperAdminQuestionBankPage() {
         } catch (err: any) {
             console.error("Delete MCQ error:", err);
             toast.error(err.message || "Failed to delete question");
+        }
+    };
+
+    const handleSelectQuestion = (id: number) => {
+        setSelectedQuestionIds(prev =>
+            prev.includes(id) ? prev.filter(i => i !== id) : [...prev, id]
+        );
+    };
+
+    const handleSelectAll = () => {
+        if (selectedQuestionIds.length === questions.length && questions.length > 0) {
+            setSelectedQuestionIds([]);
+        } else {
+            setSelectedQuestionIds(questions.map(q => q.id));
+        }
+    };
+
+    const handleBulkDelete = async () => {
+        if (selectedQuestionIds.length === 0) return;
+        if (!confirm(`Are you sure you want to permanently delete ${selectedQuestionIds.length} questions? This action cannot be undone.`)) return;
+
+        setGlobalLoading(true, 'Initiating Mass Deletion...');
+        try {
+            const { error } = await supabase
+                .from('mcqs')
+                .delete()
+                .in('id', selectedQuestionIds);
+
+            if (error) throw error;
+
+            toast.success(`${selectedQuestionIds.length} questions deleted successfully`);
+            setSelectedQuestionIds([]);
+            if (selectedItem) loadQuestions(selectedItem);
+        } catch (err: any) {
+            console.error("Bulk Delete MCQ error:", err);
+            toast.error(err.message || "Failed to delete questions");
+        } finally {
+            setGlobalLoading(false);
         }
     };
 
@@ -469,6 +509,29 @@ export default function SuperAdminQuestionBankPage() {
                                             <h2 className="text-xl font-black text-slate-900">{selectedItem?.title}</h2>
                                         </div>
                                         <div className="flex items-center gap-3">
+                                            {questions.length > 0 && (
+                                                <div className="flex items-center gap-3 mr-4 py-2 px-4 bg-slate-50 rounded-xl border border-gray-100">
+                                                    <label className="flex items-center gap-2 cursor-pointer">
+                                                        <input
+                                                            type="checkbox"
+                                                            checked={selectedQuestionIds.length === questions.length && questions.length > 0}
+                                                            onChange={handleSelectAll}
+                                                            className="w-4 h-4 rounded border-gray-300 text-teal-600 focus:ring-teal-500"
+                                                        />
+                                                        <span className="text-[10px] font-black text-slate-600 uppercase tracking-wider">Select All</span>
+                                                    </label>
+
+                                                    {selectedQuestionIds.length > 0 && (
+                                                        <button
+                                                            onClick={handleBulkDelete}
+                                                            className="flex items-center gap-1.5 ml-4 text-rose-600 hover:text-rose-700 transition-colors"
+                                                        >
+                                                            <Trash2 className="w-3.5 h-3.5" />
+                                                            <span className="text-[10px] font-black uppercase tracking-wider">Delete ({selectedQuestionIds.length})</span>
+                                                        </button>
+                                                    )}
+                                                </div>
+                                            )}
                                             <div className="flex items-center gap-2 p-1.5 bg-slate-50 rounded-lg border border-gray-100">
                                                 <Filter className="w-4 h-4 text-slate-400" />
                                                 <select className="bg-transparent border-none text-[10px] font-black text-slate-600 outline-none uppercase tracking-wider">
@@ -483,87 +546,99 @@ export default function SuperAdminQuestionBankPage() {
                                     <div className="flex-1 overflow-y-auto p-6 space-y-6 bg-slate-50/50 custom-scrollbar">
                                         {questionsLoading ? null : questions.length > 0 ? (
                                             questions.map((q, idx) => (
-                                                <div key={q.id} className="bg-white p-6 rounded-xl border border-gray-100 shadow-sm hover:shadow-xl hover:shadow-teal-500/5 transition-all group relative overflow-hidden">
-                                                    <div className="absolute top-0 right-0 p-4 opacity-0 group-hover:opacity-100 transition-opacity">
-                                                        <div className="flex gap-2">
-                                                            <button
-                                                                onClick={() => handleOpenEditMcq(q)}
-                                                                className="text-slate-400 hover:text-teal-600 px-3 py-1 text-[10px] font-black uppercase tracking-widest bg-slate-50 rounded-lg border border-gray-100 transition-colors"
-                                                            >
-                                                                Edit Entry
-                                                            </button>
-                                                            <button
-                                                                onClick={() => handleDeleteMcq(q.id)}
-                                                                className="text-slate-400 hover:text-rose-600 p-1 bg-slate-50 rounded-lg border border-gray-100 transition-colors"
-                                                                title="Delete Question"
-                                                            >
-                                                                <Trash2 className="w-3.5 h-3.5" />
-                                                            </button>
-                                                        </div>
+                                                <div key={q.id} className={`bg-white p-6 rounded-xl border transition-all group relative overflow-hidden ${selectedQuestionIds.includes(q.id) ? 'border-teal-500 ring-1 ring-teal-500 shadow-lg shadow-teal-500/5' : 'border-gray-100 shadow-sm hover:shadow-xl hover:shadow-teal-500/5'}`}>
+                                                    {/* Selection Checkbox */}
+                                                    <div className="absolute top-4 left-4 z-10">
+                                                        <input
+                                                            type="checkbox"
+                                                            checked={selectedQuestionIds.includes(q.id)}
+                                                            onChange={() => handleSelectQuestion(q.id)}
+                                                            className="w-5 h-5 rounded border-gray-300 text-teal-600 focus:ring-teal-500 cursor-pointer"
+                                                        />
                                                     </div>
 
-                                                    <div className="flex justify-between items-start mb-4">
-                                                        <div className="flex items-center gap-3">
-                                                            <span className="w-9 h-9 rounded-xl bg-slate-900 text-white flex items-center justify-center font-black text-sm shadow-lg shadow-slate-900/10">
-                                                                {idx + 1}
-                                                            </span>
-                                                            <span className={`px-2.5 py-1 rounded-lg text-[9px] font-black uppercase tracking-[0.1em] ${q.difficulty === 'easy' ? 'bg-emerald-100 text-emerald-700' :
-                                                                q.difficulty === 'medium' ? 'bg-amber-100 text-amber-700' :
-                                                                    'bg-rose-100 text-rose-700'
-                                                                }`}>
-                                                                {q.difficulty}
-                                                            </span>
-                                                            <span className="px-2.5 py-1 bg-teal-50 text-teal-600 rounded-lg text-[9px] font-black uppercase tracking-[0.1em]">
-                                                                {q.question_type?.replace('_', ' ') || 'MCQ Single'}
-                                                            </span>
-                                                        </div>
-                                                        <div className="flex items-center gap-6 pr-12">
-                                                            <div className="flex flex-col items-end">
-                                                                <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Global Attempts</span>
-                                                                <span className="text-sm font-black text-slate-900">{q.times_attempted || 0}</span>
-                                                            </div>
-                                                            <div className="flex flex-col items-end">
-                                                                <span className="text-[10px] font-black text-emerald-500 uppercase tracking-widest">Platform Accuracy</span>
-                                                                <span className="text-sm font-black text-emerald-600">{((q.times_correct || 0) / (q.times_attempted || 1) * 100).toFixed(1)}%</span>
+                                                    <div className="pl-10">
+                                                        <div className="absolute top-0 right-0 p-4 opacity-0 group-hover:opacity-100 transition-opacity">
+                                                            <div className="flex gap-2">
+                                                                <button
+                                                                    onClick={() => handleOpenEditMcq(q)}
+                                                                    className="text-slate-400 hover:text-teal-600 px-3 py-1 text-[10px] font-black uppercase tracking-widest bg-slate-50 rounded-lg border border-gray-100 transition-colors"
+                                                                >
+                                                                    Edit Entry
+                                                                </button>
+                                                                <button
+                                                                    onClick={() => handleDeleteMcq(q.id)}
+                                                                    className="text-slate-400 hover:text-rose-600 p-1 bg-slate-50 rounded-lg border border-gray-100 transition-colors"
+                                                                    title="Delete Question"
+                                                                >
+                                                                    <Trash2 className="w-3.5 h-3.5" />
+                                                                </button>
                                                             </div>
                                                         </div>
-                                                    </div>
 
-                                                    <div className="text-slate-800 text-lg font-black mb-8 leading-tight">
-                                                        <MarkdownRenderer content={q.question} />
-                                                    </div>
-
-                                                    <div className="grid grid-cols-2 gap-4 mb-8">
-                                                        {['A', 'B', 'C', 'D'].map((opt) => (
-                                                            <div
-                                                                key={opt}
-                                                                className={`px-5 py-4 rounded-2xl border-2 transition-all flex items-center gap-4 ${q.correct_option === opt
-                                                                    ? 'border-emerald-500 bg-emerald-50/50 text-emerald-900 shadow-sm'
-                                                                    : 'border-slate-100 bg-slate-50/50 text-slate-500'
-                                                                    }`}
-                                                            >
-                                                                <span className={`w-7 h-7 rounded-lg flex items-center justify-center text-xs font-black ${q.correct_option === opt ? 'bg-emerald-500 text-white shadow-lg shadow-emerald-500/20' : 'bg-slate-200 text-slate-500'
-                                                                    }`}>
-                                                                    {opt}
+                                                        <div className="flex justify-between items-start mb-4">
+                                                            <div className="flex items-center gap-3">
+                                                                <span className="w-9 h-9 rounded-xl bg-slate-900 text-white flex items-center justify-center font-black text-sm shadow-lg shadow-slate-900/10">
+                                                                    {idx + 1}
                                                                 </span>
-                                                                <div className="text-sm font-bold">
-                                                                    <MarkdownRenderer content={q[`option_${opt.toLowerCase()}`]} />
+                                                                <span className={`px-2.5 py-1 rounded-lg text-[9px] font-black uppercase tracking-[0.1em] ${q.difficulty === 'easy' ? 'bg-emerald-100 text-emerald-700' :
+                                                                    q.difficulty === 'medium' ? 'bg-amber-100 text-amber-700' :
+                                                                        'bg-rose-100 text-rose-700'
+                                                                    }`}>
+                                                                    {q.difficulty}
+                                                                </span>
+                                                                <span className="px-2.5 py-1 bg-teal-50 text-teal-600 rounded-lg text-[9px] font-black uppercase tracking-[0.1em]">
+                                                                    {q.question_type?.replace('_', ' ') || 'MCQ Single'}
+                                                                </span>
+                                                            </div>
+                                                            <div className="flex items-center gap-6 pr-12">
+                                                                <div className="flex flex-col items-end">
+                                                                    <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Global Attempts</span>
+                                                                    <span className="text-sm font-black text-slate-900">{q.times_attempted || 0}</span>
+                                                                </div>
+                                                                <div className="flex flex-col items-end">
+                                                                    <span className="text-[10px] font-black text-emerald-500 uppercase tracking-widest">Platform Accuracy</span>
+                                                                    <span className="text-sm font-black text-emerald-600">{((q.times_correct || 0) / (q.times_attempted || 1) * 100).toFixed(1)}%</span>
                                                                 </div>
                                                             </div>
-                                                        ))}
-                                                    </div>
-
-                                                    {q.explanation && (
-                                                        <div className="p-5 bg-teal-50/30 rounded-2xl border border-teal-50">
-                                                            <div className="flex items-center gap-2 text-teal-700 text-[10px] font-black uppercase tracking-widest mb-2">
-                                                                <HelpCircle className="w-4 h-4" />
-                                                                Academic Rationale
-                                                            </div>
-                                                            <div className="text-sm text-teal-900/80 font-medium leading-relaxed italic">
-                                                                <MarkdownRenderer content={q.explanation} />
-                                                            </div>
                                                         </div>
-                                                    )}
+
+                                                        <div className="text-slate-800 text-lg font-black mb-8 leading-tight">
+                                                            <MarkdownRenderer content={q.question} />
+                                                        </div>
+
+                                                        <div className="grid grid-cols-2 gap-4 mb-8">
+                                                            {['A', 'B', 'C', 'D'].map((opt) => (
+                                                                <div
+                                                                    key={opt}
+                                                                    className={`px-5 py-4 rounded-2xl border-2 transition-all flex items-center gap-4 ${q.correct_option === opt
+                                                                        ? 'border-emerald-500 bg-emerald-50/50 text-emerald-900 shadow-sm'
+                                                                        : 'border-slate-100 bg-slate-50/50 text-slate-500'
+                                                                        }`}
+                                                                >
+                                                                    <span className={`w-7 h-7 rounded-lg flex items-center justify-center text-xs font-black ${q.correct_option === opt ? 'bg-emerald-500 text-white shadow-lg shadow-emerald-500/20' : 'bg-slate-200 text-slate-500'
+                                                                        }`}>
+                                                                        {opt}
+                                                                    </span>
+                                                                    <div className="text-sm font-bold">
+                                                                        <MarkdownRenderer content={q[`option_${opt.toLowerCase()}`]} />
+                                                                    </div>
+                                                                </div>
+                                                            ))}
+                                                        </div>
+
+                                                        {q.explanation && (
+                                                            <div className="p-5 bg-teal-50/30 rounded-2xl border border-teal-50">
+                                                                <div className="flex items-center gap-2 text-teal-700 text-[10px] font-black uppercase tracking-widest mb-2">
+                                                                    <HelpCircle className="w-4 h-4" />
+                                                                    Academic Rationale
+                                                                </div>
+                                                                <div className="text-sm text-teal-900/80 font-medium leading-relaxed italic">
+                                                                    <MarkdownRenderer content={q.explanation} />
+                                                                </div>
+                                                            </div>
+                                                        )}
+                                                    </div>
                                                 </div>
                                             ))
                                         ) : (

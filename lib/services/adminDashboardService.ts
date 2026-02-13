@@ -202,13 +202,22 @@ export class AdminDashboardService {
 
             return { activities };
         } catch (error: any) {
-            console.error('Error fetching recent activity details:', {
-                message: error.message,
-                code: error.code,
-                details: error.details,
-                hint: error.hint
+            // Check if it's a "relation does not exist" error (table not created)
+            const isTableMissing = error?.code === '42P01' || error?.message?.includes('relation') || error?.message?.includes('does not exist');
+
+            if (isTableMissing) {
+                console.warn('Activity logs table does not exist yet. Returning empty activities.');
+                return { activities: [] };
+            }
+
+            console.error('Error fetching recent activity:', {
+                message: error?.message || 'Unknown error',
+                code: error?.code || 'N/A',
+                details: error?.details || 'N/A',
+                hint: error?.hint || 'N/A',
+                fullError: error
             });
-            return { activities: [], error: error.message || 'Unknown error' };
+            return { activities: [], error: error?.message || 'Failed to fetch recent activity' };
         }
     }
 

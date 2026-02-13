@@ -522,13 +522,25 @@ export class ExcelUploadService {
     ): Promise<UploadResult> {
         try {
             // Create upload record
+            // 1. Get the hierarchy details for metadata
+            const { data: hierarchyInfo } = await supabase
+                .from('subtopics')
+                .select('id, topic_id, topic:topics(id, subject_id)')
+                .eq('id', subtopicId)
+                .single();
+
+            const topicId = hierarchyInfo?.topic_id || (hierarchyInfo?.topic as any)?.id;
+            const subjectId = (hierarchyInfo?.topic as any)?.subject_id;
+
             const { data: uploadRecord, error: uploadError } = await supabase
                 .from('uploads')
                 .insert([
                     {
                         upload_type: 'mcq_excel',
                         file_name: fileName,
-                        subtopic_id: subtopicId, // Add subtopic_id to fix schema cache error
+                        subject_id: subjectId,
+                        topic_id: topicId,
+                        subtopic_id: subtopicId,
                         status: 'processing',
                         total_rows: mcqs.length,
                         processed_rows: 0,
@@ -545,7 +557,7 @@ export class ExcelUploadService {
                     totalRows: mcqs.length,
                     processedRows: 0,
                     failedRows: mcqs.length,
-                    errors: [{ row: 0, field: 'upload', message: 'Failed to create upload record' }]
+                    errors: [{ row: 0, field: 'upload', message: `Failed to create upload record: ${uploadError?.message || 'Unknown error'}` }]
                 };
             }
 
@@ -589,10 +601,11 @@ export class ExcelUploadService {
                     processedCount += batch.length;
                 }
                 // Update upload record
+                // Update upload record
                 await supabase
                     .from('uploads')
                     .update({
-                        status: failedCount === 0 ? 'completed' : 'failed',
+                        status: failedCount === 0 ? 'completed' : (processedCount > 0 ? 'partially_completed' : 'failed'),
                         processed_rows: processedCount,
                         failed_rows: failedCount,
                         validation_errors: errors.length > 0 ? errors : null,
@@ -693,7 +706,7 @@ export class ExcelUploadService {
                     totalRows: mcqs.length,
                     processedRows: 0,
                     failedRows: mcqs.length,
-                    errors: [{ row: 0, field: 'upload', message: 'Failed to create upload record' }]
+                    errors: [{ row: 0, field: 'upload', message: `Failed to create upload record: ${uploadError?.message || 'Unknown error'}` }]
                 };
             }
 
@@ -793,6 +806,39 @@ export class ExcelUploadService {
                         failed_rows: failedCount
                     })
                     .eq('id', uploadRecord.id);
+
+                // AUTO-LINKING: Link this subtopic/topic to all active universities
+                if (hierarchy && (hierarchy.subtopicId || hierarchy.topicId)) {
+                    try {
+                        // Get all active universities
+                        const { data: universities } = await supabase
+                            .from('universities')
+                            .select('id')
+                            .eq('is_active', true);
+
+                        if (universities && universities.length > 0) {
+                            const subtopicId = hierarchy.subtopicId;
+                            const topicId = hierarchy.topicId;
+                            const subjectId = hierarchy.subjectId;
+
+                            // Create mapping records
+                            const mappings = universities.map(uni => ({
+                                university_id: uni.id,
+                                subject_id: subjectId,
+                                topic_id: topicId,
+                                subtopic_id: subtopicId,
+                                is_active: true
+                            }));
+
+                            // Upsert mappings
+                            await supabase
+                                .from('university_content_access')
+                                .upsert(mappings, { onConflict: 'university_id, subject_id, topic_id, subtopic_id' });
+                        }
+                    } catch (linkError) {
+                        console.error("Auto-linking failed for group (non-critical):", linkError);
+                    }
+                }
             }
 
             // Final update

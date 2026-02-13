@@ -514,16 +514,25 @@ export default function ExcelUploaderPage() {
                                                                 </div>
                                                             </td>
                                                             <td className="px-6 py-4">
-                                                                <div className="grid grid-cols-2 gap-x-4 gap-y-1">
+                                                                <div className="space-y-2">
                                                                     {['A', 'B', 'C', 'D'].map(opt => {
                                                                         const optVal = getVal([`option ${opt.toLowerCase()}`, opt.toLowerCase()]);
                                                                         const isCorrect = hasCorrect?.toString().toUpperCase().trim() === opt;
                                                                         return (
-                                                                            <div key={opt} className={`text-[11px] flex items-baseline gap-1 ${isCorrect ? 'text-emerald-600 font-bold' : 'text-slate-400'}`}>
-                                                                                <span className="shrink-0">{opt}:</span>
-                                                                                <div className="line-clamp-1 overflow-hidden">
-                                                                                    <MarkdownRenderer content={optVal?.toString() || ''} />
+                                                                            <div
+                                                                                key={opt}
+                                                                                className={`text-[11px] flex items-start gap-2 p-2 rounded-lg transition-colors ${isCorrect
+                                                                                        ? 'bg-emerald-50 border border-emerald-200 text-emerald-700 font-bold'
+                                                                                        : 'bg-slate-50 border border-slate-100 text-slate-600'
+                                                                                    }`}
+                                                                            >
+                                                                                <span className="shrink-0 font-bold min-w-[16px]">{opt}.</span>
+                                                                                <div className="flex-1 min-w-0 leading-relaxed">
+                                                                                    <MarkdownRenderer content={optVal?.toString() || '—'} />
                                                                                 </div>
+                                                                                {isCorrect && (
+                                                                                    <CheckCircle className="w-3.5 h-3.5 text-emerald-600 shrink-0 mt-0.5" />
+                                                                                )}
                                                                             </div>
                                                                         );
                                                                     })}
