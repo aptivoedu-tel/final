@@ -262,7 +262,7 @@ export default function TopicPracticeSessionPage() {
     const progress = ((currentIndex + 1) / questions.length) * 100;
 
     return (
-        <div className="min-h-screen bg-[#F8FAFC] flex flex-col">
+        <div className="h-screen bg-[#F8FAFC] flex flex-col overflow-hidden">
             {/* Header */}
             <header className="h-20 bg-white border-b border-slate-100 flex items-center justify-between px-8 sticky top-0 z-50">
                 <div className="flex items-center gap-6">
@@ -300,7 +300,7 @@ export default function TopicPracticeSessionPage() {
                 />
             </div>
 
-            <main className="flex-1 max-w-4xl w-full mx-auto p-4 sm:p-8">
+            <main className="flex-1 max-w-4xl w-full mx-auto p-4 sm:p-8 overflow-y-auto [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
                 <div className="animate-fade-in">
                     <div className="bg-white rounded-[2.5rem] shadow-xl border border-slate-100 overflow-hidden min-h-[500px] flex flex-col">
                         <div className="p-8 sm:p-12 flex-1">
@@ -337,21 +337,21 @@ export default function TopicPracticeSessionPage() {
                                             onClick={() => handleSelectOption(option.key)}
                                             disabled={isSubmitted}
                                             className={`group flex items-center p-6 rounded-2xl border-2 transition-all active:scale-[0.99] text-left ${showCorrect
-                                                    ? 'bg-emerald-50 border-emerald-500 shadow-md shadow-emerald-100'
-                                                    : showWrong
-                                                        ? 'bg-rose-50 border-rose-500 shadow-md shadow-rose-100'
-                                                        : isSelected
-                                                            ? 'bg-teal-50 border-teal-500 shadow-md shadow-teal-100'
-                                                            : 'bg-white border-slate-100 hover:border-slate-200 hover:bg-slate-50'
+                                                ? 'bg-emerald-50 border-emerald-500 shadow-md shadow-emerald-100'
+                                                : showWrong
+                                                    ? 'bg-rose-50 border-rose-500 shadow-md shadow-rose-100'
+                                                    : isSelected
+                                                        ? 'bg-teal-50 border-teal-500 shadow-md shadow-teal-100'
+                                                        : 'bg-white border-slate-100 hover:border-slate-200 hover:bg-slate-50'
                                                 } ${isSubmitted ? 'cursor-default' : ''}`}
                                         >
                                             <div className={`w-10 h-10 rounded-xl flex items-center justify-center font-black text-sm shrink-0 transition-all ${showCorrect
-                                                    ? 'bg-emerald-600 text-white'
-                                                    : showWrong
-                                                        ? 'bg-rose-600 text-white'
-                                                        : isSelected
-                                                            ? 'bg-teal-600 text-white'
-                                                            : 'bg-slate-100 text-slate-400 group-hover:bg-white group-hover:text-slate-600'
+                                                ? 'bg-emerald-600 text-white'
+                                                : showWrong
+                                                    ? 'bg-rose-600 text-white'
+                                                    : isSelected
+                                                        ? 'bg-teal-600 text-white'
+                                                        : 'bg-slate-100 text-slate-400 group-hover:bg-white group-hover:text-slate-600'
                                                 }`}>
                                                 {showCorrect ? (
                                                     <CheckCircle2 className="w-5 h-5" />
@@ -362,12 +362,12 @@ export default function TopicPracticeSessionPage() {
                                                 )}
                                             </div>
                                             <span className={`ml-6 text-sm font-bold ${showCorrect
-                                                    ? 'text-emerald-900'
-                                                    : showWrong
-                                                        ? 'text-rose-900'
-                                                        : isSelected
-                                                            ? 'text-teal-900'
-                                                            : 'text-slate-600'
+                                                ? 'text-emerald-900'
+                                                : showWrong
+                                                    ? 'text-rose-900'
+                                                    : isSelected
+                                                        ? 'text-teal-900'
+                                                        : 'text-slate-600'
                                                 }`}>
                                                 {option.text}
                                             </span>
@@ -423,8 +423,8 @@ export default function TopicPracticeSessionPage() {
                                     onClick={handleSubmitAnswer}
                                     disabled={!answers[currentIndex]}
                                     className={`w-full sm:w-auto px-10 py-4 rounded-2xl font-black uppercase tracking-[0.2em] text-[10px] transition-all flex items-center justify-center gap-3 ${answers[currentIndex]
-                                            ? 'bg-teal-600 text-white shadow-xl shadow-teal-200 hover:bg-teal-700 active:scale-95'
-                                            : 'bg-slate-200 text-slate-400 cursor-not-allowed'
+                                        ? 'bg-teal-600 text-white shadow-xl shadow-teal-200 hover:bg-teal-700 active:scale-95'
+                                        : 'bg-slate-200 text-slate-400 cursor-not-allowed'
                                         }`}
                                 >
                                     Submit Answer

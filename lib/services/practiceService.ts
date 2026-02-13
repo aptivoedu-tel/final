@@ -104,7 +104,7 @@ export class PracticeService {
         }
 
         // 2. Try to get granular session limit for this mapping
-        let sessionLimit = 10;
+        let sessionLimit = 20; // Increased default to handle typical topic sizes
         if (universityId && institutionId) {
             let mappingQuery = supabase
                 .from('university_content_access')
@@ -119,44 +119,58 @@ export class PracticeService {
                 mappingQuery = mappingQuery.eq('topic_id', topicId).is('subtopic_id', null);
             }
 
-            const { data: mapping } = await mappingQuery.single();
+            const { data: mapping } = await mappingQuery.maybeSingle();
 
             if (mapping?.session_limit) {
                 sessionLimit = mapping.session_limit;
             }
         }
 
-        // 3. Get practice rules (for difficulty percentages)
-        const rules = universityId
-            ? await this.getPracticeRules(universityId, subjectId)
-            : {
-                mcq_count_per_session: sessionLimit,
-                easy_percentage: 40,
-                medium_percentage: 40,
-                hard_percentage: 20,
-                time_limit_minutes: null
-            };
+        // 3. Fetch ALL Candidate Questions (ignoring strict difficulty quotas to avoid fragmentation)
+        let query = supabase.from('mcqs').select('*').eq('is_active', true);
 
-        const totalQuestions = sessionLimit || rules.mcq_count_per_session;
-        const easyCount = Math.round(totalQuestions * (rules.easy_percentage || 40) / 100);
-        const mediumCount = Math.round(totalQuestions * (rules.medium_percentage || 40) / 100);
-        const hardCount = totalQuestions - easyCount - mediumCount;
+        if (subtopicId) {
+            query = query.eq('subtopic_id', subtopicId);
+        } else if (topicId) {
+            // Robust query for Topic (including subtopics)
+            const { data: subtopics } = await supabase.from('subtopics').select('id').eq('topic_id', topicId);
+            const subtopicIds = subtopics?.map(st => st.id) || [];
 
-        // Fetch MCQs by difficulty
-        let easyMCQs = await this.getMCQsByDifficulty(subtopicId, 'easy', easyCount, studentId, topicId);
-        let mediumMCQs = await this.getMCQsByDifficulty(subtopicId, 'medium', mediumCount, studentId, topicId);
-        let hardMCQs = await this.getMCQsByDifficulty(subtopicId, 'hard', hardCount, studentId, topicId);
-
-        // Fallback: If student has completed all questions (0 returned), fetch all available questions (Review Mode)
-        if (easyMCQs.length + mediumMCQs.length + hardMCQs.length === 0) {
-            easyMCQs = await this.getMCQsByDifficulty(subtopicId, 'easy', easyCount, undefined, topicId);
-            mediumMCQs = await this.getMCQsByDifficulty(subtopicId, 'medium', mediumCount, undefined, topicId);
-            hardMCQs = await this.getMCQsByDifficulty(subtopicId, 'hard', hardCount, undefined, topicId);
+            if (subtopicIds.length > 0) {
+                query = query.or(`topic_id.eq.${topicId},subtopic_id.in.(${subtopicIds.join(',')})`);
+            } else {
+                query = query.eq('topic_id', topicId);
+            }
         }
 
-        // Combine and shuffle (grouped by passage)
-        const allMCQs = [...easyMCQs, ...mediumMCQs, ...hardMCQs];
-        return shuffleGrouped(allMCQs, q => q.passage_id);
+        const { data: allQuestions } = await query;
+        let candidates = allQuestions || [];
+
+        // 4. Filter out correctly answered questions (if studentId provided)
+        if (studentId && candidates.length > 0) {
+            const { data: attempts } = await supabase
+                .from('mcq_attempts')
+                .select('mcq_id')
+                .eq('student_id', studentId)
+                .eq('is_correct', true);
+
+            const correctIds = new Set(attempts?.map(a => a.mcq_id));
+            // User requested not to show practiced questions again
+            candidates = candidates.filter(q => !correctIds.has(q.id));
+        }
+
+        // 5. Fallback: Review Mode (if all completed)
+        if (candidates.length === 0 && (allQuestions?.length || 0) > 0) {
+            // If all questions answered correctly, user might want to review them
+            // Or if pool was empty to begin with, this stays empty
+            candidates = allQuestions || [];
+        }
+
+        // 6. Shuffle and Limit
+        // Preservation of passage groups is handled by shuffleGrouped
+        const shuffled = shuffleGrouped(candidates, q => q.passage_id);
+
+        return shuffled.slice(0, sessionLimit);
     }
 
     /**
