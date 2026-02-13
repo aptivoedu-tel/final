@@ -213,7 +213,7 @@ function UniversityPortalContent() {
                                         />
                                         <MapPin className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 w-5 h-5" />
                                     </div>
-                                    <div className="space-y-4 max-h-[400px] overflow-y-auto pr-2 custom-scrollbar">
+                                    <div className="space-y-4">
                                         {allUnis
                                             .filter(u => u.name.toLowerCase().includes(search.toLowerCase()))
                                             .filter(u => !enrollments.some(e => e.university_id === u.id))

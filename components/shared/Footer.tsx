@@ -34,7 +34,7 @@ export default function Footer() {
                         <Instagram className="w-5 h-5" />
                     </Link>
                     <Link
-                        href="#"
+                        href="https://www.linkedin.com/company/aptivoedu"
                         target="_blank"
                         rel="noopener noreferrer"
                         className="text-slate-400 hover:text-blue-700 transition-colors"

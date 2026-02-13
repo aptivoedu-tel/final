@@ -33,9 +33,15 @@ export async function GET(request: Request) {
             // Check if user needs to set a password
             const isPasswordSet = data.user.user_metadata?.password_set === true
 
+            console.log('[Auth Callback] User:', data.user.email);
+            console.log('[Auth Callback] isPasswordSet:', isPasswordSet);
+
             if (!isPasswordSet) {
+                console.log('[Auth Callback] Redirecting to /set-password');
                 return NextResponse.redirect(`${origin}/set-password?next=${next}`)
             }
+
+            console.log('[Auth Callback] Redirecting to dashboard/next');
 
             return NextResponse.redirect(`${origin}${next}`)
         }

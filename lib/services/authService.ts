@@ -172,6 +172,7 @@ export class AuthService {
                     data: {
                         full_name: data.fullName,
                         role: data.role,
+                        password_set: true
                     },
                     emailRedirectTo: `${SITE_URL}/login?verified=true`
                 }
