@@ -70,6 +70,13 @@ export const AIAssistant: React.FC = () => {
     // Hide AI Assistant during exams
     const isExamPage = pathname?.includes('/exam/');
 
+    // Log warning if token is missing (for debugging)
+    useEffect(() => {
+        if (!GITHUB_TOKEN) {
+            console.warn('[AI Assistant] NEXT_PUBLIC_GITHUB_TOKEN is not set. AI features may not work.');
+        }
+    }, []);
+
     // Scroll to bottom when messages change
     useEffect(() => {
         if (chatBodyRef.current) {
