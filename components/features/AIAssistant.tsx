@@ -70,6 +70,14 @@ export const AIAssistant: React.FC = () => {
     // Hide AI Assistant during exams
     const isExamPage = pathname?.includes('/exam/');
 
+    // DEBUG: Log mount and pathname
+    useEffect(() => {
+        console.log('[AI Assistant] Component Mounted');
+        console.log('[AI Assistant] Pathname:', pathname);
+        console.log('[AI Assistant] Is Exam Page:', isExamPage);
+        console.log('[AI Assistant] Token Present:', !!GITHUB_TOKEN);
+    }, [pathname]);
+
     // Log warning if token is missing (for debugging)
     useEffect(() => {
         if (!GITHUB_TOKEN) {
@@ -228,23 +236,13 @@ export const AIAssistant: React.FC = () => {
 
     return (
         <div className="ai-assistant-wrapper" ref={assistantRef}>
-            {/* DEBUG INDICATOR - REMOVE AFTER FIX */}
-            <div style={{ position: 'fixed', top: '10px', left: '10px', zIndex: 999999, background: 'red', color: 'white', padding: '5px' }}>
-                AI MOUNTED
-            </div>
             {/* Toggle Button */}
             <button
                 onClick={() => setIsOpen(!isOpen)}
                 className={`ai-toggle-btn ${isOpen ? 'active' : ''}`}
                 aria-label="Toggle AI Assistant"
             >
-                <motion.div
-                    animate={{ rotate: isOpen ? 360 : 0 }}
-                    transition={{ type: "spring", stiffness: 200, damping: 20 }}
-                    className="flex items-center justify-center w-full h-full"
-                >
-                    <img src="/ai-assistant.gif" alt="AI" className="ai-btn-gif" />
-                </motion.div>
+
             </button>
 
             {/* Chat Window */}
