@@ -242,7 +242,13 @@ export const AIAssistant: React.FC = () => {
                 className={`ai-toggle-btn ${isOpen ? 'active' : ''}`}
                 aria-label="Toggle AI Assistant"
             >
-
+                <motion.div
+                    animate={{ rotate: isOpen ? 360 : 0 }}
+                    transition={{ type: "spring", stiffness: 200, damping: 20 }}
+                    className="flex items-center justify-center w-full h-full"
+                >
+                    <img src="/ai-assistant.gif" alt="AI" className="ai-btn-gif" />
+                </motion.div>
             </button>
 
             {/* Chat Window */}
