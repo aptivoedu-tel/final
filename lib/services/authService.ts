@@ -335,10 +335,14 @@ export class AuthService {
      * Login with OAuth Provider
      */
     static async loginWithProvider(provider: 'google' | 'azure' | 'apple'): Promise<{ error: string | null }> {
+        // Dynamically get the current origin to ensure we redirect back to the correct domain
+        // This solves issues where SITE_URL might be misconfigured (e.g., pointing to localhost in prod)
+        const redirectBase = typeof window !== 'undefined' ? window.location.origin : SITE_URL;
+
         const { error } = await supabase.auth.signInWithOAuth({
             provider: provider,
             options: {
-                redirectTo: `${SITE_URL}/auth/callback`,
+                redirectTo: `${redirectBase}/auth/callback`,
             }
         });
         return { error: error ? error.message : null };
