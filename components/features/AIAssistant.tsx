@@ -228,6 +228,10 @@ export const AIAssistant: React.FC = () => {
 
     return (
         <div className="ai-assistant-wrapper" ref={assistantRef}>
+            {/* DEBUG INDICATOR - REMOVE AFTER FIX */}
+            <div style={{ position: 'fixed', top: '10px', left: '10px', zIndex: 999999, background: 'red', color: 'white', padding: '5px' }}>
+                AI MOUNTED
+            </div>
             {/* Toggle Button */}
             <button
                 onClick={() => setIsOpen(!isOpen)}
