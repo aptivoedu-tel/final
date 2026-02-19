@@ -61,31 +61,10 @@ export async function middleware(request: NextRequest) {
         }
     );
 
-    // 1. Get Session & User (Double check)
-    let session = null;
-    let user = undefined;
-
-    try {
-        const { data: { session: currentSession }, error: sessionError } = await supabase.auth.getSession();
-        if (sessionError) throw sessionError;
-        session = currentSession;
-        user = session?.user;
-
-        // Robust User Check (more reliable than session alone in some environments)
-        if (!user) {
-            const { data: { user: authUser }, error: userError } = await supabase.auth.getUser();
-            if (userError) throw userError;
-            user = authUser || undefined;
-        }
-    } catch (error: any) {
-        console.warn("[Middleware] Auth error encountered:", error.message || error);
-        // If it's a refresh token error, we want to clear the 'session' and 'user' to force re-login
-        session = null;
-        user = undefined;
-    }
+    // ✅ Use getUser() instead of getSession() - safer for middleware
+    const { data: { user }, error: userError } = await supabase.auth.getUser();
 
     const url = request.nextUrl.clone();
-    console.log(`[Middleware] Path: ${url.pathname} | UserID: ${user?.id} | Email: ${user?.email}`);
 
     // Public Paths Bypass
     if (
@@ -99,9 +78,8 @@ export async function middleware(request: NextRequest) {
         return response;
     }
 
-    // 1. If NO user/session, redirect to login
+    // 1. If NO user, redirect to login
     if (!user) {
-        console.log("[Middleware] Redirecting to login: No user identified");
         url.pathname = '/login';
         return NextResponse.redirect(url);
     }
@@ -112,8 +90,6 @@ export async function middleware(request: NextRequest) {
         .select('role, status')
         .eq('id', user.id)
         .single();
-
-    console.log(`Middleware: UserRole=${userProfile?.role} Status=${userProfile?.status}`);
 
     // SUPER ADMIN BYPASS: Full Access
     if (userProfile?.role === 'super_admin') {
@@ -126,24 +102,6 @@ export async function middleware(request: NextRequest) {
         url.searchParams.set('error', 'suspended');
         return NextResponse.redirect(url);
     }
-
-    /* 
-    // Special check for Institution Admins
-    if (userProfile?.role === 'institution_admin') {
-        const { data: adminLink } = await supabase
-            .from('institution_admins')
-            .select('institutions(status)')
-            .eq('user_id', user.id)
-            .single();
-
-        const instStatus = (adminLink as any)?.institutions?.status;
-        if (instStatus !== 'approved') {
-            url.pathname = '/login';
-            url.searchParams.set('error', instStatus || 'pending');
-            return NextResponse.redirect(url);
-        }
-    }
-    */
 
     return response;
 }

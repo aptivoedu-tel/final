@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
-import { Upload, FileSpreadsheet, FileText, CheckCircle, XCircle, AlertTriangle, Download, Eye } from 'lucide-react';
+import { Upload, FileSpreadsheet, FileText, CheckCircle, XCircle, AlertTriangle, Download, Eye, Info } from 'lucide-react';
 import { ExcelUploadService, MCQRow } from '@/lib/services/excelUploadService';
 import { MarkdownService } from '@/lib/services/markdownService';
 import { ContentService } from '@/lib/services/contentService';
@@ -435,13 +435,51 @@ Conclusion here...`;
                     <div className="text-center py-12 animate-scale-in">
                         <CheckCircle className="w-16 h-16 text-emerald-500 mx-auto mb-4" />
                         <h3 className="text-2xl font-bold text-gray-900 mb-2">Upload Successful!</h3>
-                        <p className="text-gray-600 mb-6">
-                            {activeTab === 'excel'
-                                ? `Successfully processed ${uploadResult?.processedRows} MCQs`
-                                : 'Study content has been updated successfully'}
-                        </p>
-                        <button onClick={resetUpload} className="btn btn-primary">
-                            Upload Another
+                        <div className="bg-emerald-50/50 rounded-2xl p-8 mb-8 max-w-2xl mx-auto border border-emerald-100 shadow-sm">
+                            <div className="grid grid-cols-2 md:grid-cols-3 gap-6 text-left">
+                                <div className="p-4 bg-white rounded-xl border border-emerald-100 shadow-sm">
+                                    <p className="text-xs font-bold text-emerald-600 uppercase tracking-wider mb-1">Total Rows</p>
+                                    <p className="text-2xl font-black text-emerald-900">{uploadResult?.totalRows}</p>
+                                </div>
+                                <div className="p-4 bg-white rounded-xl border border-emerald-100 shadow-sm">
+                                    <p className="text-xs font-bold text-emerald-600 uppercase tracking-wider mb-1">Inserted</p>
+                                    <p className="text-2xl font-black text-emerald-900">{uploadResult?.inserted ?? uploadResult?.processedRows}</p>
+                                </div>
+                                {uploadResult?.skipped_in_file_duplicates > 0 && (
+                                    <div className="p-4 bg-white rounded-xl border border-amber-100 shadow-sm">
+                                        <p className="text-xs font-bold text-amber-600 uppercase tracking-wider mb-1">File Dups</p>
+                                        <p className="text-2xl font-black text-amber-900">{uploadResult.skipped_in_file_duplicates}</p>
+                                    </div>
+                                )}
+                                {uploadResult?.skipped_exact_duplicates > 0 && (
+                                    <div className="p-4 bg-white rounded-xl border border-amber-100 shadow-sm">
+                                        <p className="text-xs font-bold text-amber-600 uppercase tracking-wider mb-1">DB Exact</p>
+                                        <p className="text-2xl font-black text-amber-900">{uploadResult.skipped_exact_duplicates}</p>
+                                    </div>
+                                )}
+                                {uploadResult?.skipped_similar_questions > 0 && (
+                                    <div className="p-4 bg-white rounded-xl border border-rose-100 shadow-sm">
+                                        <p className="text-xs font-bold text-rose-600 uppercase tracking-wider mb-1">Similar</p>
+                                        <p className="text-2xl font-black text-rose-900">{uploadResult.skipped_similar_questions}</p>
+                                    </div>
+                                )}
+                                {uploadResult?.failedRows > 0 && (
+                                    <div className="p-4 bg-white rounded-xl border border-red-100 shadow-sm">
+                                        <p className="text-xs font-bold text-red-600 uppercase tracking-wider mb-1">Failed</p>
+                                        <p className="text-2xl font-black text-red-900">{uploadResult.failedRows}</p>
+                                    </div>
+                                )}
+                            </div>
+
+                            {(uploadResult?.skipped_exact_duplicates > 0 || uploadResult?.skipped_similar_questions > 0) && (
+                                <p className="mt-6 text-sm text-emerald-700 italic flex items-center justify-center gap-2">
+                                    <Info className="w-4 h-4" />
+                                    Duplicates and similar questions were automatically skipped to maintain database integrity.
+                                </p>
+                            )}
+                        </div>
+                        <button onClick={resetUpload} className="btn btn-primary px-8 py-3 text-lg">
+                            Upload Another File
                         </button>
                     </div>
                 )}

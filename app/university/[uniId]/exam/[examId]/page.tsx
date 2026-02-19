@@ -153,7 +153,8 @@ export default function StudentExamPage() {
             console.error('Exam initialization failed details:', {
                 message: err.message,
                 stack: err.stack,
-                code: err.code
+                code: err.code,
+                errorObject: err // For deep inspection in dev tools
             });
             toast.error(`Session Error: ${err.message || 'Unknown error'}`);
             setGlobalLoading(false);
@@ -162,60 +163,65 @@ export default function StudentExamPage() {
 
 
     const handleAttemptSession = async (userId: string, ex: Exam) => {
+        console.log("[AttemptSync] Initializing session check for Exam:", ex.name, "(ID:", ex.id, ")");
+        console.log("[AttemptSync] total_duration:", ex.total_duration);
+
         // Time Window Check
         const now = new Date();
         if (ex.start_time && new Date(ex.start_time) > now) {
+            console.warn("[AttemptSync] Exam not started yet. Starts at:", ex.start_time);
             toast.error("This exam has not started yet.");
             throw new Error(`Exam starts at ${new Date(ex.start_time).toLocaleString()}`);
         }
 
-        console.log("[handleAttemptSession] Checking existing attempt for Student ID:", userId, "Exam ID:", ex.id);
+        console.log("[AttemptSync] Fetching existing attempt for Student:", userId);
         const { data: existing, error: existingError } = await supabase
             .from('exam_attempts')
             .select('*')
             .eq('student_id', userId)
             .eq('exam_id', Number(ex.id))
+            .order('created_at', { ascending: false })
+            .limit(1)
             .maybeSingle();
 
         if (existingError) {
-            console.error("[AttemptSession] Fetch error details:", {
-                message: existingError.message,
-                code: existingError.code,
-                details: existingError.details,
-                hint: existingError.hint
-            });
+            console.error("[AttemptSync] Fetch error:", JSON.stringify(existingError, null, 2));
             throw new Error(`Attempt Sync Error: ${existingError.message}`);
         }
 
+        console.log("[AttemptSync] Existing attempt result:", existing ? `Found (Status: ${existing.status})` : "None found");
+
         // Check End Time compliance
         if (ex.end_time && new Date(ex.end_time) < now) {
-            // Exam window has passed
-            if (!existing || existing.status === 'completed') {
+            const isFinishedOrEmpty = !existing || existing.status === 'completed';
+            console.warn("[AttemptSync] Exam window passed. Finalized?", !isFinishedOrEmpty);
+            if (isFinishedOrEmpty) {
                 throw new Error(`Exam ended at ${new Date(ex.end_time).toLocaleString()}`);
             }
-            // If in_progress, allow them to continue/finish
         }
 
-        if (existing && existing.status === 'in_progress') {
+        // Support both 'ongoing' and legacy 'in_progress' status
+        const isOngoing = existing && (existing.status === 'ongoing' || existing.status === 'in_progress');
+
+        if (isOngoing) {
+            console.log("[AttemptSync] Resuming ongoing session:", existing.id);
             setAttemptId(existing.id);
             const { data: ans } = await supabase.from('exam_answers').select('*').eq('attempt_id', existing.id);
             const ansMap: any = {};
             ans?.forEach(a => ansMap[a.question_id] = a.answer);
             setAnswers(ansMap);
 
-            const startTimeStr = existing.start_time || existing.created_at;
+            const startTimeStr = existing.started_at || existing.created_at;
             const startTime = new Date(startTimeStr).getTime();
             const currentTime = new Date().getTime();
             const elapsed = Math.floor((currentTime - startTime) / 1000);
             const totalSecs = (ex.total_duration || 1) * 60;
             const remaining = totalSecs - elapsed;
 
-            if (remaining <= 0 && !ex.allow_continue_after_time_up) {
-                await finalizeAttempt(existing.id);
-            } else {
-                setTimeLeft(remaining > 0 ? remaining : 0);
-            }
+            console.log("[AttemptSync] Calculation:", { totalSecs, elapsed, remaining });
+            setTimeLeft(remaining > 0 ? remaining : 0);
         } else if (existing && existing.status === 'completed') {
+            console.log("[AttemptSync] Viewing completed session:", existing.id);
             setAttemptId(existing.id);
             setResults({ score: existing.score, total: existing.total_marks });
             setStatus('completed');
@@ -226,23 +232,28 @@ export default function StudentExamPage() {
             setAnswers(ansMap);
             setTimeLeft(0);
         } else {
+            console.log("[AttemptSync] Creating fresh session...");
             const { data: newAtt, error } = await supabase
                 .from('exam_attempts')
                 .insert([{
                     student_id: userId,
                     exam_id: Number(ex.id),
-                    status: 'in_progress',
-                    start_time: new Date().toISOString()
+                    status: 'ongoing',
+                    started_at: new Date().toISOString()
                 }])
                 .select()
                 .single();
 
             if (error) {
-                console.error("[AttemptSession] Create failed:", error);
+                console.error("[AttemptSync] Creation failed:", JSON.stringify(error, null, 2));
                 throw new Error(`Sync Error: ${error.message}`);
             }
+
+            console.log("[AttemptSync] Fresh session created with ID:", newAtt.id);
             setAttemptId(newAtt.id);
-            setTimeLeft((ex.total_duration || 1) * 60);
+            const initialTime = (ex.total_duration || 1) * 60;
+            console.log("[AttemptSync] Setting initial time:", initialTime);
+            setTimeLeft(initialTime);
         }
     };
 
@@ -285,13 +296,17 @@ export default function StudentExamPage() {
     };
 
     useEffect(() => {
-        if (timeLeft < 0) return;
+        if (timeLeft < 0 || status === 'completed') return;
+
+        console.log("[Timer] Starting/Restarting total timer at:", timeLeft);
+
         if (timeLeft === 0) {
             if (exam && !isTimeUpModalOpen) {
                 setIsTimeUpModalOpen(true);
             }
             return;
         }
+
         const timer = setInterval(() => {
             setTimeLeft(prev => {
                 if (prev === 601) toast.info('10 minutes remaining');
@@ -303,8 +318,11 @@ export default function StudentExamPage() {
                 return prev - 1;
             });
         }, 1000);
+
         return () => clearInterval(timer);
-    }, [timeLeft, exam, isTimeUpModalOpen]);
+    }, [timeLeft === -1, status, exam?.id, isTimeUpModalOpen]);
+    // Optimization: timeLeft === -1 ensures it only starts once it's valid, 
+    // but the ticking is handled by functional update so we don't need timeLeft in deps!
 
     const formatTime = (seconds: number) => {
         if (seconds < 0) return '--:--';
@@ -363,7 +381,7 @@ export default function StudentExamPage() {
 
             await supabase.from('exam_attempts').update({
                 status: 'completed',
-                end_time: new Date().toISOString(),
+                completed_at: new Date().toISOString(),
                 score: score,
                 total_marks: total
             }).eq('id', attId);

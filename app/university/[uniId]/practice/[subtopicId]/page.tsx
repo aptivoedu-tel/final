@@ -45,6 +45,8 @@ export default function PracticeSessionPage() {
 
     const timerRef = useRef<NodeJS.Timeout | null>(null);
 
+    const [lastInteractionTime, setLastInteractionTime] = useState(Date.now());
+
     useEffect(() => {
         const initSession = async () => {
             setGlobalLoading(true, 'Initializing Practice Session...');
@@ -91,6 +93,8 @@ export default function PracticeSessionPage() {
                 if (error) throw new Error(error);
                 setSession(session);
 
+                setLastInteractionTime(Date.now());
+
                 // Start Timer
                 timerRef.current = setInterval(() => {
                     setTimeElapsed(prev => prev + 1);
@@ -119,20 +123,8 @@ export default function PracticeSessionPage() {
         setAnswers({ ...answers, [currentIndex]: option });
     };
 
-    const handleSubmitAttempt = async (mcqId: number, selectedOption: string) => {
-        const currentMCQ = questions[currentIndex];
-        const isCorrect = selectedOption === currentMCQ.correct_option;
-
-        await PracticeService.submitAttempt(
-            session.id,
-            mcqId,
-            user.id,
-            selectedOption as any,
-            0 // timeSpentSeconds
-        );
-    };
-
     const nextQuestion = () => {
+        setLastInteractionTime(Date.now());
         if (currentIndex < questions.length - 1) {
             setCurrentIndex(currentIndex + 1);
         } else {
@@ -141,6 +133,7 @@ export default function PracticeSessionPage() {
     };
 
     const prevQuestion = () => {
+        setLastInteractionTime(Date.now());
         if (currentIndex > 0) {
             setCurrentIndex(currentIndex - 1);
         }
@@ -396,11 +389,28 @@ export default function PracticeSessionPage() {
                                 <div className="flex gap-3 w-full sm:w-auto">
                                     {!submittedAnswer[currentMCQ.id] ? (
                                         <button
-                                            onClick={() => {
+                                            onClick={async () => {
                                                 if (answers[currentIndex]) {
-                                                    // Check Answer Logic
-                                                    setSubmittedAnswer(prev => ({ ...prev, [currentMCQ.id]: true }));
-                                                    setIsCorrect(prev => ({ ...prev, [currentMCQ.id]: answers[currentIndex] === currentMCQ.correct_option }));
+                                                    const currentMCQ = questions[currentIndex];
+                                                    const selectedOption = answers[currentIndex];
+                                                    const timeSpent = Math.round((Date.now() - lastInteractionTime) / 1000);
+
+                                                    setGlobalLoading(true, 'Checking answer...');
+                                                    try {
+                                                        const result = await PracticeService.submitAttempt(
+                                                            session.id,
+                                                            currentMCQ.id,
+                                                            user.id,
+                                                            selectedOption as any,
+                                                            timeSpent
+                                                        );
+
+                                                        setSubmittedAnswer(prev => ({ ...prev, [currentMCQ.id]: true }));
+                                                        setIsCorrect(prev => ({ ...prev, [currentMCQ.id]: result.isCorrect }));
+                                                        setLastInteractionTime(Date.now());
+                                                    } finally {
+                                                        setGlobalLoading(false);
+                                                    }
                                                 }
                                             }}
                                             disabled={!answers[currentIndex]}

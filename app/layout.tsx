@@ -14,6 +14,8 @@ export const metadata: Metadata = {
 
 import { LoadingProvider } from "@/lib/context/LoadingContext";
 import { UIProvider } from "@/lib/context/UIContext";
+import AIAssistant from "@/components/features/AIAssistant";
+import "./ai-assistant.css";
 
 export default function RootLayout({
   children,
@@ -26,6 +28,7 @@ export default function RootLayout({
         <LoadingProvider>
           <UIProvider>
             {children}
+            <AIAssistant />
           </UIProvider>
         </LoadingProvider>
       </body>

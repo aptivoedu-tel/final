@@ -4,7 +4,7 @@ import React, { useEffect, useState } from 'react';
 import {
     BookOpen, Trophy, Flame, TrendingUp,
     MapPin, Play, ChevronRight, Zap, RefreshCw,
-    CheckCircle2, Clock, Book, Brain, Info, Search, Target
+    CheckCircle2, Clock, Book, Brain, Info, Search, Target, ArrowRight
 } from 'lucide-react';
 import {
     ResponsiveContainer, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, Radar,
@@ -14,6 +14,7 @@ import Link from 'next/link';
 import Sidebar from '@/components/layout/Sidebar';
 import Header from '@/components/layout/Header';
 import Footer from '@/components/shared/Footer';
+import { supabase } from '@/lib/supabase/client';
 import { AuthService } from '@/lib/services/authService';
 import {
     DashboardService,
@@ -174,6 +175,28 @@ export default function StudentDashboard() {
                             </div>
                         )}
 
+                        {/* Analytics Highlights Section */}
+                        <div className="bg-white p-8 rounded-[2.5rem] border border-slate-100 shadow-sm overflow-hidden relative">
+                            <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 relative z-10">
+                                <div className="flex items-center gap-4">
+                                    <div className="w-12 h-12 bg-indigo-50 rounded-2xl flex items-center justify-center">
+                                        <TrendingUp className="w-6 h-6 text-indigo-600" />
+                                    </div>
+                                    <div>
+                                        <h2 className="text-xl font-black text-slate-900 leading-tight">Analytics Highlights</h2>
+                                        <p className="text-xs font-bold text-slate-500">Track your learning patterns and behavior.</p>
+                                    </div>
+                                </div>
+                                <Link
+                                    href="/dashboard/analytics"
+                                    className="px-6 py-3 bg-slate-900 text-white rounded-xl font-black uppercase tracking-widest text-[10px] flex items-center gap-2 hover:bg-slate-800 transition-all self-start md:self-center"
+                                >
+                                    Deep Dive Analytics
+                                    <ArrowRight className="w-4 h-4" />
+                                </Link>
+                            </div>
+                        </div>
+
                         {/* Main Grid Content */}
                         <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 lg:gap-8">
 
@@ -249,7 +272,7 @@ export default function StudentDashboard() {
                                             <ResponsiveContainer width="100%" height="100%">
                                                 <RadarChart cx="50%" cy="50%" outerRadius="80%" data={performanceData}>
                                                     <PolarGrid stroke="#e2e8f0" />
-                                                    <PolarAngleAxis dataKey="subject_name" tick={{ fontSize: 10, fontWeight: 700, fill: '#64748b' }} />
+                                                    <PolarAngleAxis dataKey="subject" tick={{ fontSize: 10, fontWeight: 700, fill: '#64748b' }} />
                                                     <PolarRadiusAxis angle={30} domain={[0, 100]} axisLine={false} tick={false} />
                                                     <Radar
                                                         name="Performance"

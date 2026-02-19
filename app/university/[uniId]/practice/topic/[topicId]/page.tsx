@@ -41,7 +41,8 @@ export default function TopicPracticeSessionPage() {
     const [results, setResults] = useState<any>(null);
     const [user, setUser] = useState<any>(null);
 
-    const timerRef = useRef<NodeJS.Timeout | null>(null);
+    const [lastInteractionTime, setLastInteractionTime] = useState(Date.now());
+    const timerRef = useRef<any>(null);
 
     useEffect(() => {
         const initSession = async () => {
@@ -91,6 +92,7 @@ export default function TopicPracticeSessionPage() {
                 if (error) throw new Error(error);
                 setSession(session);
 
+                setLastInteractionTime(Date.now());
                 setGlobalLoading(false);
 
                 // 3. Start Timer
@@ -118,19 +120,18 @@ export default function TopicPracticeSessionPage() {
         setAnswers({ ...answers, [currentIndex]: option });
     };
 
-    const handleSubmitAttempt = async (mcqId: number, selectedOption: string) => {
-        const currentMCQ = questions[currentIndex];
-
+    const handleSubmitAttempt = async (mcqId: number, selectedOption: string, timeSpent: number) => {
         await PracticeService.submitAttempt(
             session.id,
             mcqId,
             user.id,
             selectedOption as any,
-            0 // timeSpentSeconds
+            timeSpent
         );
     };
 
     const nextQuestion = () => {
+        setLastInteractionTime(Date.now());
         if (currentIndex < questions.length - 1) {
             setCurrentIndex(currentIndex + 1);
         } else {
@@ -142,11 +143,20 @@ export default function TopicPracticeSessionPage() {
         if (!answers[currentIndex]) return;
 
         const currentMCQ = questions[currentIndex];
-        await handleSubmitAttempt(currentMCQ.id, answers[currentIndex]);
-        setSubmittedAnswers({ ...submittedAnswers, [currentIndex]: true });
+        const timeSpent = Math.round((Date.now() - lastInteractionTime) / 1000);
+
+        setGlobalLoading(true, 'Submitting...');
+        try {
+            await handleSubmitAttempt(currentMCQ.id, answers[currentIndex], timeSpent);
+            setSubmittedAnswers({ ...submittedAnswers, [currentIndex]: true });
+            setLastInteractionTime(Date.now());
+        } finally {
+            setGlobalLoading(false);
+        }
     };
 
     const prevQuestion = () => {
+        setLastInteractionTime(Date.now());
         if (currentIndex > 0) {
             setCurrentIndex(currentIndex - 1);
         }

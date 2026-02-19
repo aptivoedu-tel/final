@@ -205,9 +205,16 @@ export default function ExcelUploaderPage() {
                 );
 
                 if (result.success) {
-                    alert(`Successfully imported ${result.processedRows} questions!`);
+                    let summary = `Successfully imported ${result.processedRows} questions!`;
+                    if (result.skipped_in_file_duplicates || result.skipped_exact_duplicates || result.skipped_similar_questions) {
+                        summary += `\n\nSkipped Duplicate Detection:`;
+                        if (result.skipped_in_file_duplicates) summary += `\n- ${result.skipped_in_file_duplicates} In-file duplicates`;
+                        if (result.skipped_exact_duplicates) summary += `\n- ${result.skipped_exact_duplicates} Existing database duplicates`;
+                        if (result.skipped_similar_questions) summary += `\n- ${result.skipped_similar_questions} Similar questions (threshold 0.85)`;
+                    }
+                    alert(summary);
                 } else if (result.processedRows > 0) {
-                    alert(`Imported ${result.processedRows} questions, but ${result.failedRows} failed. Check the upload logs for details.`);
+                    alert(`Imported ${result.processedRows} questions, but ${result.failedRows} failed.\n\nDuplicates Skipped: ${(result.skipped_in_file_duplicates || 0) + (result.skipped_exact_duplicates || 0) + (result.skipped_similar_questions || 0)}`);
                 } else {
                     throw new Error(result.errors[0]?.message || 'Upload failed');
                 }

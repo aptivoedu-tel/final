@@ -48,6 +48,13 @@ export class DashboardService {
                 .eq('student_id', studentId)
                 .eq('is_completed', true);
 
+            // Get total topics completed
+            const { count: topicsCount } = await supabase
+                .from('topic_progress')
+                .select('*', { count: 'exact', head: true })
+                .eq('student_id', studentId)
+                .eq('is_completed', true);
+
             // Get current streak
             const { data: streakData } = await supabase
                 .from('learning_streaks')
@@ -79,7 +86,7 @@ export class DashboardService {
             return {
                 stats: {
                     enrolledTopics: enrolledCount || 0,
-                    questionsSolved: modulesCount || 0,
+                    questionsSolved: (modulesCount || 0) + (topicsCount || 0),
                     currentStreak,
                     overallAccuracy,
                     totalStudyTime
@@ -155,11 +162,18 @@ export class DashboardService {
                     .from('practice_sessions')
                     .select(`
                         score_percentage,
+                        subtopic_id,
+                        topic_id,
                         subtopics (
                             topics (
                                 subjects (
                                     name
                                 )
+                            )
+                        ),
+                        topics (
+                            subjects (
+                                name
                             )
                         )
                     `)
@@ -170,7 +184,10 @@ export class DashboardService {
                 const subjectScores: { [key: string]: number[] } = {};
 
                 sessions?.forEach((session: any) => {
-                    const subjectName = session.subtopics?.topics?.subjects?.name;
+                    // Extract subject name from subtopic path OR topic path
+                    const subjectName = session.subtopics?.topics?.subjects?.name ||
+                        session.topics?.subjects?.name;
+
                     if (subjectName && session.score_percentage !== null) {
                         if (!subjectScores[subjectName]) {
                             subjectScores[subjectName] = [];
@@ -178,6 +195,7 @@ export class DashboardService {
                         subjectScores[subjectName].push(parseFloat(session.score_percentage.toString()));
                     }
                 });
+
 
                 const performanceData: PerformanceData[] = Object.entries(subjectScores).map(([subject, scores]) => ({
                     subject,
@@ -200,30 +218,42 @@ export class DashboardService {
      */
     static async getProgressBySubtopic(studentId: string, limit: number = 5): Promise<{ data: ProgressData[]; error?: string }> {
         try {
-            const { data, error } = await supabase
-                .from('subtopic_progress')
-                .select(`
-          subtopic_id,
-          reading_percentage,
-          subtopics:subtopic_id (
-            name
-          )
-        `)
-                .eq('student_id', studentId)
-                .order('last_accessed_at', { ascending: false })
-                .limit(limit);
+            const [subRes, topicRes] = await Promise.all([
+                supabase
+                    .from('subtopic_progress')
+                    .select('subtopic_id, reading_percentage, last_accessed_at, subtopics:subtopic_id(name)')
+                    .eq('student_id', studentId)
+                    .order('last_accessed_at', { ascending: false })
+                    .limit(limit),
+                supabase
+                    .from('topic_progress')
+                    .select('topic_id, reading_percentage, last_accessed_at, topics:topic_id(name)')
+                    .eq('student_id', studentId)
+                    .order('last_accessed_at', { ascending: false })
+                    .limit(limit)
+            ]);
 
-            if (error) throw error;
-
-            const progressData: ProgressData[] = (data || []).map((item: any) => ({
+            const subData = (subRes.data || []).map((item: any) => ({
                 name: item.subtopics?.name || 'Unknown',
                 score: Math.round(item.reading_percentage || 0),
-                subtopicId: item.subtopic_id
+                subtopicId: item.subtopic_id,
+                lastAccessed: item.last_accessed_at
             }));
 
-            return { data: progressData };
+            const topicData = (topicRes.data || []).map((item: any) => ({
+                name: item.topics?.name || 'Unknown Topic',
+                score: Math.round(item.reading_percentage || 0),
+                subtopicId: item.topic_id, // UI uses this as general ID
+                lastAccessed: item.last_accessed_at
+            }));
+
+            const combined = [...subData, ...topicData]
+                .sort((a, b) => new Date(b.lastAccessed).getTime() - new Date(a.lastAccessed).getTime())
+                .slice(0, limit);
+
+            return { data: combined };
         } catch (error: any) {
-            console.error('Error fetching progress by subtopic:', error);
+            console.error('Error fetching progress:', error);
             return { data: [], error: error.message };
         }
     }
@@ -233,40 +263,48 @@ export class DashboardService {
      */
     static async getContinueLearningItems(studentId: string, limit: number = 3): Promise<{ data: ContinueLearningItem[]; error?: string }> {
         try {
-            const { data, error } = await supabase
-                .from('subtopic_progress')
-                .select(`
-          subtopic_id,
-          reading_percentage,
-          subtopics:subtopic_id (
-            name,
-            topic_id,
-            topics:topic_id (
-              subject_id,
-              subjects:subject_id (
-                color
-              )
-            )
-          )
-        `)
-                .eq('student_id', studentId)
-                .eq('is_completed', false)
-                .order('last_accessed_at', { ascending: false })
-                .limit(limit);
-
-            if (error) throw error;
+            const [subRes, topicRes] = await Promise.all([
+                supabase
+                    .from('subtopic_progress')
+                    .select('subtopic_id, reading_percentage, last_accessed_at, subtopics:subtopic_id(name, topic_id)')
+                    .eq('student_id', studentId)
+                    .eq('is_completed', false)
+                    .order('last_accessed_at', { ascending: false })
+                    .limit(limit),
+                supabase
+                    .from('topic_progress')
+                    .select('topic_id, reading_percentage, last_accessed_at, topics:topic_id(name)')
+                    .eq('student_id', studentId)
+                    .eq('is_completed', false)
+                    .order('last_accessed_at', { ascending: false })
+                    .limit(limit)
+            ]);
 
             const colors = ['text-teal-600', 'text-orange-600', 'text-teal-600', 'text-purple-600'];
 
-            const items: ContinueLearningItem[] = (data || []).map((item: any, index: number) => ({
+            const subItems = (subRes.data || []).map((item: any, index: number) => ({
                 title: item.subtopics?.name || 'Unknown',
                 progress: Math.round(item.reading_percentage || 0),
                 subtopicId: item.subtopic_id,
                 topicId: item.subtopics?.topic_id || 0,
-                color: colors[index % colors.length]
+                color: colors[index % colors.length],
+                lastAccessed: item.last_accessed_at
             }));
 
-            return { data: items };
+            const topicItems = (topicRes.data || []).map((item: any, index: number) => ({
+                title: item.topics?.name || 'Unknown',
+                progress: Math.round(item.reading_percentage || 0),
+                subtopicId: 0,
+                topicId: item.topic_id,
+                color: colors[(index + subItems.length) % colors.length],
+                lastAccessed: item.last_accessed_at
+            }));
+
+            const combined = [...subItems, ...topicItems]
+                .sort((a, b) => new Date(b.lastAccessed).getTime() - new Date(a.lastAccessed).getTime())
+                .slice(0, limit);
+
+            return { data: combined };
         } catch (error: any) {
             console.error('Error fetching continue learning items:', error);
             return { data: [], error: error.message };

@@ -317,8 +317,9 @@ export class AuthService {
      * Send password reset email
      */
     static async resetPassword(email: string): Promise<{ error: string | null }> {
+        const redirectBase = typeof window !== 'undefined' ? window.location.origin : SITE_URL;
         const { error } = await supabase.auth.resetPasswordForEmail(email, {
-            redirectTo: `${SITE_URL}/update-password`,
+            redirectTo: `${redirectBase}/update-password`,
         });
         return { error: error ? error.message : null };
     }
@@ -349,20 +350,31 @@ export class AuthService {
     }
 
     /**
-     * Sync session from Supabase to LocalStorage (for OAuth flows)
+     * Sync session from Supabase to LocalStorage (for OAuth flows or page reloads)
      */
     static async syncSession(): Promise<User | null> {
         try {
-            const { data: { session }, error } = await supabase.auth.getSession();
+            // ✅ Use getUser() for the most reliable auth state check
+            const { data: { user: authUser }, error: authError } = await supabase.auth.getUser();
 
-            if (error || !session) {
-                if (typeof window !== 'undefined' && (error?.message?.includes('Refresh Token') || error?.message?.includes('not found'))) {
-                    console.warn("Auth session invalid, clearing local state.");
-                    localStorage.removeItem('aptivo_user');
-                    localStorage.removeItem('aptivo_session');
+            if (authError || !authUser) {
+                // If it's a refresh token error or session not found, just clear local state and return null
+                if (typeof window !== 'undefined') {
+                    const isRefreshTokenError = authError?.message?.includes('Refresh Token') ||
+                        authError?.message?.includes('not found');
+
+                    if (isRefreshTokenError || !authUser) {
+                        localStorage.removeItem('aptivo_user');
+                        localStorage.removeItem('aptivo_session');
+                    }
                 }
                 return null;
             }
+
+            // session is valid if we reached here
+            const { data: { session } } = await supabase.auth.getSession();
+
+            if (!session) return null;
 
             const stored = this.getCurrentUser();
             if (stored && stored.id === session.user.id) return stored;
@@ -374,6 +386,7 @@ export class AuthService {
                 .single();
 
             if (!user) {
+                // Auto-create profile if missing but auth exists
                 const { data: newUser } = await supabase.from('users').insert({
                     id: session.user.id,
                     email: session.user.email!,

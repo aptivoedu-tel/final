@@ -16,8 +16,10 @@ import Sidebar from '@/components/layout/Sidebar';
 import Header from '@/components/layout/Header';
 import { AuthService } from '@/lib/services/authService';
 import { DashboardService } from '@/lib/services/dashboardService';
-import jsPDF from 'jspdf';
-import autoTable from 'jspdf-autotable';
+// Removed top-level imports of jsPDF to avoid SSR DOMParser error
+// import jsPDF from 'jspdf';
+// import autoTable from 'jspdf-autotable';
+
 import { toast } from 'sonner';
 
 export default function ProgressPage() {
@@ -65,8 +67,13 @@ export default function ProgressPage() {
         setExporting(true);
 
         try {
+            // Dynamically import to avoid "DOMParser is not defined" SSR error
+            const { default: jsPDF } = await import('jspdf');
+            const { default: autoTable } = await import('jspdf-autotable');
+
             const pdf = new jsPDF();
             const pageWidth = pdf.internal.pageSize.getWidth();
+
 
             // Header
             pdf.setFillColor(172, 200, 162); // Soft Sage

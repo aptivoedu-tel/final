@@ -358,8 +358,72 @@ export class PracticeService {
             return { success: false, error: error.message };
         }
 
-        // Update subtopic progress if it's a subtopic practice
+        // Aggregate analytics for Deep Insights
         if (studentId) {
+            try {
+                const { data: sessionData } = await supabase
+                    .from('practice_sessions')
+                    .select('subtopic_id, topic_id, university_id')
+                    .eq('id', sessionId)
+                    .single();
+
+                if (sessionData) {
+                    let topicName = 'General Practice';
+
+                    if (sessionData.topic_id) {
+                        const { data: topic } = await supabase
+                            .from('topics')
+                            .select('name')
+                            .eq('id', sessionData.topic_id)
+                            .single();
+                        if (topic) topicName = topic.name;
+                    } else if (sessionData.subtopic_id) {
+                        const { data: subtopic } = await supabase
+                            .from('subtopics')
+                            .select('topic_id, topics(name)')
+                            .eq('id', sessionData.subtopic_id)
+                            .single();
+                        if (subtopic && (subtopic as any).topics) {
+                            topicName = (subtopic as any).topics.name;
+                        }
+                    }
+
+                    // Calculate behavior metrics from individual attempts
+                    const { data: mcqAttempts } = await supabase
+                        .from('mcq_attempts')
+                        .select('is_correct, time_spent_seconds')
+                        .eq('practice_session_id', sessionId);
+
+                    let overthink = 0;
+                    let rush = 0;
+
+                    if (mcqAttempts) {
+                        mcqAttempts.forEach(att => {
+                            // Overthink: Correct but took > 100s
+                            if (att.is_correct && att.time_spent_seconds > 100) overthink++;
+                            // Rush: Incorrect and took < 15s
+                            if (!att.is_correct && att.time_spent_seconds < 15 && att.time_spent_seconds > 0) rush++;
+                        });
+                    }
+
+                    await supabase.from('practice_attempts').insert({
+                        student_id: studentId,
+                        university_id: sessionData.university_id,
+                        topic: topicName,
+                        total_questions: totalQuestions,
+                        correct: correctAnswers,
+                        incorrect: wrongAnswers,
+                        avg_time_seconds: totalQuestions > 0 ? Math.round(totalTimeSeconds / totalQuestions) : 0,
+                        overthink_count: overthink,
+                        rush_count: rush
+                    });
+                }
+            } catch (err) {
+                console.error('Error recording analytics attempt:', err);
+                // Don't fail the session completion if analytics fails
+            }
+
+            // Update subtopic progress
             const { data: sessionData } = await supabase
                 .from('practice_sessions')
                 .select('subtopic_id, topic_id')
@@ -383,7 +447,7 @@ export class PracticeService {
                         student_id: studentId,
                         topic_id: sessionData.topic_id,
                         is_completed: true,
-                        reading_percentage: 100, // Mark reading as done too if they finished practice
+                        reading_percentage: 100,
                         last_accessed_at: new Date().toISOString()
                     }, { onConflict: 'student_id,topic_id' });
             }

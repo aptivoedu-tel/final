@@ -30,6 +30,10 @@ export interface UploadResult {
     failedRows: number;
     errors: ValidationError[];
     uploadId?: number;
+    inserted?: number;
+    skipped_in_file_duplicates?: number;
+    skipped_exact_duplicates?: number;
+    skipped_similar_questions?: number;
 }
 
 export interface AutoAssignResult {
@@ -296,6 +300,28 @@ export class ExcelUploadService {
     }
 
     /**
+     * Normalize question text for comparison
+     */
+    private static normalizeQuestion(text: string): string {
+        if (!text) return '';
+        return text
+            .toLowerCase()
+            .replace(/[^\w\s]|_/g, "") // Remove punctuation
+            .replace(/\s+/g, " ")      // Remove extra whitespace
+            .trim();
+    }
+
+    /**
+     * Generate SHA256 hash of text
+     */
+    private static async generateHash(text: string): Promise<string> {
+        const msgBuffer = new TextEncoder().encode(text);
+        const hashBuffer = await crypto.subtle.digest('SHA-256', msgBuffer);
+        const hashArray = Array.from(new Uint8Array(hashBuffer));
+        return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+    }
+
+    /**
      * Validate URL format
      */
     private static isValidUrl(url: string): boolean {
@@ -521,7 +547,14 @@ export class ExcelUploadService {
         fileName: string
     ): Promise<UploadResult> {
         try {
-            // Create upload record
+            // Summary counters
+            let skipped_in_file_duplicates = 0;
+            let skipped_exact_duplicates = 0;
+            let skipped_similar_questions = 0;
+            let insertedCount = 0;
+            let failedCount = 0;
+            const errors: ValidationError[] = [];
+
             // 1. Get the hierarchy details for metadata
             const { data: hierarchyInfo } = await supabase
                 .from('subtopics')
@@ -561,52 +594,118 @@ export class ExcelUploadService {
                 };
             }
 
-            let processedCount = 0;
-            let failedCount = 0;
-            const errors: ValidationError[] = [];
+            // 2. Normalization & In-file Duplicate Check (Step 1 & 2)
+            const uniqueMCQs: MCQRow[] = [];
+            const seenNormalized = new Set<string>();
 
-            // Insert MCQs in batches
-            const batchSize = 50;
-            for (let i = 0; i < mcqs.length; i += batchSize) {
-                const batch = mcqs.slice(i, i + batchSize);
-
-                const mcqInserts = batch.map(mcq => ({
-                    subtopic_id: subtopicId,
-                    question: mcq.question,
-                    question_image_url: mcq.image_url,
-                    option_a: mcq.option_a,
-                    option_b: mcq.option_b,
-                    option_c: mcq.option_c,
-                    option_d: mcq.option_d,
-                    correct_option: mcq.correct_option,
-                    explanation: mcq.explanation,
-                    explanation_url: mcq.explanation_url,
-                    difficulty: mcq.difficulty || 'medium',
-                    upload_id: uploadRecord.id,
-                    is_active: true
-                }));
-
-                const { error: insertError } = await supabase
-                    .from('mcqs')
-                    .insert(mcqInserts);
-
-                if (insertError) {
-                    failedCount += batch.length;
-                    errors.push({
-                        row: i,
-                        field: 'batch',
-                        message: `Failed to insert batch ${Math.floor(i / batchSize) + 1}: ${insertError.message}`
-                    });
-                } else {
-                    processedCount += batch.length;
+            for (const mcq of mcqs) {
+                const normalized = this.normalizeQuestion(mcq.question);
+                if (seenNormalized.has(normalized)) {
+                    skipped_in_file_duplicates++;
+                    continue;
                 }
-                // Update upload record
-                // Update upload record
+                seenNormalized.add(normalized);
+                uniqueMCQs.push(mcq);
+            }
+
+            // 3. Exact Duplicate Check (Database Level) - Batch Process (Step 3)
+            const mcqsWithHashes = await Promise.all(uniqueMCQs.map(async (mcq) => {
+                const normalized = this.normalizeQuestion(mcq.question);
+                const hash = await this.generateHash(normalized);
+                return { ...mcq, hash };
+            }));
+
+            const allHashes = mcqsWithHashes.map(m => m.hash);
+
+            const dbExistingHashSet = new Set<string>();
+            const hashBatchSize = 100;
+            for (let i = 0; i < allHashes.length; i += hashBatchSize) {
+                const batch = allHashes.slice(i, i + hashBatchSize);
+                const { data: existing } = await supabase
+                    .from('mcqs')
+                    .select('question_hash')
+                    .in('question_hash', batch);
+
+                existing?.forEach(h => dbExistingHashSet.add(h.question_hash));
+            }
+
+            const questionsToProcess = mcqsWithHashes.filter(m => {
+                if (dbExistingHashSet.has(m.hash)) {
+                    skipped_exact_duplicates++;
+                    return false;
+                }
+                return true;
+            });
+
+            // 4. Similarity Check & Batch Insert
+            const batchSize = 50;
+            for (let i = 0; i < questionsToProcess.length; i += batchSize) {
+                const batch = questionsToProcess.slice(i, i + batchSize);
+                const safeToInsertBatch: any[] = [];
+
+                // Process similarity checks in small parallel batches
+                const similarityBatchSize = 5;
+                for (let j = 0; j < batch.length; j += similarityBatchSize) {
+                    const subBatch = batch.slice(j, j + similarityBatchSize);
+
+                    const similarityResults = await Promise.all(subBatch.map(async (mcq) => {
+                        const { data: similar } = await supabase.rpc('check_similar_question', {
+                            p_topic_id: topicId,
+                            p_question_text: mcq.question,
+                            p_threshold: 0.85
+                        });
+                        const result = Array.isArray(similar) ? similar[0] : similar;
+                        return { mcq, similar: result };
+                    }));
+
+                    for (const { mcq, similar } of similarityResults) {
+                        if (similar && (similar as any).exists) {
+                            skipped_similar_questions++;
+                            continue;
+                        }
+
+                        safeToInsertBatch.push({
+                            subtopic_id: subtopicId,
+                            question: mcq.question,
+                            question_hash: mcq.hash,
+                            question_image_url: mcq.image_url,
+                            option_a: mcq.option_a,
+                            option_b: mcq.option_b,
+                            option_c: mcq.option_c,
+                            option_d: mcq.option_d,
+                            correct_option: mcq.correct_option,
+                            explanation: mcq.explanation,
+                            explanation_url: mcq.explanation_url,
+                            difficulty: mcq.difficulty || 'medium',
+                            upload_id: uploadRecord.id,
+                            is_active: true
+                        });
+                    }
+                }
+
+                if (safeToInsertBatch.length > 0) {
+                    const { error: insertError } = await supabase
+                        .from('mcqs')
+                        .insert(safeToInsertBatch);
+
+                    if (insertError) {
+                        failedCount += batch.length;
+                        errors.push({
+                            row: i,
+                            field: 'batch',
+                            message: `Failed to insert batch ${Math.floor(i / batchSize) + 1}: ${insertError.message}`
+                        });
+                    } else {
+                        insertedCount += safeToInsertBatch.length;
+                    }
+                }
+
+                // Update progress
                 await supabase
                     .from('uploads')
                     .update({
-                        status: failedCount === 0 ? 'completed' : (processedCount > 0 ? 'partially_completed' : 'failed'),
-                        processed_rows: processedCount,
+                        status: failedCount === 0 ? 'completed' : (insertedCount > 0 ? 'partially_completed' : 'failed'),
+                        processed_rows: insertedCount,
                         failed_rows: failedCount,
                         validation_errors: errors.length > 0 ? errors : null,
                         completed_at: new Date().toISOString()
@@ -615,39 +714,23 @@ export class ExcelUploadService {
 
                 // AUTO-LINKING: Link this subtopic to all active universities
                 try {
-                    // 1. Get the hierarchy details
-                    const { data: subtopic } = await supabase
-                        .from('subtopics')
-                        .select('id, topic_id, topic:topics(id, subject_id)')
-                        .eq('id', subtopicId)
-                        .single();
+                    const { data: universities } = await supabase
+                        .from('universities')
+                        .select('id')
+                        .eq('is_active', true);
 
-                    if (subtopic && subtopic.topic) {
-                        const topicData = subtopic.topic as any;
-                        const topicId = topicData.id;
-                        const subjectId = topicData.subject_id;
+                    if (universities && universities.length > 0) {
+                        const mappings = universities.map(uni => ({
+                            university_id: uni.id,
+                            subject_id: subjectId,
+                            topic_id: topicId,
+                            subtopic_id: subtopicId,
+                            is_active: true
+                        }));
 
-                        // 2. Get all active universities
-                        const { data: universities } = await supabase
-                            .from('universities')
-                            .select('id')
-                            .eq('is_active', true);
-
-                        if (universities && universities.length > 0) {
-                            // 3. Create mapping records
-                            const mappings = universities.map(uni => ({
-                                university_id: uni.id,
-                                subject_id: subjectId,
-                                topic_id: topicId,
-                                subtopic_id: subtopicId,
-                                is_active: true
-                            }));
-
-                            // 4. Upsert mappings (ignore if already exists)
-                            await supabase
-                                .from('university_content_access')
-                                .upsert(mappings, { onConflict: 'university_id, subject_id, topic_id, subtopic_id' });
-                        }
+                        await supabase
+                            .from('university_content_access')
+                            .upsert(mappings, { onConflict: 'university_id, subject_id, topic_id, subtopic_id' });
                     }
                 } catch (linkError) {
                     console.error("Auto-linking failed (non-critical):", linkError);
@@ -657,8 +740,12 @@ export class ExcelUploadService {
             return {
                 success: failedCount === 0,
                 totalRows: mcqs.length,
-                processedRows: processedCount,
+                processedRows: insertedCount,
+                inserted: insertedCount,
                 failedRows: failedCount,
+                skipped_in_file_duplicates,
+                skipped_exact_duplicates,
+                skipped_similar_questions,
                 errors,
                 uploadId: uploadRecord.id
             };
@@ -683,6 +770,14 @@ export class ExcelUploadService {
         fileName: string
     ): Promise<UploadResult> {
         try {
+            // Summary counters
+            let skipped_in_file_duplicates = 0;
+            let skipped_exact_duplicates = 0;
+            let skipped_similar_questions = 0;
+            let insertedCount = 0;
+            let failedCount = 0;
+            const errors: ValidationError[] = [];
+
             // 1. Create upload record
             const { data: uploadRecord, error: uploadError } = await supabase
                 .from('uploads')
@@ -710,16 +805,55 @@ export class ExcelUploadService {
                 };
             }
 
-            let processedCount = 0;
-            let failedCount = 0;
-            const errors: ValidationError[] = [];
+            // 2. Normalization & In-file Duplicate Check (Step 1 & 2)
+            const uniqueMCQs: MCQRow[] = [];
+            const seenNormalized = new Set<string>();
+
+            for (const mcq of mcqs) {
+                const normalized = this.normalizeQuestion(mcq.question);
+                if (seenNormalized.has(normalized)) {
+                    skipped_in_file_duplicates++;
+                    continue;
+                }
+                seenNormalized.add(normalized);
+                uniqueMCQs.push(mcq);
+            }
+
+            // 3. Exact Duplicate Check (Database Level) - Batch Process (Step 3)
+            const mcqsWithHashes = await Promise.all(uniqueMCQs.map(async (mcq) => {
+                const normalized = this.normalizeQuestion(mcq.question);
+                const hash = await this.generateHash(normalized);
+                return { ...mcq, hash };
+            }));
+
+            const allHashes = mcqsWithHashes.map(m => m.hash);
+
+            const dbExistingHashSet = new Set<string>();
+            const hashBatchSize = 100;
+            for (let i = 0; i < allHashes.length; i += hashBatchSize) {
+                const batch = allHashes.slice(i, i + hashBatchSize);
+                const { data: existing } = await supabase
+                    .from('mcqs')
+                    .select('question_hash')
+                    .in('question_hash', batch);
+
+                existing?.forEach(h => dbExistingHashSet.add(h.question_hash));
+            }
+
+            const questionsToProcess = mcqsWithHashes.filter(m => {
+                if (dbExistingHashSet.has(m.hash)) {
+                    skipped_exact_duplicates++;
+                    return false;
+                }
+                return true;
+            });
 
             // Group MCQs by hierarchy to enable batching
             const hierarchyCache = new Map<string, { subjectId: number; topicId: number; subtopicId: number | null }>();
-            const groupedMCQs = new Map<string, MCQRow[]>();
+            const groupedMCQs = new Map<string, (MCQRow & { hash: string })[]>();
 
-            for (let i = 0; i < mcqs.length; i++) {
-                const mcq = mcqs[i];
+            for (let i = 0; i < questionsToProcess.length; i++) {
+                const mcq = questionsToProcess[i];
                 if (!mcq.subject || !mcq.topic) {
                     failedCount++;
                     errors.push({
@@ -765,44 +899,73 @@ export class ExcelUploadService {
                     hierarchyCache.set(hierarchyKey, hierarchy);
                 }
 
-                // Batch insert the group
-                const mcqInserts = group.map(mcq => ({
-                    question: mcq.question,
-                    question_image_url: mcq.image_url,
-                    option_a: mcq.option_a,
-                    option_b: mcq.option_b,
-                    option_c: mcq.option_c,
-                    option_d: mcq.option_d,
-                    correct_option: mcq.correct_option,
-                    explanation: mcq.explanation,
-                    explanation_url: mcq.explanation_url,
-                    difficulty: mcq.difficulty || 'medium',
-                    subtopic_id: hierarchy!.subtopicId,
-                    topic_id: hierarchy!.subtopicId ? null : hierarchy!.topicId, // Only set topic_id if no subtopic
-                    upload_id: uploadRecord.id,
-                    is_active: true
-                }));
+                // Step 4: Similar Question Detection (within same topic)
+                const safeToInsertBatch: any[] = [];
 
-                const { error: insertError } = await supabase
-                    .from('mcqs')
-                    .insert(mcqInserts);
+                // Process similarity checks in small parallel batches
+                const similarityBatchSize = 5; // Conservative parallel limit
+                for (let i = 0; i < group.length; i += similarityBatchSize) {
+                    const subBatch = group.slice(i, i + similarityBatchSize);
 
-                if (insertError) {
-                    failedCount += group.length;
-                    errors.push({
-                        row: mcqs.indexOf(firstMCQ) + 2,
-                        field: 'insert',
-                        message: `Failed to insert batch: ${insertError.message}`
-                    });
-                } else {
-                    processedCount += group.length;
+                    const similarityResults = await Promise.all(subBatch.map(async (mcq) => {
+                        const { data: similar } = await supabase.rpc('check_similar_question', {
+                            p_topic_id: hierarchy!.topicId,
+                            p_question_text: mcq.question,
+                            p_threshold: 0.85
+                        });
+                        // rpc might return an object directly or wrap it
+                        const result = Array.isArray(similar) ? similar[0] : similar;
+                        return { mcq, similar: result };
+                    }));
+
+                    for (const { mcq, similar } of similarityResults) {
+                        if (similar && (similar as any).exists) {
+                            skipped_similar_questions++;
+                            continue;
+                        }
+
+                        safeToInsertBatch.push({
+                            question: mcq.question,
+                            question_hash: mcq.hash,
+                            question_image_url: mcq.image_url,
+                            option_a: mcq.option_a,
+                            option_b: mcq.option_b,
+                            option_c: mcq.option_c,
+                            option_d: mcq.option_d,
+                            correct_option: mcq.correct_option,
+                            explanation: mcq.explanation,
+                            explanation_url: mcq.explanation_url,
+                            difficulty: mcq.difficulty || 'medium',
+                            subtopic_id: hierarchy!.subtopicId,
+                            topic_id: hierarchy!.subtopicId ? null : hierarchy!.topicId,
+                            upload_id: uploadRecord.id,
+                            is_active: true
+                        });
+                    }
                 }
 
-                // Update progress
+                if (safeToInsertBatch.length > 0) {
+                    const { error: insertError } = await supabase
+                        .from('mcqs')
+                        .insert(safeToInsertBatch);
+
+                    if (insertError) {
+                        failedCount += safeToInsertBatch.length;
+                        errors.push({
+                            row: mcqs.indexOf(firstMCQ) + 2,
+                            field: 'insert',
+                            message: `Failed to insert batch: ${insertError.message}`
+                        });
+                    } else {
+                        insertedCount += safeToInsertBatch.length;
+                    }
+                }
+
+                // Update progress in DB
                 await supabase
                     .from('uploads')
                     .update({
-                        processed_rows: processedCount,
+                        processed_rows: insertedCount,
                         failed_rows: failedCount
                     })
                     .eq('id', uploadRecord.id);
@@ -810,27 +973,20 @@ export class ExcelUploadService {
                 // AUTO-LINKING: Link this subtopic/topic to all active universities
                 if (hierarchy && (hierarchy.subtopicId || hierarchy.topicId)) {
                     try {
-                        // Get all active universities
                         const { data: universities } = await supabase
                             .from('universities')
                             .select('id')
                             .eq('is_active', true);
 
                         if (universities && universities.length > 0) {
-                            const subtopicId = hierarchy.subtopicId;
-                            const topicId = hierarchy.topicId;
-                            const subjectId = hierarchy.subjectId;
-
-                            // Create mapping records
                             const mappings = universities.map(uni => ({
                                 university_id: uni.id,
-                                subject_id: subjectId,
-                                topic_id: topicId,
-                                subtopic_id: subtopicId,
+                                subject_id: hierarchy!.subjectId,
+                                topic_id: hierarchy!.topicId,
+                                subtopic_id: hierarchy!.subtopicId,
                                 is_active: true
                             }));
 
-                            // Upsert mappings
                             await supabase
                                 .from('university_content_access')
                                 .upsert(mappings, { onConflict: 'university_id, subject_id, topic_id, subtopic_id' });
@@ -845,7 +1001,7 @@ export class ExcelUploadService {
             await supabase
                 .from('uploads')
                 .update({
-                    status: failedCount === 0 ? 'completed' : (processedCount > 0 ? 'partially_completed' : 'failed'),
+                    status: failedCount === 0 ? 'completed' : (insertedCount > 0 ? 'partially_completed' : 'failed'),
                     validation_errors: errors.length > 0 ? errors : null,
                     completed_at: new Date().toISOString()
                 })
@@ -854,8 +1010,12 @@ export class ExcelUploadService {
             return {
                 success: failedCount === 0,
                 totalRows: mcqs.length,
-                processedRows: processedCount,
+                processedRows: insertedCount,
+                inserted: insertedCount,
                 failedRows: failedCount,
+                skipped_in_file_duplicates,
+                skipped_exact_duplicates,
+                skipped_similar_questions,
                 errors,
                 uploadId: uploadRecord.id
             };

@@ -23,7 +23,8 @@ import {
     Sun,
     Moon,
     MessageSquare,
-    Settings
+    Settings,
+    Brain
 } from 'lucide-react';
 import { useUI } from '@/lib/context/UIContext';
 import { AuthService } from '@/lib/services/authService';
@@ -89,6 +90,7 @@ const Sidebar: React.FC<SidebarProps> = ({ userRole }) => {
             { icon: LayoutDashboard, label: 'Dashboard', href: '/dashboard', section: 'General' },
             { icon: University, label: 'University Library', href: '/university', section: 'General' },
             { icon: TrendingUp, label: 'Progress', href: '/progress', section: 'General' },
+            { icon: Brain, label: 'Deep Insights', href: '/dashboard/analytics', section: 'General' },
             { icon: Bell, label: 'Notifications', href: '/notifications', section: 'General' },
             { icon: Users, label: 'Profile', href: '/profile', section: 'General' },
         ];

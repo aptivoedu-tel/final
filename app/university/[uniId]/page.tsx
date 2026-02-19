@@ -199,19 +199,39 @@ export default function UniversityDetailPage() {
     }
 
     async function loadStudentProgress(userId: string) {
-        const { data: readData } = await supabase.from('subtopic_progress').select('subtopic_id, is_completed').eq('student_id', userId);
-        const { data: practiceData } = await supabase.from('practice_sessions').select('subtopic_id, score_percentage').eq('student_id', userId).gte('score_percentage', 60);
+        // Fetch subtopic and topic progress
+        const [readDataRes, topicReadRes, practiceDataRes] = await Promise.all([
+            supabase.from('subtopic_progress').select('subtopic_id, is_completed').eq('student_id', userId),
+            supabase.from('topic_progress').select('topic_id, is_completed').eq('student_id', userId),
+            supabase.from('practice_sessions').select('subtopic_id, topic_id, score_percentage').eq('student_id', userId).gte('score_percentage', 60)
+        ]);
+
         const map: Record<number, { isRead: boolean; isMastered: boolean }> = {};
-        readData?.forEach(r => {
+
+        // Handle Subtopic Reading
+        readDataRes.data?.forEach(r => {
             if (!map[r.subtopic_id]) map[r.subtopic_id] = { isRead: false, isMastered: false };
             map[r.subtopic_id].isRead = r.is_completed;
         });
-        practiceData?.forEach(p => {
-            if (!map[p.subtopic_id!]) map[p.subtopic_id!] = { isRead: false, isMastered: false };
-            map[p.subtopic_id!].isMastered = true;
+
+        // Handle Topic Reading
+        topicReadRes.data?.forEach(r => {
+            if (!map[r.topic_id]) map[r.topic_id] = { isRead: false, isMastered: false };
+            map[r.topic_id].isRead = r.is_completed;
         });
+
+        // Handle Practice Mastery
+        practiceDataRes.data?.forEach(p => {
+            const id = p.subtopic_id || p.topic_id;
+            if (id) {
+                if (!map[id]) map[id] = { isRead: false, isMastered: false };
+                map[id].isMastered = true;
+            }
+        });
+
         setProgressMap(map);
     }
+
 
     async function loadUniversityStats(userId: string, uniId: number) {
         const { data } = await supabase.from('practice_sessions').select('*').eq('student_id', userId).eq('university_id', uniId).eq('is_completed', true);

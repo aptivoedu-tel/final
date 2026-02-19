@@ -70,14 +70,6 @@ export const AIAssistant: React.FC = () => {
     // Hide AI Assistant during exams
     const isExamPage = pathname?.includes('/exam/');
 
-    // DEBUG: Log mount and pathname
-    useEffect(() => {
-        console.log('[AI Assistant] Component Mounted');
-        console.log('[AI Assistant] Pathname:', pathname);
-        console.log('[AI Assistant] Is Exam Page:', isExamPage);
-        console.log('[AI Assistant] Token Present:', !!GITHUB_TOKEN);
-    }, [pathname]);
-
     // Log warning if token is missing (for debugging)
     useEffect(() => {
         if (!GITHUB_TOKEN) {
