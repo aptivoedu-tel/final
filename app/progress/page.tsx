@@ -30,6 +30,8 @@ export default function ProgressPage() {
     const [exporting, setExporting] = useState(false);
     const [rankData, setRankData] = useState<any>({ rank: '--', change: '→ 0' });
     const [milestones, setMilestones] = useState<any[]>([]);
+    const [timeframe, setTimeframe] = useState<'week' | 'month'>('week');
+    const [activityData, setActivityData] = useState<any[]>([]);
     const { isSidebarCollapsed } = useUI();
 
     useEffect(() => {
@@ -43,17 +45,19 @@ export default function ProgressPage() {
             setLoading(false);
 
             try {
-                const [statsRes, perfRes, rankRes, milestonesRes] = await Promise.all([
+                const [statsRes, perfRes, rankRes, milestonesRes, activityRes] = await Promise.all([
                     DashboardService.getStudentStats(currentUser.id),
                     DashboardService.getPerformanceBySubject(currentUser.id),
                     DashboardService.getStudentRank(currentUser.id),
-                    DashboardService.getRecentMilestones(currentUser.id)
+                    DashboardService.getRecentMilestones(currentUser.id),
+                    DashboardService.getStudyActivity(currentUser.id, 'week')
                 ]);
 
                 if (statsRes.stats) setStats(statsRes.stats);
                 if (perfRes.data) setPerformanceData(perfRes.data);
                 if (rankRes) setRankData(rankRes);
                 if (milestonesRes) setMilestones(milestonesRes);
+                if (activityRes.data) setActivityData(activityRes.data);
             } catch (error) {
                 console.error("Error loading progress data", error);
             }
@@ -61,6 +65,15 @@ export default function ProgressPage() {
 
         loadProgress();
     }, []);
+
+    useEffect(() => {
+        const updateActivity = async () => {
+            if (!user) return;
+            const res = await DashboardService.getStudyActivity(user.id, timeframe);
+            if (res.data) setActivityData(res.data);
+        };
+        updateActivity();
+    }, [timeframe, user]);
 
     const handleDownloadReport = async () => {
         if (exporting) return;
@@ -230,16 +243,23 @@ export default function ProgressPage() {
                                 Study Activity
                             </h3>
                             <div className="flex gap-2">
-                                <button className="px-3 py-1 text-xs font-bold rounded-lg bg-gray-50 text-slate-400">Week</button>
-                                <button className="px-3 py-1 text-xs font-bold rounded-lg bg-primary/10 text-primary-dark">Month</button>
+                                <button
+                                    onClick={() => setTimeframe('week')}
+                                    className={`px-3 py-1 text-xs font-bold rounded-lg transition-all ${timeframe === 'week' ? 'bg-teal-500 text-white shadow-md' : 'bg-gray-50 text-slate-400 hover:bg-gray-100'}`}
+                                >
+                                    Week
+                                </button>
+                                <button
+                                    onClick={() => setTimeframe('month')}
+                                    className={`px-3 py-1 text-xs font-bold rounded-lg transition-all ${timeframe === 'month' ? 'bg-teal-500 text-white shadow-md' : 'bg-gray-50 text-slate-400 hover:bg-gray-100'}`}
+                                >
+                                    Month
+                                </button>
                             </div>
                         </div>
                         <div className="h-[300px]">
                             <ResponsiveContainer width="100%" height="100%">
-                                <AreaChart data={performanceData.map((p, i) => ({
-                                    day: p.subject.substring(0, 3).toUpperCase(),
-                                    hours: (p.score / 20) // Normalizing score for visual activity representation
-                                }))}>
+                                <AreaChart data={activityData.length > 0 ? activityData : [{ name: '...', hours: 0 }]}>
                                     <defs>
                                         <linearGradient id="colorHours" x1="0" y1="0" x2="0" y2="1">
                                             <stop offset="5%" stopColor="#0d9488" stopOpacity={0.2} />
@@ -247,12 +267,12 @@ export default function ProgressPage() {
                                         </linearGradient>
                                     </defs>
                                     <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
-                                    <XAxis dataKey="day" axisLine={false} tickLine={false} tick={{ fill: '#94a3b8', fontSize: 12 }} dy={10} />
+                                    <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fill: '#94a3b8', fontSize: 10 }} dy={10} />
                                     <YAxis axisLine={false} tickLine={false} tick={{ fill: '#94a3b8', fontSize: 12 }} />
                                     <Tooltip
                                         contentStyle={{ backgroundColor: '#fff', borderRadius: '12px', border: 'none', boxShadow: '0 4px 12px rgba(0,0,0,0.05)' }}
                                     />
-                                    <Area type="monotone" dataKey="hours" stroke="#0d9488" strokeWidth={3} fillOpacity={1} fill="url(#colorHours)" />
+                                    <Area type="monotone" dataKey="hours" stroke="#0d9488" strokeWidth={3} fillOpacity={1} fill="url(#colorHours)" animationDuration={1000} />
                                 </AreaChart>
                             </ResponsiveContainer>
                         </div>
@@ -273,9 +293,9 @@ export default function ProgressPage() {
                                             {item.score}%
                                         </span>
                                     </div>
-                                    <div className="h-2.5 bg-gray-50 rounded-full overflow-hidden border border-gray-100">
+                                    <div className="h-2.5 bg-gray-100 rounded-full overflow-hidden border border-gray-100">
                                         <div
-                                            className="h-full rounded-full transition-all duration-1000 bg-primary"
+                                            className="h-full rounded-full transition-all duration-1000 bg-teal-500 shadow-[0_0_8px_rgba(20,184,166,0.3)]"
                                             style={{ width: `${item.score}%` }}
                                         ></div>
                                     </div>
@@ -298,17 +318,29 @@ export default function ProgressPage() {
                     </h3>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                         {milestones.map((m, i) => {
-                            const Icon = TrendingUp; // Simple fallback if icon string is used
+                            let Icon = Award;
+                            if (m.iconType === 'TrendingUp') Icon = TrendingUp;
+                            if (m.iconType === 'Zap') Icon = Zap;
+                            if (m.iconType === 'Award') Icon = Award;
+
                             return (
-                                <div key={i} className="flex items-center gap-4 p-4 rounded-2xl border border-gray-50 hover:bg-gray-50 transition-colors cursor-pointer group">
-                                    <div className={`w-14 h-14 ${m.bg} rounded-2xl flex items-center justify-center shrink-0`}>
-                                        <TrendingUp className={`w-7 h-7 ${m.color}`} />
+                                <div
+                                    key={i}
+                                    onClick={() => window.location.href = '/dashboard/analytics'}
+                                    className="flex items-center gap-4 p-5 rounded-3xl border border-gray-50 hover:border-teal-100 hover:bg-teal-50/30 transition-all cursor-pointer group animate-in fade-in slide-in-from-right-4 duration-500"
+                                    style={{ animationDelay: `${i * 150}ms` }}
+                                >
+                                    <div className={`w-14 h-14 ${m.bg} rounded-2xl flex items-center justify-center shrink-0 group-hover:scale-110 transition-transform`}>
+                                        <Icon className={`w-7 h-7 ${m.color}`} />
                                     </div>
-                                    <div>
-                                        <h4 className="font-bold text-slate-800 group-hover:text-primary-dark transition-colors">{m.title}</h4>
-                                        <p className="text-sm text-slate-500">{m.desc}</p>
+                                    <div className="flex-1">
+                                        <h4 className="font-bold text-slate-800 group-hover:text-teal-600 transition-colors">{m.title}</h4>
+                                        <p className="text-xs text-slate-500 mt-0.5">{m.desc}</p>
+                                        <span className="text-[10px] font-black uppercase tracking-widest text-teal-500 opacity-0 group-hover:opacity-100 transition-opacity mt-2 block">View Analysis</span>
                                     </div>
-                                    <ChevronRight className="w-5 h-5 text-slate-300 ml-auto" />
+                                    <div className="w-8 h-8 rounded-full bg-white flex items-center justify-center shadow-sm group-hover:bg-teal-500 group-hover:text-white transition-all">
+                                        <ChevronRight className="w-4 h-4" />
+                                    </div>
                                 </div>
                             );
                         })}

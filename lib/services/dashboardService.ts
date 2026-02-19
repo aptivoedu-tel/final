@@ -408,6 +408,73 @@ export class DashboardService {
     }
 
     /**
+     * Get study activity data over time
+     */
+    static async getStudyActivity(studentId: string, timeframe: 'week' | 'month'): Promise<{ data: any[]; error?: string }> {
+        try {
+            const days = timeframe === 'week' ? 7 : 30;
+            const startDate = new Date();
+            startDate.setDate(startDate.getDate() - (days - 1));
+            startDate.setHours(0, 0, 0, 0);
+
+            const { data, error } = await supabase
+                .from('practice_sessions')
+                .select('time_spent_seconds, started_at')
+                .eq('student_id', studentId)
+                .gte('started_at', startDate.toISOString())
+                .order('started_at', { ascending: true });
+
+            if (error) throw error;
+
+            // Process data for chart
+            const activityMap: Record<string, number> = {};
+            const labels: string[] = [];
+
+            // Initialize the map with all dates in the range
+            for (let i = 0; i < days; i++) {
+                const date = new Date(startDate);
+                date.setDate(startDate.getDate() + i);
+
+                let dateStr;
+                if (timeframe === 'week') {
+                    dateStr = date.toLocaleDateString('en-US', { weekday: 'short' }).toUpperCase();
+                } else {
+                    dateStr = date.toLocaleDateString('en-US', { day: '2-digit', month: 'short' });
+                }
+
+                // If label exists (like multiple "MON" in a month), ensure uniqueness or handle grouping
+                // For 'month', day/month is unique. For 'week', days are unique.
+                activityMap[dateStr] = 0;
+                labels.push(dateStr);
+            }
+
+            data?.forEach(session => {
+                const date = new Date(session.started_at);
+                let dateStr;
+                if (timeframe === 'week') {
+                    dateStr = date.toLocaleDateString('en-US', { weekday: 'short' }).toUpperCase();
+                } else {
+                    dateStr = date.toLocaleDateString('en-US', { day: '2-digit', month: 'short' });
+                }
+
+                if (activityMap[dateStr] !== undefined) {
+                    activityMap[dateStr] += (session.time_spent_seconds || 0) / 3600; // Convert to hours
+                }
+            });
+
+            const chartData = labels.map(label => ({
+                name: label,
+                hours: parseFloat(activityMap[label].toFixed(2))
+            }));
+
+            return { data: chartData };
+        } catch (error: any) {
+            console.error('Error fetching study activity:', error);
+            return { data: [], error: error.message };
+        }
+    }
+
+    /**
      * Get dynamic milestones for the student
      */
     static async getRecentMilestones(studentId: string): Promise<any[]> {
@@ -418,43 +485,47 @@ export class DashboardService {
                 .eq('student_id', studentId)
                 .eq('is_completed', true)
                 .order('started_at', { ascending: false })
-                .limit(20);
+                .limit(50);
 
             const milestones = [];
 
-            if (sessions && sessions.length > 5) {
+            if (sessions && sessions.length >= 5) {
                 milestones.push({
+                    id: 'consistency',
                     title: 'Consistency King',
                     desc: `Completed ${sessions.length} sessions recently`,
-                    icon: 'TrendingUp',
-                    color: 'text-primary-dark',
-                    bg: 'bg-primary/10'
+                    iconType: 'TrendingUp',
+                    color: 'text-indigo-600',
+                    bg: 'bg-indigo-50'
                 });
             }
 
             const highAccuracy = sessions?.filter(s => s.score_percentage >= 90).length || 0;
-            if (highAccuracy > 0) {
+            if (highAccuracy >= 2) {
                 milestones.push({
+                    id: 'sharpshooter',
                     title: 'Sharp Shooter',
                     desc: `Achieved 90%+ in ${highAccuracy} sessions`,
-                    icon: 'CheckCircle2',
-                    color: 'text-primary-dark',
-                    bg: 'bg-primary/10'
+                    iconType: 'Zap',
+                    color: 'text-amber-600',
+                    bg: 'bg-amber-50'
                 });
             }
 
             if (milestones.length === 0) {
                 milestones.push({
+                    id: 'starter',
                     title: 'Academic Starter',
                     desc: 'Started the learning journey',
-                    icon: 'Zap',
-                    color: 'text-primary-dark',
-                    bg: 'bg-primary/10'
+                    iconType: 'Award',
+                    color: 'text-teal-600',
+                    bg: 'bg-teal-50'
                 });
             }
 
             return milestones;
         } catch (e) {
+            console.error('Milestone error:', e);
             return [];
         }
     }
