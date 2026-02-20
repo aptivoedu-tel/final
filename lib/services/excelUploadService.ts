@@ -15,6 +15,9 @@ export interface MCQRow {
     explanation?: string;
     explanation_url?: string;
     difficulty?: 'easy' | 'medium' | 'hard';
+    subjectId?: number;
+    topicId?: number;
+    subtopicId?: number | null;
 }
 
 export interface ValidationError {
@@ -34,6 +37,18 @@ export interface UploadResult {
     skipped_in_file_duplicates?: number;
     skipped_exact_duplicates?: number;
     skipped_similar_questions?: number;
+    duplicateDetails?: {
+        inFile: number;
+        exact: number;
+        similar: number;
+        items: Array<{
+            index: number;
+            question: string;
+            type: 'in-file' | 'exact' | 'similar';
+            match?: string;
+            score?: number;
+        }>;
+    };
 }
 
 export interface AutoAssignResult {
@@ -351,13 +366,12 @@ export class ExcelUploadService {
     }
 
     /**
-     * Find or create subject by name
+     * Find subject by name
      */
-    private static async findOrCreateSubject(subjectName: string): Promise<number | null> {
+    private static async findSubject(subjectName: string): Promise<number | null> {
         try {
             const normalizedName = subjectName.trim();
 
-            // First, try to find existing subject (case-insensitive)
             const { data: existing } = await supabase
                 .from('subjects')
                 .select('id')
@@ -365,41 +379,19 @@ export class ExcelUploadService {
                 .limit(1)
                 .single();
 
-            if (existing) {
-                return existing.id;
-            }
-
-            // If not found, create new subject
-            const { data: newSubject, error } = await supabase
-                .from('subjects')
-                .insert([{
-                    name: normalizedName,
-                    description: `Auto-created from bulk upload`,
-                    is_active: true
-                }])
-                .select('id')
-                .single();
-
-            if (error || !newSubject) {
-                console.error('Failed to create subject:', error);
-                return null;
-            }
-
-            return newSubject.id;
+            return existing?.id || null;
         } catch (error) {
-            console.error('Error in findOrCreateSubject:', error);
             return null;
         }
     }
 
     /**
-     * Find or create topic by name under a subject
+     * Find topic by name under a subject
      */
-    private static async findOrCreateTopic(topicName: string, subjectId: number): Promise<number | null> {
+    private static async findTopic(topicName: string, subjectId: number): Promise<number | null> {
         try {
             const normalizedName = topicName.trim();
 
-            // First, try to find existing topic (case-insensitive, under this subject)
             const { data: existing } = await supabase
                 .from('topics')
                 .select('id')
@@ -408,47 +400,23 @@ export class ExcelUploadService {
                 .limit(1)
                 .single();
 
-            if (existing) {
-                return existing.id;
-            }
-
-            // If not found, create new topic
-            const { data: newTopic, error } = await supabase
-                .from('topics')
-                .insert([{
-                    name: normalizedName,
-                    subject_id: subjectId,
-                    description: `Auto-created from bulk upload`,
-                    is_active: true
-                }])
-                .select('id')
-                .single();
-
-            if (error || !newTopic) {
-                console.error('Failed to create topic:', error);
-                return null;
-            }
-
-            return newTopic.id;
+            return existing?.id || null;
         } catch (error) {
-            console.error('Error in findOrCreateTopic:', error);
             return null;
         }
     }
 
     /**
-     * Find or create subtopic by name under a topic
+     * Find subtopic by name under a topic
      */
-    private static async findOrCreateSubtopic(subtopicName: string | null | undefined, topicId: number): Promise<number | null> {
+    private static async findSubtopic(subtopicName: string | null | undefined, topicId: number): Promise<number | null> {
         try {
-            // If no subtopic name provided, return null (will use topic directly)
             if (!subtopicName || subtopicName.trim() === '') {
                 return null;
             }
 
             const normalizedName = subtopicName.trim();
 
-            // First, try to find existing subtopic (case-insensitive, under this topic)
             const { data: existing } = await supabase
                 .from('subtopics')
                 .select('id')
@@ -457,30 +425,8 @@ export class ExcelUploadService {
                 .limit(1)
                 .single();
 
-            if (existing) {
-                return existing.id;
-            }
-
-            // If not found, create new subtopic
-            const { data: newSubtopic, error } = await supabase
-                .from('subtopics')
-                .insert([{
-                    name: normalizedName,
-                    topic_id: topicId,
-                    content_markdown: `Auto-created from bulk upload`,
-                    is_active: true
-                }])
-                .select('id')
-                .single();
-
-            if (error || !newSubtopic) {
-                console.error('Failed to create subtopic:', error);
-                return null;
-            }
-
-            return newSubtopic.id;
+            return existing?.id || null;
         } catch (error) {
-            console.error('Error in findOrCreateSubtopic:', error);
             return null;
         }
     }
@@ -490,7 +436,17 @@ export class ExcelUploadService {
      */
     static async autoAssignHierarchy(mcq: MCQRow): Promise<AutoAssignResult> {
         try {
-            // Validate that we have at least subject and topic
+            // Use pre-resolved IDs if provided
+            if (mcq.subjectId && mcq.topicId) {
+                return {
+                    success: true,
+                    subjectId: mcq.subjectId,
+                    topicId: mcq.topicId,
+                    subtopicId: mcq.subtopicId,
+                    message: 'Using manually mapped hierarchy'
+                };
+            }
+
             if (!mcq.subject || !mcq.topic) {
                 return {
                     success: false,
@@ -498,26 +454,35 @@ export class ExcelUploadService {
                 };
             }
 
-            // Step 1: Find or create subject
-            const subjectId = await this.findOrCreateSubject(mcq.subject);
+            // Step 1: Find subject
+            const subjectId = await this.findSubject(mcq.subject);
             if (!subjectId) {
                 return {
                     success: false,
-                    message: `Failed to find or create subject: ${mcq.subject}`
+                    message: `Subject Not Found: "${mcq.subject}". Please create it in Hierarchy Manager first.`
                 };
             }
 
-            // Step 2: Find or create topic
-            const topicId = await this.findOrCreateTopic(mcq.topic, subjectId);
+            // Step 2: Find topic
+            const topicId = await this.findTopic(mcq.topic, subjectId);
             if (!topicId) {
                 return {
                     success: false,
-                    message: `Failed to find or create topic: ${mcq.topic} under subject ${mcq.subject}`
+                    message: `Topic Not Found: "${mcq.topic}" under subject "${mcq.subject}". Please create it first.`
                 };
             }
 
-            // Step 3: Find or create subtopic (optional)
-            const subtopicId = await this.findOrCreateSubtopic(mcq.subtopic, topicId);
+            // Step 3: Find subtopic (optional in file, but if name given must exist)
+            let subtopicId: number | null = null;
+            if (mcq.subtopic && mcq.subtopic.trim() !== '') {
+                subtopicId = await this.findSubtopic(mcq.subtopic, topicId);
+                if (!subtopicId) {
+                    return {
+                        success: false,
+                        message: `Subtopic Not Found: "${mcq.subtopic}" under topic "${mcq.topic}". Please create it first.`
+                    };
+                }
+            }
 
             return {
                 success: true,
@@ -525,8 +490,8 @@ export class ExcelUploadService {
                 topicId,
                 subtopicId,
                 message: subtopicId
-                    ? `Assigned to ${mcq.subject} > ${mcq.topic} > ${mcq.subtopic}`
-                    : `Assigned to ${mcq.subject} > ${mcq.topic} (no subtopic)`
+                    ? `Linked to ${mcq.subject} > ${mcq.topic} > ${mcq.subtopic}`
+                    : `Linked to ${mcq.subject} > ${mcq.topic} (No subtopic)`
             };
         } catch (error) {
             console.error('Error in autoAssignHierarchy:', error);
@@ -1039,23 +1004,101 @@ export class ExcelUploadService {
     }
 
     /**
-     * Check for duplicate questions
+     * Comprehensive duplicate validation before upload
      */
-    static async checkDuplicates(
-        questions: string[],
-        subtopicId: number
-    ): Promise<string[]> {
-        try {
-            const { data: existing } = await supabase
-                .from('mcqs')
-                .select('question')
-                .eq('subtopic_id', subtopicId)
-                .in('question', questions);
+    static async validateDuplicates(
+        mcqs: MCQRow[]
+    ): Promise<UploadResult['duplicateDetails']> {
+        const details: any = {
+            inFile: 0,
+            exact: 0,
+            similar: 0,
+            items: []
+        };
 
-            return existing?.map(m => m.question) || [];
-        } catch (error) {
-            console.error('Error checking duplicates:', error);
-            return [];
+        const seenNormalized = new Map<string, number>(); // text -> index
+        const uniqueIndices: number[] = [];
+
+        // 1. In-file check
+        mcqs.forEach((mcq, idx) => {
+            const normalized = this.normalizeQuestion(mcq.question);
+            if (seenNormalized.has(normalized)) {
+                details.inFile++;
+                details.items.push({
+                    index: idx,
+                    question: mcq.question,
+                    type: 'in-file'
+                });
+            } else {
+                seenNormalized.set(normalized, idx);
+                uniqueIndices.push(idx);
+            }
+        });
+
+        if (uniqueIndices.length === 0) return details;
+
+        // 2. Exact DB check (using hashes)
+        const candidates = uniqueIndices.map(idx => ({ idx, mcq: mcqs[idx] }));
+        const candidatesWithHashes = await Promise.all(candidates.map(async (c) => ({
+            ...c,
+            hash: await this.generateHash(this.normalizeQuestion(c.mcq.question))
+        })));
+
+        const hashes = candidatesWithHashes.map(c => c.hash);
+        const dbHashes = new Set<string>();
+
+        for (let i = 0; i < hashes.length; i += 100) {
+            const batch = hashes.slice(i, i + 100);
+            const { data } = await supabase
+                .from('mcqs')
+                .select('question_hash')
+                .in('question_hash', batch);
+            data?.forEach(row => dbHashes.add(row.question_hash));
         }
+
+        const filteredForSimilarityIndices: number[] = [];
+        candidatesWithHashes.forEach(c => {
+            if (dbHashes.has(c.hash)) {
+                details.exact++;
+                details.items.push({
+                    index: c.idx,
+                    question: c.mcq.question,
+                    type: 'exact'
+                });
+            } else {
+                filteredForSimilarityIndices.push(c.idx);
+            }
+        });
+
+        // 3. Similarity check (only if topicId is resolved)
+        // Rate limited for performance
+        if (filteredForSimilarityIndices.length > 0) {
+            const limit = Math.min(filteredForSimilarityIndices.length, 50); // Scan first 50 unique items for similarity
+            for (let i = 0; i < limit; i++) {
+                const idx = filteredForSimilarityIndices[i];
+                const mcq = mcqs[idx];
+
+                if (mcq.topicId) {
+                    const { data: similar } = await supabase.rpc('check_similar_question', {
+                        p_topic_id: mcq.topicId,
+                        p_question_text: mcq.question,
+                        p_threshold: 0.85
+                    });
+                    const result = Array.isArray(similar) ? similar[0] : similar;
+                    if (result?.exists) {
+                        details.similar++;
+                        details.items.push({
+                            index: idx,
+                            question: mcq.question,
+                            type: 'similar',
+                            match: result.question,
+                            score: result.score
+                        });
+                    }
+                }
+            }
+        }
+
+        return details;
     }
 }

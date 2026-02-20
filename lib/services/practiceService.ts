@@ -105,13 +105,19 @@ export class PracticeService {
 
         // 2. Try to get granular session limit for this mapping
         let sessionLimit = 20; // Increased default to handle typical topic sizes
-        if (universityId && institutionId) {
+        if (universityId) {
             let mappingQuery = supabase
                 .from('university_content_access')
                 .select('session_limit')
                 .eq('university_id', universityId)
-                .eq('institution_id', institutionId)
-                .eq('is_active', true);
+                .eq('is_active', true)
+                .order('institution_id', { ascending: false, nullsFirst: false }); // Put specific institution first
+
+            if (institutionId) {
+                mappingQuery = mappingQuery.or(`institution_id.eq.${institutionId},institution_id.is.null`);
+            } else {
+                mappingQuery = mappingQuery.is('institution_id', null);
+            }
 
             if (subtopicId) {
                 mappingQuery = mappingQuery.eq('subtopic_id', subtopicId);
@@ -119,10 +125,11 @@ export class PracticeService {
                 mappingQuery = mappingQuery.eq('topic_id', topicId).is('subtopic_id', null);
             }
 
-            const { data: mapping } = await mappingQuery.maybeSingle();
+            // Get the first result (which will be the institution override if it exists, otherwise the global default)
+            const { data: mappings } = await mappingQuery;
 
-            if (mapping?.session_limit) {
-                sessionLimit = mapping.session_limit;
+            if (mappings && mappings.length > 0) {
+                sessionLimit = mappings[0].session_limit;
             }
         }
 

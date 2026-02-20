@@ -320,7 +320,7 @@ export default function SuperAdminContentLibraryPage() {
                     </div>
 
                     <div className="flex-1 flex flex-col lg:flex-row gap-8 min-h-0">
-                        <div className="w-full lg:w-80 flex flex-col bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden min-h-[300px] lg:min-h-0">
+                        <div className="w-full lg:w-80 flex flex-col bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden lg:sticky lg:top-28 lg:h-[calc(100vh-140px)]">
                             <div className="p-4 border-b border-slate-100 bg-slate-50/50">
                                 <div className="relative">
                                     <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
@@ -346,7 +346,7 @@ export default function SuperAdminContentLibraryPage() {
                             </div>
                         </div>
 
-                        <div className="flex-1 bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden flex flex-col min-h-[500px] lg:min-h-0">
+                        <div className="flex-1 bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden flex flex-col min-h-[500px]">
                             {selectedItem ? (
                                 <>
                                     <div className="p-6 border-b border-gray-100 bg-white flex justify-between items-center shadow-sm">
@@ -369,7 +369,7 @@ export default function SuperAdminContentLibraryPage() {
                                             Edit Content
                                         </button>
                                     </div>
-                                    <div className="flex-1 overflow-y-auto p-12 bg-white custom-scrollbar">
+                                    <div className="flex-1 p-12 bg-white custom-scrollbar">
                                         <div className="prose max-w-none">
                                             {selectedItem.content ? (
                                                 <MarkdownRenderer content={selectedItem.content} />

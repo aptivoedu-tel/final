@@ -170,7 +170,7 @@ export default function HierarchyManagerPage() {
                 dbId: s.id,
                 type: 'subject',
                 title: s.name,
-                expanded: true,
+                expanded: false,
                 children: topics?.filter((t: any) => t.subject_id === s.id).map((t: any) => ({
                     id: `t-${t.id}`,
                     dbId: t.id,

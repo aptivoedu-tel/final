@@ -114,26 +114,31 @@ export default function LoginPage() {
 
             if (result.user) {
                 const user = result.user;
+
+                // 1. Strict Role Checks
                 if (role === 'student' && (user.role === 'super_admin' || user.role === 'institution_admin')) {
                     setError('This is an administrator account. Please use Institution login.');
                     setGlobalLoading(false);
                     return;
                 }
+
                 if (role === 'admin' && user.role === 'student') {
                     setError('This is a student account. Please use Student login.');
                     setGlobalLoading(false);
                     return;
                 }
 
+                // 2. Identify target dashboard
+                let target = '/dashboard';
+                if (user.role === 'super_admin') target = '/admin/dashboard';
+                else if (user.role === 'institution_admin') target = '/institution-admin';
+
+                // 3. Persist and Redirect
                 if (rememberMe) localStorage.setItem('aptivo_remembered_email', email);
                 else localStorage.removeItem('aptivo_remembered_email');
 
                 setInfoMessage('Login successful! Entering dashboard...');
                 localStorage.setItem('aptivo_user', JSON.stringify(user));
-
-                let target = '/dashboard';
-                if (user.role === 'super_admin') target = '/admin/dashboard';
-                else if (user.role === 'institution_admin') target = '/institution-admin';
 
                 setTimeout(() => {
                     window.location.href = target;

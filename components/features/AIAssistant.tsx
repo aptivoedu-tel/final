@@ -67,8 +67,8 @@ export const AIAssistant: React.FC = () => {
     const chatBodyRef = useRef<HTMLDivElement>(null);
     const assistantRef = useRef<HTMLDivElement>(null);
 
-    // Hide AI Assistant during exams
-    const isExamPage = pathname?.includes('/exam/');
+    // Hide AI Assistant during exams or specific restricted pages
+    const isRestrictedPage = pathname === '/' || pathname === '/login' || pathname?.includes('/exam/');
 
     // Log warning if token is missing (for debugging)
     useEffect(() => {
@@ -152,7 +152,7 @@ export const AIAssistant: React.FC = () => {
         };
     }, [isResizing]);
 
-    if (isExamPage) return null;
+    if (isRestrictedPage) return null;
 
     const handleSend = async (text: string = input) => {
         if (!text.trim() || isTyping) return;

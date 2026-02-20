@@ -1,9 +1,9 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabase/client';
-import { ChevronLeft, Save, CheckSquare, Square, ChevronRight, ChevronDown, BookOpen, Layers, Lightbulb } from 'lucide-react';
+import { ChevronLeft, Save, CheckSquare, Square, ChevronRight, ChevronDown, BookOpen, Layers, Lightbulb, RefreshCw, AlertCircle, CheckCircle } from 'lucide-react';
 import { toast } from 'sonner';
 import { useLoading } from '@/lib/context/LoadingContext';
 import Sidebar from '@/components/layout/Sidebar';
@@ -11,480 +11,413 @@ import Header from '@/components/layout/Header';
 import { useUI } from '@/lib/context/UIContext';
 import { AuthService } from '@/lib/services/authService';
 
-
-
 interface Subtopic {
     id: number;
     name: string;
+    isSelected?: boolean;
 }
 
 interface Topic {
     id: number;
     name: string;
     subtopics: Subtopic[];
+    isSelected?: boolean;
+    expanded?: boolean;
 }
 
 interface Subject {
     id: number;
     name: string;
     topics: Topic[];
+    isSelected?: boolean;
+    expanded?: boolean;
 }
 
 export default function UniversityContentMapper() {
     const { uniId } = useParams();
     const router = useRouter();
-    const { setLoading: setGlobalLoading, isLoading: loading } = useLoading();
+    const { setLoading: setGlobalLoading, isLoading: initialLoading } = useLoading();
+    const [loadingMappings, setLoadingMappings] = useState(false);
     const [saving, setSaving] = useState(false);
     const [university, setUniversity] = useState<any>(null);
     const [institutionId, setInstitutionId] = useState<number | null>(null);
     const [globalSessionLimit, setGlobalSessionLimit] = useState(10);
     const [user, setUser] = useState<any>(null);
+    const [statusMsg, setStatusMsg] = useState<{ type: 'success' | 'error', text: string } | null>(null);
 
     const { isSidebarCollapsed } = useUI();
 
-    const [subjects, setSubjects] = useState<Subject[]>([]);
-    const [selectedSubtopics, setSelectedSubtopics] = useState<Record<number, string[]>>({});
-    const [expandedSubjects, setExpandedSubjects] = useState<Set<number>>(new Set());
-    const [expandedTopics, setExpandedTopics] = useState<Set<number>>(new Set());
+    const [hierarchy, setHierarchy] = useState<Subject[]>([]);
+    const [baseTree, setBaseTree] = useState<Subject[]>([]);
 
     useEffect(() => {
-        loadData();
+        loadInitialData();
     }, [uniId]);
 
-    const loadData = async () => {
+    const loadInitialData = async () => {
         setGlobalLoading(true, 'Fetching Curriculum Mapping Structure...');
-
         try {
-            // 1. Get current user and institution
             const currentUser = AuthService.getCurrentUser();
-            const storedUser = typeof window !== 'undefined' ? localStorage.getItem('aptivo_user') : null;
-            const activeUser = currentUser || (storedUser ? JSON.parse(storedUser) : null);
-
-            if (!activeUser) {
+            if (!currentUser) {
                 router.push('/login');
                 return;
             }
-            setUser(activeUser);
+            setUser(currentUser);
 
             const { data: profile } = await supabase
                 .from('users')
                 .select('institution_id')
-                .eq('id', activeUser.id)
+                .eq('id', currentUser.id)
                 .single();
 
-            let instId = profile?.institution_id;
-
+            const instId = profile?.institution_id;
             if (!instId) {
-                // FALLBACK: Try checking institution_admins table
-                const { data: adminLink } = await supabase
-                    .from('institution_admins')
-                    .select('institution_id')
-                    .eq('user_id', user.id)
-                    .maybeSingle();
-
-                if (adminLink?.institution_id) {
-                    console.log("Rescued institution link from institution_admins");
-                    instId = adminLink.institution_id;
-                    // Proactively update the users table for next time
-                    await supabase.from('users').update({ institution_id: instId }).eq('id', user.id);
-                } else {
-                    toast.error("Institution link missing. Please contact Super Admin.");
-                    return;
-                }
+                toast.error("Institution link missing. Please contact Super Admin.");
+                return;
             }
             setInstitutionId(instId);
 
-            // 2. Load University Info
             const { data: uni } = await supabase.from('universities').select('*').eq('id', uniId).single();
             setUniversity(uni);
 
-            // 3. Load All Subjects, Topics, Subtopics
             const { data: subjectsData } = await supabase
                 .from('subjects')
-                .select(`
-          id, 
-          name,
-          topics:topics(
-            id, 
-            name,
-            subtopics:subtopics(id, name)
-          )
-        `)
+                .select(`id, name, topics:topics(id, name, subtopics:subtopics(id, name))`)
                 .order('name');
 
-            setSubjects(subjectsData as unknown as Subject[] || []);
-
-            // 4. Load Existing Mappings
-            const { data: mappings } = await supabase
-                .from('university_content_access')
-                .select('subtopic_id, allowed_difficulties')
-                .eq('university_id', uniId)
-                .eq('institution_id', instId)
-                .eq('is_active', true);
-
-            if (mappings) {
-                const map: Record<number, string[]> = {};
-                mappings.forEach(m => {
-                    map[m.subtopic_id] = m.allowed_difficulties || ['easy', 'medium', 'hard'];
-                });
-                setSelectedSubtopics(map);
+            if (subjectsData) {
+                const tree = (subjectsData as any[]).map(s => ({
+                    ...s,
+                    topics: s.topics.map((t: any) => ({
+                        ...t,
+                        subtopics: t.subtopics || []
+                    }))
+                }));
+                setBaseTree(tree);
+                // Load actual mappings after base tree is set
+                await fetchMappings(instId, tree);
             }
-
         } catch (error: any) {
             toast.error("Failed to load mapping data: " + error.message);
-        } finally {
-            setTimeout(() => setGlobalLoading(false), 800);
-        }
-    };
-
-
-    const toggleSubtopic = (subtopicId: number) => {
-        const newSelected = { ...selectedSubtopics };
-        if (newSelected[subtopicId]) {
-            delete newSelected[subtopicId];
-        } else {
-            newSelected[subtopicId] = ['easy', 'medium', 'hard'];
-        }
-        setSelectedSubtopics(newSelected);
-    };
-
-    const toggleTopic = (topic: Topic, isSelected: boolean) => {
-        const newSelected = { ...selectedSubtopics };
-        topic.subtopics.forEach(st => {
-            if (isSelected) {
-                newSelected[st.id] = newSelected[st.id] || ['easy', 'medium', 'hard'];
-            } else {
-                delete newSelected[st.id];
-            }
-        });
-        setSelectedSubtopics(newSelected);
-    };
-
-    const toggleSubject = (subject: Subject, isSelected: boolean) => {
-        const newSelected = { ...selectedSubtopics };
-        subject.topics.forEach(t => {
-            t.subtopics.forEach(st => {
-                if (isSelected) {
-                    newSelected[st.id] = newSelected[st.id] || ['easy', 'medium', 'hard'];
-                } else {
-                    delete newSelected[st.id];
-                }
-            });
-        });
-        setSelectedSubtopics(newSelected);
-    };
-
-    const toggleDifficulty = (topic: Topic, difficulty: string) => {
-        const newSelected = { ...selectedSubtopics };
-        topic.subtopics.forEach(st => {
-            const current = newSelected[st.id] || ['easy', 'medium', 'hard'];
-            let next: string[];
-            if (current.includes(difficulty)) {
-                next = current.filter(d => d !== difficulty);
-            } else {
-                next = [...current, difficulty];
-            }
-            // Ensure at least one is selected if the subtopic is active
-            if (next.length > 0) {
-                newSelected[st.id] = next;
-            }
-        });
-        setSelectedSubtopics(newSelected);
-    };
-
-    const handleSave = async () => {
-        if (!institutionId) return;
-        setGlobalLoading(true, 'Synchronizing Content Mapping...');
-
-
-        try {
-            // 1. Deactivate existing mappings for this institution/university
-            await supabase
-                .from('university_content_access')
-                .update({ is_active: false })
-                .eq('university_id', uniId)
-                .eq('institution_id', institutionId);
-
-            // 2. Prepare new mappings
-            const newMappings: any[] = [];
-
-            subjects.forEach(subject => {
-                subject.topics.forEach(topic => {
-                    topic.subtopics.forEach(subtopic => {
-                        if (selectedSubtopics[subtopic.id]) {
-                            newMappings.push({
-                                university_id: parseInt(uniId as string),
-                                institution_id: institutionId,
-                                subject_id: subject.id,
-                                topic_id: topic.id,
-                                subtopic_id: subtopic.id,
-                                is_active: true,
-                                session_limit: globalSessionLimit,
-                                allowed_difficulties: selectedSubtopics[subtopic.id]
-                            });
-                        }
-                    });
-                });
-            });
-
-            if (newMappings.length > 0) {
-                const { error } = await supabase
-                    .from('university_content_access')
-                    .upsert(newMappings, { onConflict: 'university_id,institution_id,subtopic_id' });
-
-                if (error) throw error;
-            }
-
-            toast.success("Content map updated successfully!");
-        } catch (error: any) {
-            toast.error("Failed to save mapping: " + error.message);
         } finally {
             setGlobalLoading(false);
         }
     };
 
+    const fetchMappings = async (instId: number, tree: Subject[]) => {
+        setLoadingMappings(true);
+        try {
+            const res = await fetch(`/api/content-mapper?university_id=${uniId}&institution_id=${instId}`);
+            const json = await res.json();
+            if (!res.ok) throw new Error(json.error);
 
-    const isTopicSelected = (topic: Topic) => {
-        return topic.subtopics.length > 0 && topic.subtopics.every(st => !!selectedSubtopics[st.id]);
+            const mappings: any[] = json.data || [];
+            const selectedSubtopicIds = new Set(mappings.filter(m => m.subtopic_id !== null).map(m => Number(m.subtopic_id)));
+            const selectedTopicIds = new Set(mappings.filter(m => m.topic_id !== null).map(m => Number(m.topic_id)));
+
+            if (mappings.length > 0 && mappings[0].session_limit) {
+                setGlobalSessionLimit(mappings[0].session_limit);
+            }
+
+            const updatedHierarchy = tree.map(subject => {
+                const topics = subject.topics.map(topic => {
+                    const subtopics = topic.subtopics.map(st => ({
+                        ...st,
+                        isSelected: selectedSubtopicIds.has(st.id)
+                    }));
+
+                    const isTopicSelected = subtopics.length > 0
+                        ? subtopics.some(st => st.isSelected)
+                        : selectedTopicIds.has(topic.id);
+
+                    return {
+                        ...topic,
+                        subtopics,
+                        isSelected: isTopicSelected,
+                        expanded: false
+                    };
+                });
+
+                const isSubjectSelected = topics.some(t => t.isSelected);
+
+                return {
+                    ...subject,
+                    topics,
+                    isSelected: isSubjectSelected,
+                    expanded: isSubjectSelected
+                };
+            });
+
+            setHierarchy(updatedHierarchy);
+        } catch (e: any) {
+            console.error(e);
+            toast.error("Failed to load existing mappings");
+            setHierarchy(tree.map(s => ({ ...s, expanded: false })));
+        } finally {
+            setLoadingMappings(false);
+        }
     };
 
-    const isTopicPartial = (topic: Topic) => {
-        const selectedCount = topic.subtopics.filter(st => !!selectedSubtopics[st.id]).length;
-        return selectedCount > 0 && selectedCount < topic.subtopics.length;
+    const handleSelection = (type: 'subject' | 'topic' | 'subtopic', id: number, parentId?: number, grandParentId?: number) => {
+        setHierarchy(prev => {
+            const newHierarchy = JSON.parse(JSON.stringify(prev)) as Subject[];
+
+            if (type === 'subject') {
+                const sub = newHierarchy.find(s => s.id === id);
+                if (sub) {
+                    const newState = !sub.isSelected;
+                    sub.isSelected = newState;
+                    sub.topics.forEach(topic => {
+                        topic.isSelected = newState;
+                        topic.subtopics.forEach(st => st.isSelected = newState);
+                    });
+                }
+            } else if (type === 'topic') {
+                const sub = newHierarchy.find(s => s.id === parentId);
+                if (sub) {
+                    const topic = sub.topics.find(t => t.id === id);
+                    if (topic) {
+                        const newState = !topic.isSelected;
+                        topic.isSelected = newState;
+                        topic.subtopics.forEach(st => st.isSelected = newState);
+                        sub.isSelected = sub.topics.some(t => t.isSelected);
+                    }
+                }
+            } else if (type === 'subtopic') {
+                const sub = newHierarchy.find(s => s.id === grandParentId);
+                const topic = sub?.topics.find(t => t.id === parentId);
+                const st = topic?.subtopics.find(s => s.id === id);
+                if (st && topic && sub) {
+                    st.isSelected = !st.isSelected;
+                    topic.isSelected = topic.subtopics.some(c => c.isSelected);
+                    sub.isSelected = sub.topics.some(t => t.isSelected);
+                }
+            }
+            return newHierarchy;
+        });
     };
 
-    const isSubjectSelected = (subject: Subject) => {
-        const allStIds: number[] = [];
-        subject.topics.forEach(t => t.subtopics.forEach(st => allStIds.push(st.id)));
-        return allStIds.length > 0 && allStIds.every(id => !!selectedSubtopics[id]);
+    const toggleNode = (type: 'subject' | 'topic', id: number) => {
+        setHierarchy(prev => {
+            const clone = [...prev];
+            if (type === 'subject') {
+                const node = clone.find(s => s.id === id);
+                if (node) node.expanded = !node.expanded;
+            } else {
+                for (const sub of clone) {
+                    const topic = sub.topics.find(t => t.id === id);
+                    if (topic) { topic.expanded = !topic.expanded; break; }
+                }
+            }
+            return clone;
+        });
     };
 
-    const isSubjectPartial = (subject: Subject) => {
-        const allStIds: number[] = [];
-        subject.topics.forEach(t => t.subtopics.forEach(st => allStIds.push(st.id)));
-        const selectedCount = allStIds.filter(id => !!selectedSubtopics[id]).length;
-        return selectedCount > 0 && selectedCount < allStIds.length;
+    const handleSave = async () => {
+        if (!institutionId || !uniId) return;
+        setSaving(true);
+        setStatusMsg(null);
+
+        const rows: any[] = [];
+        hierarchy.forEach(subject => {
+            subject.topics.forEach(topic => {
+                topic.subtopics.forEach(subtopic => {
+                    if (subtopic.isSelected) {
+                        rows.push({
+                            university_id: parseInt(uniId as string),
+                            institution_id: institutionId,
+                            subject_id: subject.id,
+                            topic_id: topic.id,
+                            subtopic_id: subtopic.id,
+                            is_active: true,
+                            session_limit: globalSessionLimit
+                        });
+                    }
+                });
+
+                if (topic.isSelected && topic.subtopics.length === 0) {
+                    rows.push({
+                        university_id: parseInt(uniId as string),
+                        institution_id: institutionId,
+                        subject_id: subject.id,
+                        topic_id: topic.id,
+                        subtopic_id: null,
+                        is_active: true,
+                        session_limit: globalSessionLimit
+                    });
+                }
+            });
+        });
+
+        try {
+            const res = await fetch('/api/content-mapper', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    university_id: parseInt(uniId as string),
+                    institution_id: institutionId,
+                    rows
+                })
+            });
+
+            const json = await res.json();
+            if (!res.ok) throw new Error(json.error || 'Save failed');
+
+            setStatusMsg({ type: 'success', text: `Saved ${json.count} content mappings successfully!` });
+            toast.success("Content map updated successfully!");
+        } catch (error: any) {
+            console.error(error);
+            setStatusMsg({ type: 'error', text: "Failed to save mapping: " + error.message });
+            toast.error("Failed to save mappings");
+        } finally {
+            setSaving(false);
+        }
     };
 
-
-    if (loading) return null;
+    if (initialLoading) return null;
 
     return (
         <div className="min-h-screen bg-gray-50 flex font-sans">
             <Sidebar userRole="institution_admin" />
-            <div className="flex-1 flex flex-col">
-                <Header userName={user?.full_name} userEmail={user?.email} userAvatar={user?.avatar_url} />
+            <div className={`flex-1 flex flex-col transition-all duration-300 ${isSidebarCollapsed ? 'lg:ml-28' : 'lg:ml-80'}`}>
+                <Header />
 
-                <main className={`${isSidebarCollapsed ? 'lg:ml-24' : 'lg:ml-72'} pt-24 p-4 lg:p-8 transition-all duration-300`}>
+                <main className="pt-28 lg:pt-24 p-4 lg:p-8">
                     <div className="max-w-5xl mx-auto pb-20">
-                        <div className="flex items-center gap-4 mb-8">
-                            <button
-                                onClick={() => router.back()}
-                                className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
-                            >
-                                <ChevronLeft className="w-6 h-6 text-slate-600" />
+                        <div className="flex flex-col md:flex-row items-start md:items-center gap-4 mb-8">
+                            <button onClick={() => router.back()} className="p-2.5 bg-white border border-slate-200 rounded-xl hover:bg-slate-50 transition-colors">
+                                <ChevronLeft className="w-5 h-5 text-slate-600" />
                             </button>
                             <div>
-                                <h1 className="text-3xl font-bold text-slate-900">Content Mapping</h1>
-                                <p className="text-slate-500">Configure which subjects and sub-topics are available for <span className="text-teal-600 font-bold">{university?.name}</span>.</p>
+                                <h1 className="text-2xl font-black text-slate-900 tracking-tight">Institution Content Mapping</h1>
+                                <p className="text-sm font-medium text-slate-500 mt-1">Configure curriculum access for <span className="text-teal-600 font-bold">{university?.name}</span> students.</p>
                             </div>
-                            <div className="ml-auto">
+                            <div className="md:ml-auto flex items-center gap-4 w-full md:w-auto">
                                 <button
                                     onClick={handleSave}
-                                    className="flex items-center gap-2 px-6 py-2.5 bg-teal-600 text-white rounded-xl font-bold shadow-lg hover:bg-teal-700 transition-all"
+                                    disabled={saving}
+                                    className="flex-1 md:flex-none flex items-center justify-center gap-2 px-8 py-3 bg-teal-600 text-white rounded-xl font-black uppercase tracking-widest text-[11px] shadow-lg shadow-teal-100 hover:bg-slate-900 transition-all active:scale-95 disabled:opacity-50"
                                 >
-                                    <Save className="w-5 h-5" />
-                                    Save Changes
+                                    {saving ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
+                                    {saving ? 'Syncing...' : 'Save Changes'}
                                 </button>
-
                             </div>
                         </div>
 
-                        <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
-                            <div className="p-6 border-b border-gray-100 bg-gray-50/50 flex flex-col md:flex-row md:items-center justify-between gap-4">
-                                <div className="flex items-center gap-2">
-                                    <BookOpen className="w-5 h-5 text-teal-600" />
-                                    <h2 className="font-bold text-slate-800 text-lg">Curriculum Tree</h2>
+                        <div className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
+                            <div className="p-6 border-b border-slate-100 bg-slate-50/50 flex flex-col md:flex-row md:items-center justify-between gap-6">
+                                <div className="flex items-center gap-3">
+                                    <div className="w-10 h-10 rounded-xl bg-white shadow-sm border border-slate-100 flex items-center justify-center text-teal-600">
+                                        <Layers className="w-5 h-5" />
+                                    </div>
+                                    <h2 className="font-black text-slate-900 text-sm uppercase tracking-widest leading-none">Curriculum Structure</h2>
                                 </div>
-                                <div className="flex flex-wrap items-center gap-6">
-                                    <div className="flex items-center gap-3 bg-white px-4 py-2 rounded-xl border border-gray-100 shadow-sm">
-                                        <span className="text-xs font-black text-slate-400 uppercase tracking-widest">Question Count:</span>
-                                        <input
-                                            type="number"
-                                            value={globalSessionLimit}
-                                            onChange={(e) => setGlobalSessionLimit(parseInt(e.target.value) || 10)}
-                                            className="w-16 bg-transparent border-b-2 border-teal-100 focus:border-teal-600 outline-none text-center font-bold text-slate-900"
-                                        />
-                                    </div>
-                                    <div className="flex items-center gap-4 text-xs font-bold text-slate-400 uppercase tracking-widest">
-                                        <div className="flex items-center gap-1.5">
-                                            <div className="w-3 h-3 bg-teal-600 rounded-sm" /> Selected
-                                        </div>
-                                        <div className="flex items-center gap-1.5">
-                                            <div className="w-3 h-3 border-2 border-slate-200 rounded-sm" /> Unselected
-                                        </div>
-                                    </div>
+                                <div className="flex items-center gap-4 bg-white px-5 py-2.5 rounded-xl border border-slate-200">
+                                    <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Question Pool Limit</span>
+                                    <input
+                                        type="number"
+                                        value={globalSessionLimit}
+                                        onChange={(e) => setGlobalSessionLimit(parseInt(e.target.value) || 10)}
+                                        className="w-12 bg-transparent outline-none text-center font-black text-teal-600 border-b border-teal-100 focus:border-teal-600 transition-colors"
+                                    />
                                 </div>
                             </div>
 
-                            <div className="p-8 space-y-4">
-                                {subjects.map(subject => {
-                                    const subjectOpen = expandedSubjects.has(subject.id);
-                                    const subSelected = isSubjectSelected(subject);
-                                    const subPartial = isSubjectPartial(subject);
+                            {statusMsg && (
+                                <div className={`p-4 ${statusMsg.type === 'success' ? 'bg-green-50 text-emerald-700' : 'bg-red-50 text-red-700'} flex items-center gap-3 border-b border-slate-100 animate-fade-in`}>
+                                    {statusMsg.type === 'success' ? <CheckCircle className="w-5 h-5 flex-shrink-0" /> : <AlertCircle className="w-5 h-5 flex-shrink-0" />}
+                                    <span className="text-xs font-bold">{statusMsg.text}</span>
+                                </div>
+                            )}
 
-                                    return (
-                                        <div key={subject.id} className="border border-gray-100 rounded-2xl overflow-hidden bg-white shadow-sm transition-all hover:border-teal-100">
-                                            <div className={`flex items-center p-5 transition-colors ${subjectOpen ? 'bg-teal-50/30' : ''}`}>
-                                                <button
-                                                    onClick={() => {
-                                                        const newExpanded = new Set(expandedSubjects);
-                                                        if (newExpanded.has(subject.id)) newExpanded.delete(subject.id);
-                                                        else newExpanded.add(subject.id);
-                                                        setExpandedSubjects(newExpanded);
-                                                    }}
-                                                    className="p-1 hover:bg-white rounded transition-colors mr-2"
-                                                >
-                                                    {subjectOpen ? <ChevronDown className="w-5 h-5 text-teal-600" /> : <ChevronRight className="w-5 h-5 text-slate-400" />}
-                                                </button>
-
-                                                <button
-                                                    onClick={() => toggleSubject(subject, !subSelected)}
-                                                    className="flex items-center gap-3 flex-1 text-left group"
-                                                >
-                                                    <div className="text-teal-600">
-                                                        {subSelected ? <CheckSquare className="w-6 h-6 fill-current" /> : (subPartial ? <div className="w-6 h-6 border-2 border-teal-600 rounded bg-teal-100 flex items-center justify-center"><div className="w-3.5 h-0.5 bg-teal-600" /></div> : <Square className="w-6 h-6 text-slate-300 group-hover:text-teal-300" />)}
-                                                    </div>
-                                                    <div className="flex items-center gap-3">
-                                                        <div className="w-10 h-10 bg-teal-50 rounded-xl flex items-center justify-center text-teal-600 font-bold group-hover:bg-teal-600 group-hover:text-white transition-all">
-                                                            <Layers className="w-5 h-5" />
-                                                        </div>
-                                                        <div>
-                                                            <span className="font-bold text-slate-800 text-lg">{subject.name}</span>
-                                                            <span className="ml-3 text-xs text-slate-400 font-medium">
-                                                                {subject.topics.length} Topics • {subject.topics.reduce((acc, t) => acc + t.subtopics.length, 0)} Sub-topics
-                                                            </span>
+                            <div className="p-6">
+                                {loadingMappings ? (
+                                    <div className="flex flex-col items-center justify-center py-20 gap-4 text-slate-400">
+                                        <RefreshCw className="w-10 h-10 animate-spin text-teal-500" />
+                                        <span className="text-xs font-black uppercase tracking-widest">Hydrating state...</span>
+                                    </div>
+                                ) : (
+                                    <div className="space-y-4">
+                                        {hierarchy.map(subject => (
+                                            <div key={subject.id} className="border border-slate-100 rounded-2xl overflow-hidden transition-all hover:border-teal-200">
+                                                <div className={`flex items-center justify-between p-4 group transition-colors ${subject.expanded ? 'bg-slate-50' : 'bg-white hover:bg-slate-50/50'}`}>
+                                                    <div className="flex items-center gap-4">
+                                                        <input
+                                                            type="checkbox"
+                                                            checked={subject.isSelected || false}
+                                                            onChange={() => handleSelection('subject', subject.id)}
+                                                            className="w-5 h-5 text-teal-600 rounded border-slate-300 focus:ring-teal-500 cursor-pointer"
+                                                        />
+                                                        <div onClick={() => toggleNode('subject', subject.id)} className="flex items-center gap-3 cursor-pointer">
+                                                            <div className="w-10 h-10 bg-white border border-slate-100 rounded-xl flex items-center justify-center text-slate-400 group-hover:text-teal-600 transition-colors">
+                                                                <Layers className="w-5 h-5" />
+                                                            </div>
+                                                            <div>
+                                                                <p className="font-black text-slate-800 text-sm tracking-tight">{subject.name}</p>
+                                                                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">{subject.topics.length} Units available</p>
+                                                            </div>
                                                         </div>
                                                     </div>
-                                                </button>
-                                            </div>
+                                                    <button onClick={() => toggleNode('subject', subject.id)} className="p-2 hover:bg-white rounded-lg transition-colors">
+                                                        {subject.expanded ? <ChevronDown className="w-5 h-5 text-slate-400" /> : <ChevronRight className="w-5 h-5 text-slate-300" />}
+                                                    </button>
+                                                </div>
 
-                                            {subjectOpen && (
-                                                <div className="px-10 pb-5 pt-0 space-y-3 animate-in fade-in slide-in-from-top-2 duration-200">
-                                                    {subject.topics.map(topic => {
-                                                        const topicOpen = expandedTopics.has(topic.id);
-                                                        const topSelected = isTopicSelected(topic);
-                                                        const topPartial = isTopicPartial(topic);
-
-                                                        return (
-                                                            <div key={topic.id} className="border border-gray-50 rounded-xl overflow-hidden bg-gray-50/30">
-                                                                <div className={`flex items-center p-4 transition-colors ${topicOpen ? 'bg-white' : ''}`}>
-                                                                    <button
-                                                                        onClick={() => {
-                                                                            const newExpanded = new Set(expandedTopics);
-                                                                            if (newExpanded.has(topic.id)) newExpanded.delete(topic.id);
-                                                                            else newExpanded.add(topic.id);
-                                                                            setExpandedTopics(newExpanded);
-                                                                        }}
-                                                                        className="p-1 hover:bg-gray-100 rounded transition-colors mr-2"
-                                                                    >
-                                                                        {topicOpen ? <ChevronDown className="w-4 h-4 text-slate-600" /> : <ChevronRight className="w-4 h-4 text-slate-400" />}
-                                                                    </button>
-
-                                                                    <div className="flex items-center gap-3 flex-1">
-                                                                        <button
-                                                                            onClick={() => toggleTopic(topic, !topSelected)}
-                                                                            className="flex items-center gap-3 flex-1 text-left group"
-                                                                        >
-                                                                            <div className="text-slate-600">
-                                                                                {topSelected ? <CheckSquare className="w-5 h-5 fill-indigo-600 text-white" /> : (topPartial ? <div className="w-5 h-5 border-2 border-teal-600 rounded bg-teal-50 flex items-center justify-center"><div className="w-2.5 h-0.5 bg-teal-600" /></div> : <Square className="w-5 h-5 text-slate-300 group-hover:text-teal-300" />)}
-                                                                            </div>
-                                                                            <div className="flex items-center gap-2">
-                                                                                <Lightbulb className="w-4 h-4 text-amber-500" />
-                                                                                <span className="font-bold text-slate-700">{topic.name}</span>
-                                                                                <span className="ml-2 text-[10px] text-slate-400 font-bold uppercase tracking-wider">{topic.subtopics.length} Lessons</span>
-                                                                            </div>
-                                                                        </button>
-
-                                                                        {topSelected && (
-                                                                            <div className="relative ml-4">
-                                                                                <div className="flex items-center gap-2 bg-white px-4 py-2 rounded-full border border-gray-100 shadow-sm group/dropdown cursor-pointer hover:border-teal-600 transition-all">
-                                                                                    <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest mr-1">Difficulty:</span>
-                                                                                    <div className="flex items-center gap-1.5 min-w-[100px] justify-between">
-                                                                                        <span className="text-[11px] font-black text-teal-600 uppercase tracking-widest">
-                                                                                            {(() => {
-                                                                                                const selectedCount = ['easy', 'medium', 'hard'].filter(diff =>
-                                                                                                    topic.subtopics.every(st => selectedSubtopics[st.id]?.includes(diff))
-                                                                                                ).length;
-                                                                                                if (selectedCount === 3) return 'All Levels';
-                                                                                                if (selectedCount === 0) return 'Select';
-                                                                                                return `${selectedCount} Selected`;
-                                                                                            })()}
-                                                                                        </span>
-                                                                                        <ChevronDown className="w-3.5 h-3.5 text-teal-600 group-hover/dropdown:rotate-180 transition-transform" />
-                                                                                    </div>
-
-                                                                                    {/* Dropdown Menu */}
-                                                                                    <div className="absolute top-full right-0 mt-2 w-48 bg-white rounded-2xl shadow-2xl border border-gray-100 py-2 z-50 opacity-0 invisible group-hover/dropdown:opacity-100 group-hover/dropdown:visible transition-all">
-                                                                                        {[
-                                                                                            { id: 'easy', label: 'Basic' },
-                                                                                            { id: 'medium', label: 'Intermediate' },
-                                                                                            { id: 'hard', label: 'Advanced' }
-                                                                                        ].map(diff => {
-                                                                                            const isDiffSelected = topic.subtopics.every(st => selectedSubtopics[st.id]?.includes(diff.id));
-                                                                                            return (
-                                                                                                <div
-                                                                                                    key={diff.id}
-                                                                                                    onClick={(e) => {
-                                                                                                        e.stopPropagation();
-                                                                                                        toggleDifficulty(topic, diff.id);
-                                                                                                    }}
-                                                                                                    className="px-4 py-2.5 hover:bg-teal-50 flex items-center justify-between group/item transition-colors"
-                                                                                                >
-                                                                                                    <span className={`text-[11px] font-bold ${isDiffSelected ? 'text-teal-600' : 'text-slate-600'}`}>
-                                                                                                        {diff.label}
-                                                                                                    </span>
-                                                                                                    {isDiffSelected && <CheckSquare className="w-3.5 h-3.5 text-teal-600 fill-current" />}
-                                                                                                </div>
-                                                                                            );
-                                                                                        })}
-                                                                                    </div>
-                                                                                </div>
-                                                                            </div>
-                                                                        )}
+                                                {subject.expanded && (
+                                                    <div className="bg-white border-t border-slate-50 p-2 space-y-1">
+                                                        {subject.topics.map(topic => (
+                                                            <div key={topic.id} className="ml-4 rounded-xl overflow-hidden">
+                                                                <div className="flex items-center justify-between p-3 hover:bg-slate-50/50 group transition-colors">
+                                                                    <div className="flex items-center gap-4">
+                                                                        <input
+                                                                            type="checkbox"
+                                                                            checked={topic.isSelected || false}
+                                                                            onChange={() => handleSelection('topic', topic.id, subject.id)}
+                                                                            className="w-4 h-4 text-teal-600 rounded border-slate-300 focus:ring-teal-500 cursor-pointer"
+                                                                        />
+                                                                        <div onClick={() => topic.subtopics.length > 0 && toggleNode('topic', topic.id)} className={`flex items-center gap-3 ${topic.subtopics.length > 0 ? 'cursor-pointer' : ''}`}>
+                                                                            <Lightbulb className={`w-4 h-4 ${topic.isSelected ? 'text-amber-500' : 'text-slate-300'}`} />
+                                                                            <span className="text-sm font-bold text-slate-700">{topic.name}</span>
+                                                                        </div>
                                                                     </div>
+                                                                    {topic.subtopics.length > 0 && (
+                                                                        <button onClick={() => toggleNode('topic', topic.id)} className="p-1.5 hover:bg-slate-100 rounded-lg">
+                                                                            {topic.expanded ? <ChevronDown className="w-4 h-4 text-slate-400" /> : <ChevronRight className="w-4 h-4 text-slate-300" />}
+                                                                        </button>
+                                                                    )}
                                                                 </div>
 
-                                                                {topicOpen && (
-                                                                    <div className="px-12 pb-4 pt-1 space-y-1 animate-in fade-in slide-in-from-left-2 duration-200">
-                                                                        {topic.subtopics.map(subtopic => (
-                                                                            <button
-                                                                                key={subtopic.id}
-                                                                                onClick={() => toggleSubtopic(subtopic.id)}
-                                                                                className="flex items-center gap-3 w-full p-2.5 rounded-lg hover:bg-white hover:shadow-sm transition-all group group-hover:translate-x-1"
-                                                                            >
-                                                                                <div className="text-slate-400 group-hover:text-teal-400">
-                                                                                    {selectedSubtopics[subtopic.id] ? (
-                                                                                        <CheckSquare className="w-4 h-4 fill-indigo-600 text-white group-hover:scale-110 transition-transform" />
-                                                                                    ) : (
-                                                                                        <Square className="w-4 h-4 group-hover:border-teal-300" />
-                                                                                    )}
-                                                                                </div>
-                                                                                <span className={`text-sm ${selectedSubtopics[subtopic.id] ? 'font-bold text-slate-900' : 'text-slate-500 group-hover:text-slate-700'}`}>
-                                                                                    {subtopic.name}
-                                                                                </span>
-                                                                            </button>
+                                                                {topic.expanded && (
+                                                                    <div className="ml-10 py-2 space-y-1 border-l-2 border-slate-50">
+                                                                        {topic.subtopics.map(st => (
+                                                                            <label key={st.id} className="flex items-center gap-3 p-2 ml-4 rounded-lg hover:bg-slate-50 cursor-pointer transition-colors group">
+                                                                                <input
+                                                                                    type="checkbox"
+                                                                                    checked={st.isSelected || false}
+                                                                                    onChange={() => handleSelection('subtopic', st.id, topic.id, subject.id)}
+                                                                                    className="w-4 h-4 text-teal-600 rounded border-slate-300 focus:ring-teal-500"
+                                                                                />
+                                                                                <BookOpen className="w-3.5 h-3.5 text-slate-300 group-hover:text-teal-400 transition-colors" />
+                                                                                <span className="text-xs font-bold text-slate-500 group-hover:text-slate-900 transition-colors">{st.name}</span>
+                                                                            </label>
                                                                         ))}
                                                                     </div>
                                                                 )}
                                                             </div>
-                                                        );
-                                                    })}
-                                                </div>
-                                            )}
-                                        </div>
-                                    );
-                                })}
+                                                        ))}
+                                                    </div>
+                                                )}
+                                            </div>
+                                        ))}
+
+                                        {hierarchy.length === 0 && (
+                                            <div className="text-center py-20 bg-slate-50/50 rounded-3xl border border-dashed border-slate-200">
+                                                <Layers className="w-12 h-12 text-slate-200 mx-auto mb-4" />
+                                                <p className="text-slate-400 font-bold">No curriculum data found.</p>
+                                            </div>
+                                        )}
+                                    </div>
+                                )}
                             </div>
                         </div>
                     </div>

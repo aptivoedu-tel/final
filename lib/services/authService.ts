@@ -26,11 +26,18 @@ export interface RegisterData {
 }
 
 export class AuthService {
-    /**
-     * User login - handles authentication
-     */
     static async login(credentials: LoginCredentials): Promise<{ user: User | null; error: string | null }> {
         try {
+            // 0. Proactive Session Cleanup: Clear any existing (potentially broken) session
+            // This prevents "Refresh Token Not Found" errors when logging in over a stale session
+            const { data: { session: existingSession } } = await supabase.auth.getSession();
+            if (existingSession) {
+                await supabase.auth.signOut();
+                if (typeof window !== 'undefined') {
+                    localStorage.removeItem('aptivo_session');
+                }
+            }
+
             // 1. Perform Auth Check
             const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
                 email: credentials.email,

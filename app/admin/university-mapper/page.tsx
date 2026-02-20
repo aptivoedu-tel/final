@@ -1,10 +1,10 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/lib/supabase/client';
 import Sidebar from '@/components/layout/Sidebar';
 import Header from '@/components/layout/Header';
-import { Save, CheckCircle, AlertCircle, RefreshCw, ChevronRight, ChevronDown, ChevronUp, Layers, BookOpen, FileText } from 'lucide-react';
+import { Save, CheckCircle, AlertCircle, RefreshCw, ChevronDown, ChevronUp, Layers, BookOpen, FileText } from 'lucide-react';
 import { useUI } from '@/lib/context/UIContext';
 
 type HierarchyNode = {
@@ -13,7 +13,11 @@ type HierarchyNode = {
     type: 'subject' | 'topic' | 'subtopic';
     children?: HierarchyNode[];
     isSelected?: boolean;
-    expanded?: boolean; // For UI collapsing
+    expanded?: boolean;
+};
+
+type BaseTree = Omit<HierarchyNode, 'isSelected' | 'expanded'> & {
+    children?: BaseTree[];
 };
 
 export default function UniversityContentMapperPage() {
@@ -25,53 +29,50 @@ export default function UniversityContentMapperPage() {
     const [globalSessionLimit, setGlobalSessionLimit] = useState(10);
     const [selectedDifficulties, setSelectedDifficulties] = useState<string[]>(['all']);
     const [isDifficultyOpen, setIsDifficultyOpen] = useState(false);
+    // baseTree holds the raw hierarchy (no selection state) — constant after load
+    const [baseTree, setBaseTree] = useState<BaseTree[]>([]);
+    // hierarchy holds the display tree with selection state
     const [hierarchy, setHierarchy] = useState<HierarchyNode[]>([]);
     const [saving, setSaving] = useState(false);
     const [statusMsg, setStatusMsg] = useState<{ type: 'success' | 'error', text: string } | null>(null);
     const { isSidebarCollapsed } = useUI();
 
-    // Load initial data
+    // Load initial data (only once)
     useEffect(() => {
         const loadData = async () => {
             setLoading(true);
             try {
-                // Fetch Universities & Institutions
                 const { data: unis } = await supabase.from('universities').select('*').eq('is_active', true).order('name');
                 const { data: insts } = await supabase.from('institutions').select('*').order('name');
                 setUniversities(unis || []);
                 setInstitutions(insts || []);
 
-                // Fetch Full Hierarchy
                 const { data: subjects } = await supabase.from('subjects').select('*').eq('is_active', true).order('name');
                 const { data: topics } = await supabase.from('topics').select('*').eq('is_active', true).order('name');
                 const { data: subtopics } = await supabase.from('subtopics').select('*').eq('is_active', true).order('name');
 
                 if (subjects && topics && subtopics) {
-                    const tree: HierarchyNode[] = subjects.map((sub: any) => ({
+                    const tree: BaseTree[] = subjects.map((sub: any) => ({
                         id: sub.id,
                         name: sub.name,
-                        type: 'subject',
-                        expanded: true,
-                        isSelected: false,
+                        type: 'subject' as const,
                         children: topics
                             .filter((t: any) => t.subject_id === sub.id)
                             .map((t: any) => ({
                                 id: t.id,
                                 name: t.name,
-                                type: 'topic',
-                                expanded: false,
-                                isSelected: false,
+                                type: 'topic' as const,
                                 children: subtopics
                                     .filter((st: any) => st.topic_id === t.id)
                                     .map((st: any) => ({
                                         id: st.id,
                                         name: st.name,
-                                        type: 'subtopic',
-                                        isSelected: false
+                                        type: 'subtopic' as const,
                                     }))
                             }))
                     }));
-                    setHierarchy(tree);
+                    setBaseTree(tree);
+                    setHierarchy(applySelection(tree, new Set(), new Set(), true));
                 }
             } catch (error) {
                 console.error("Error loading data:", error);
@@ -82,139 +83,164 @@ export default function UniversityContentMapperPage() {
         loadData();
     }, []);
 
-    // Load mappings when university is selected
-    useEffect(() => {
-        if (!selectedUniId) return;
+    // Helper: apply a selection set onto the base tree to produce a hierarchy with isSelected
+    const applySelection = (tree: BaseTree[], selectedSubtopicIds: Set<number>, selectedTopicIds: Set<number>, firstLoad = false): HierarchyNode[] => {
+        return tree.map((sub, sIdx) => {
+            const updatedTopics: HierarchyNode[] = (sub.children || []).map((topic, tIdx) => {
+                const updatedSubtopics: HierarchyNode[] = (topic.children || []).map(st => ({
+                    ...st,
+                    type: 'subtopic' as const,
+                    isSelected: selectedSubtopicIds.has(Number(st.id)),
+                }));
 
-        const loadMappings = async () => {
-            setLoading(true);
-            try {
-                let query = supabase
-                    .from('university_content_access')
-                    .select('subject_id, topic_id, subtopic_id, session_limit, difficulty_level')
-                    .eq('university_id', selectedUniId)
-                    .eq('is_active', true);
-
-                if (selectedInstId === 'none') {
-                    query = query.is('institution_id', null);
-                } else {
-                    query = query.eq('institution_id', selectedInstId);
+                if (updatedSubtopics.some(s => s.isSelected)) {
+                    console.log(`Matched ${updatedSubtopics.filter(s => s.isSelected).length} subtopics for topic ${topic.name}`);
                 }
 
-                const { data: mappings } = await query;
+                const isTopicSelected = updatedSubtopics.length > 0
+                    ? updatedSubtopics.some(st => st.isSelected)
+                    : selectedTopicIds.has(Number(topic.id));
 
-                if (mappings) {
-                    const selectedSubtopics = new Set(mappings.filter(m => m.subtopic_id).map(m => m.subtopic_id));
-                    if (mappings.length > 0 && mappings[0].session_limit) {
-                        setGlobalSessionLimit(mappings[0].session_limit);
-                    }
-                    if (mappings.length > 0 && mappings[0].difficulty_level) {
-                        const level = mappings[0].difficulty_level as string;
-                        setSelectedDifficulties(level.includes(',') ? level.split(',') : [level]);
-                    } else {
-                        setSelectedDifficulties(['all']);
-                    }
-
-                    setHierarchy(prev => prev.map(sub => {
-                        const subTopics = sub.children || [];
-
-                        const updatedTopics = subTopics.map(topic => {
-                            const subSubtopics = topic.children || [];
-
-                            // Check if subtopics are selected
-                            const updatedSubtopics = subSubtopics.map(st => ({
-                                ...st,
-                                isSelected: selectedSubtopics.has(st.id)
-                            }));
-
-                            const isTopicSelected = updatedSubtopics.some(st => st.isSelected);
-
-                            return {
-                                ...topic,
-                                isSelected: isTopicSelected,
-                                children: updatedSubtopics
-                            };
-                        });
-
-                        const isSubjectSelected = updatedTopics.some(t => t.isSelected);
-
-                        return {
-                            ...sub,
-                            isSelected: isSubjectSelected,
-                            children: updatedTopics
-                        };
-                    }));
+                if (isTopicSelected && updatedSubtopics.length === 0) {
+                    console.log(`Matched topic-level selection for ${topic.name}`);
                 }
-            } catch (e) {
-                console.error(e);
-            } finally {
-                setLoading(false);
+
+                return {
+                    ...topic,
+                    type: 'topic' as const,
+                    isSelected: isTopicSelected,
+                    expanded: false, // topics start collapsed
+                    children: updatedSubtopics,
+                };
+            });
+
+            const isSubjectSelected = updatedTopics.some(t => t.isSelected);
+
+            return {
+                ...sub,
+                type: 'subject' as const,
+                isSelected: isSubjectSelected,
+                expanded: firstLoad ? true : isSubjectSelected, // expand subjects that have selections
+                children: updatedTopics,
+            };
+        });
+    };
+
+    // Load mappings when university or institution changes
+    const loadMappings = useCallback(async (uniId: number, instId: number | 'none') => {
+        if (!uniId || baseTree.length === 0) return;
+        setLoading(true);
+        setStatusMsg(null);
+        try {
+            const instParam = instId === 'none' ? 'null' : String(instId);
+            const res = await fetch(`/api/content-mapper?university_id=${uniId}&institution_id=${instParam}`);
+            const json = await res.json();
+
+            if (!res.ok) throw new Error(json.error || 'Failed to load mappings');
+
+            const mappings: any[] = json.data || [];
+            console.log(`Retrieved ${mappings.length} mappings for uni ${uniId}`);
+
+            if (mappings.length > 0) {
+                setStatusMsg({ type: 'success', text: `Loaded ${mappings.length} existing mappings.` });
             }
-        };
-        loadMappings();
-    }, [selectedUniId, selectedInstId]);
+
+            const selectedSubtopicIds = new Set<number>(
+                mappings.filter((m: any) => m.subtopic_id != null).map((m: any) => m.subtopic_id as number)
+            );
+
+            const selectedTopicIds = new Set<number>(
+                mappings.filter((m: any) => m.topic_id != null && m.subtopic_id == null).map((m: any) => m.topic_id as number)
+            );
+
+            // Restore session limit and difficulty from first mapping record
+            if (mappings.length > 0) {
+                if (mappings[0].session_limit != null) {
+                    setGlobalSessionLimit(mappings[0].session_limit);
+                }
+                if (mappings[0].difficulty_level) {
+                    const level = mappings[0].difficulty_level as string;
+                    setSelectedDifficulties(level.includes(',') ? level.split(',') : [level]);
+                } else {
+                    setSelectedDifficulties(['all']);
+                }
+            } else {
+                // No mappings — reset to defaults
+                setGlobalSessionLimit(10);
+                setSelectedDifficulties(['all']);
+            }
+
+            // Apply selection onto base tree
+            setHierarchy(applySelection(baseTree, selectedSubtopicIds, selectedTopicIds, false));
+        } catch (e) {
+            console.error('Load mappings error:', e);
+            setStatusMsg({ type: 'error', text: 'Failed to load existing mappings.' });
+            // Still show tree, just with no selection
+            setHierarchy(applySelection(baseTree, new Set(), new Set(), false));
+        } finally {
+            setLoading(false);
+        }
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [baseTree]);
+
+    // Trigger load when university or institution changes (and baseTree is ready)
+    useEffect(() => {
+        if (selectedUniId && baseTree.length > 0) {
+            loadMappings(selectedUniId, selectedInstId);
+        }
+    }, [selectedUniId, selectedInstId, baseTree, loadMappings]);
 
     const toggleNode = (nodeType: string, nodeId: number) => {
         setHierarchy(prev => {
-            const clone = [...prev];
+            const clone = JSON.parse(JSON.stringify(prev)) as HierarchyNode[];
             if (nodeType === 'subject') {
-                const idx = clone.findIndex(n => n.id === nodeId);
-                if (idx > -1) clone[idx] = { ...clone[idx], expanded: !clone[idx].expanded };
+                const node = clone.find(n => n.id === nodeId);
+                if (node) node.expanded = !node.expanded;
             } else if (nodeType === 'topic') {
-                clone.forEach((sub, sIdx) => {
-                    const tIdx = sub.children?.findIndex(t => t.id === nodeId);
-                    if (tIdx !== undefined && tIdx > -1 && sub.children) {
-                        sub.children[tIdx] = { ...sub.children[tIdx], expanded: !sub.children[tIdx].expanded };
-                    }
-                });
+                for (const sub of clone) {
+                    const topic = sub.children?.find(t => t.id === nodeId);
+                    if (topic) { topic.expanded = !topic.expanded; break; }
+                }
             }
             return clone;
         });
-    }
+    };
 
     const handleSelection = (type: 'subject' | 'topic' | 'subtopic', id: number, parentId?: number, grandParentId?: number) => {
         setHierarchy(prev => {
-            const newHierarchy = JSON.parse(JSON.stringify(prev)); // Deep clone simple
+            const newHierarchy: HierarchyNode[] = JSON.parse(JSON.stringify(prev));
 
             if (type === 'subject') {
-                const sub = newHierarchy.find((s: any) => s.id === id);
+                const sub = newHierarchy.find(s => s.id === id);
                 if (sub) {
                     const newState = !sub.isSelected;
                     sub.isSelected = newState;
-                    // Cascade to all children
-                    sub.children?.forEach((topic: any) => {
+                    sub.children?.forEach(topic => {
                         topic.isSelected = newState;
-                        topic.children?.forEach((st: any) => st.isSelected = newState);
+                        topic.children?.forEach(st => st.isSelected = newState);
                     });
                 }
             } else if (type === 'topic') {
-                const sub = newHierarchy.find((s: any) => s.id === parentId);
+                const sub = newHierarchy.find(s => s.id === parentId);
                 if (sub) {
-                    const topic = sub.children?.find((t: any) => t.id === id);
+                    const topic = sub.children?.find(t => t.id === id);
                     if (topic) {
                         const newState = !topic.isSelected;
                         topic.isSelected = newState;
-                        // Cascade to subtopics
-                        topic.children?.forEach((st: any) => st.isSelected = newState);
-
-                        // Update parent Subject based on children
-                        sub.isSelected = sub.children?.some((t: any) => t.isSelected);
+                        topic.children?.forEach(st => st.isSelected = newState);
+                        sub.isSelected = sub.children?.some(t => t.isSelected) ?? false;
                     }
                 }
             } else if (type === 'subtopic') {
-                // Find path: Subject(grandParent) -> Topic(parent) -> Subtopic(id)
-                const sub = newHierarchy.find((s: any) => s.id === grandParentId);
+                const sub = newHierarchy.find(s => s.id === grandParentId);
                 if (sub) {
-                    const topic = sub.children?.find((t: any) => t.id === parentId);
+                    const topic = sub.children?.find(t => t.id === parentId);
                     if (topic) {
-                        const st = topic.children?.find((s: any) => s.id === id);
+                        const st = topic.children?.find(s => s.id === id);
                         if (st) {
                             st.isSelected = !st.isSelected;
-
-                            // Update Topic parent
-                            topic.isSelected = topic.children?.some((child: any) => child.isSelected);
-                            // Update Subject parent
-                            sub.isSelected = sub.children?.some((child: any) => child.isSelected);
+                            topic.isSelected = topic.children?.some(c => c.isSelected) ?? false;
+                            sub.isSelected = sub.children?.some(c => c.isSelected) ?? false;
                         }
                     }
                 }
@@ -238,15 +264,9 @@ export default function UniversityContentMapperPage() {
                     newSelection.push(value);
                 }
             }
-
-            // Check if all specific levels are selected
             const allSpecific = ['easy', 'medium', 'hard'];
             const hasAll = allSpecific.every(l => newSelection.includes(l));
-            if (hasAll) {
-                setSelectedDifficulties(['all']);
-            } else {
-                setSelectedDifficulties(newSelection);
-            }
+            setSelectedDifficulties(hasAll ? ['all'] : newSelection);
         }
     };
 
@@ -256,68 +276,58 @@ export default function UniversityContentMapperPage() {
         setStatusMsg(null);
 
         const difficultyString = selectedDifficulties.join(',');
+        const instId = selectedInstId === 'none' ? null : selectedInstId;
 
-        try {
-            // 1. Delete existing mappings for this specific scope
-            let deleteQuery = supabase
-                .from('university_content_access')
-                .delete()
-                .eq('university_id', selectedUniId);
-
-            if (selectedInstId === 'none') {
-                deleteQuery = deleteQuery.is('institution_id', null);
-            } else {
-                deleteQuery = deleteQuery.eq('institution_id', selectedInstId);
-            }
-
-            await deleteQuery;
-
-            // 2. Prepare new rows
-            const rows: any[] = [];
-
-            hierarchy.forEach(subject => {
-                subject.children?.forEach(topic => {
-                    topic.children?.forEach(subtopic => {
-                        if (subtopic.isSelected) {
-                            rows.push({
-                                university_id: selectedUniId,
-                                institution_id: selectedInstId === 'none' ? null : selectedInstId,
-                                subject_id: subject.id,
-                                topic_id: topic.id,
-                                subtopic_id: subtopic.id,
-                                is_active: true,
-                                session_limit: globalSessionLimit,
-                                difficulty_level: difficultyString
-                            });
-                        }
-                    });
-
-                    // Fallback: If topic is selected but NO subtopics? 
-                    // Usually we want subtopics. If generic topic mapping is needed, we can add it.
-                    // But for now, let's assume subtopic granularity is key.
-                    if (topic.isSelected && (!topic.children || topic.children.length === 0)) {
-                        // Map topic without subtopic (for topics with no subtopics yet)
+        // Build rows from selected subtopics
+        const rows: any[] = [];
+        hierarchy.forEach(subject => {
+            subject.children?.forEach(topic => {
+                topic.children?.forEach(subtopic => {
+                    if (subtopic.isSelected) {
                         rows.push({
                             university_id: selectedUniId,
-                            institution_id: selectedInstId === 'none' ? null : selectedInstId,
+                            institution_id: instId,
                             subject_id: subject.id,
                             topic_id: topic.id,
-                            subtopic_id: null,
+                            subtopic_id: subtopic.id,
                             is_active: true,
                             session_limit: globalSessionLimit,
                             difficulty_level: difficultyString
                         });
                     }
                 });
+
+                // Topics with no subtopics — map the topic itself
+                if (topic.isSelected && (!topic.children || topic.children.length === 0)) {
+                    rows.push({
+                        university_id: selectedUniId,
+                        institution_id: instId,
+                        subject_id: subject.id,
+                        topic_id: topic.id,
+                        subtopic_id: null,
+                        is_active: true,
+                        session_limit: globalSessionLimit,
+                        difficulty_level: difficultyString
+                    });
+                }
+            });
+        });
+
+        try {
+            const res = await fetch('/api/content-mapper', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    university_id: selectedUniId,
+                    institution_id: instId,
+                    rows
+                })
             });
 
-            if (rows.length > 0) {
-                // Batch insert (supabase limits batch size, let's chunk if huge, but 1000 is usually fine)
-                const { error } = await supabase.from('university_content_access').insert(rows);
-                if (error) throw error;
-            }
+            const json = await res.json();
+            if (!res.ok) throw new Error(json.error || 'Save failed');
 
-            setStatusMsg({ type: 'success', text: `Saved ${rows.length} content mappings successfully!` });
+            setStatusMsg({ type: 'success', text: `Saved ${json.count} content mappings successfully!` });
         } catch (e: any) {
             console.error(e);
             setStatusMsg({ type: 'error', text: `Failed to save: ${e.message}` });
@@ -345,7 +355,10 @@ export default function UniversityContentMapperPage() {
                                 <label className="block text-xs font-black text-slate-400 uppercase tracking-widest mb-3">Target University</label>
                                 <select
                                     value={selectedUniId || ''}
-                                    onChange={(e) => setSelectedUniId(parseInt(e.target.value))}
+                                    onChange={(e) => {
+                                        setSelectedUniId(parseInt(e.target.value));
+                                        setSelectedInstId('none');
+                                    }}
                                     className="w-full p-3.5 bg-slate-50 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-teal-500 transition-all font-bold text-slate-700 text-sm"
                                 >
                                     <option value="">-- Choose a University --</option>
@@ -411,34 +424,21 @@ export default function UniversityContentMapperPage() {
                                                 <>
                                                     <div className="fixed inset-0 z-40" onClick={() => setIsDifficultyOpen(false)} />
                                                     <div className="absolute top-full right-0 mt-2 w-48 bg-white rounded-xl shadow-xl border border-gray-100 overflow-hidden z-50 animate-fade-in">
-                                                        <div
-                                                            className="flex items-center justify-between p-3 hover:bg-slate-50 cursor-pointer border-b border-gray-50"
-                                                            onClick={() => toggleDifficulty('all')}
-                                                        >
-                                                            <span className="text-xs font-bold text-slate-700">All Levels</span>
-                                                            {selectedDifficulties.includes('all') && <CheckCircle className="w-4 h-4 text-teal-600" />}
-                                                        </div>
-                                                        <div
-                                                            className="flex items-center justify-between p-3 hover:bg-slate-50 cursor-pointer border-b border-gray-50"
-                                                            onClick={() => toggleDifficulty('easy')}
-                                                        >
-                                                            <span className="text-xs font-bold text-slate-700">Basic</span>
-                                                            {selectedDifficulties.includes('easy') && <CheckCircle className="w-4 h-4 text-teal-600" />}
-                                                        </div>
-                                                        <div
-                                                            className="flex items-center justify-between p-3 hover:bg-slate-50 cursor-pointer border-b border-gray-50"
-                                                            onClick={() => toggleDifficulty('medium')}
-                                                        >
-                                                            <span className="text-xs font-bold text-slate-700">Intermediate</span>
-                                                            {selectedDifficulties.includes('medium') && <CheckCircle className="w-4 h-4 text-teal-600" />}
-                                                        </div>
-                                                        <div
-                                                            className="flex items-center justify-between p-3 hover:bg-slate-50 cursor-pointer"
-                                                            onClick={() => toggleDifficulty('hard')}
-                                                        >
-                                                            <span className="text-xs font-bold text-slate-700">Advanced</span>
-                                                            {selectedDifficulties.includes('hard') && <CheckCircle className="w-4 h-4 text-teal-600" />}
-                                                        </div>
+                                                        {[
+                                                            { value: 'all', label: 'All Levels' },
+                                                            { value: 'easy', label: 'Basic' },
+                                                            { value: 'medium', label: 'Intermediate' },
+                                                            { value: 'hard', label: 'Advanced' },
+                                                        ].map((opt, i, arr) => (
+                                                            <div
+                                                                key={opt.value}
+                                                                className={`flex items-center justify-between p-3 hover:bg-slate-50 cursor-pointer ${i < arr.length - 1 ? 'border-b border-gray-50' : ''}`}
+                                                                onClick={() => toggleDifficulty(opt.value)}
+                                                            >
+                                                                <span className="text-xs font-bold text-slate-700">{opt.label}</span>
+                                                                {selectedDifficulties.includes(opt.value) && <CheckCircle className="w-4 h-4 text-teal-600" />}
+                                                            </div>
+                                                        ))}
                                                     </div>
                                                 </>
                                             )}
@@ -446,99 +446,118 @@ export default function UniversityContentMapperPage() {
 
                                         <button
                                             onClick={handleSave}
-                                            disabled={saving}
+                                            disabled={saving || loading}
                                             className="w-full sm:w-auto flex items-center justify-center gap-2 px-6 py-2.5 bg-teal-600 text-white font-black uppercase tracking-wider text-[11px] rounded-xl hover:bg-slate-900 transition-all shadow-lg shadow-teal-100 active:scale-95 disabled:opacity-50"
                                         >
                                             {saving ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
-                                            {saving ? 'Syncing...' : 'Save Changes'}
+                                            {saving ? 'Saving...' : 'Save Changes'}
                                         </button>
                                     </div>
                                 </div>
 
                                 {statusMsg && (
                                     <div className={`p-4 ${statusMsg.type === 'success' ? 'bg-green-50 text-emerald-700' : 'bg-red-50 text-red-700'} flex items-center gap-2 border-b border-gray-100`}>
-                                        {statusMsg.type === 'success' ? <CheckCircle className="w-5 h-5" /> : <AlertCircle className="w-5 h-5" />}
+                                        {statusMsg.type === 'success' ? <CheckCircle className="w-5 h-5 flex-shrink-0" /> : <AlertCircle className="w-5 h-5 flex-shrink-0" />}
                                         {statusMsg.text}
                                     </div>
                                 )}
 
                                 <div className="p-6">
-                                    {hierarchy.map(subject => (
-                                        <div key={subject.id} className="mb-4 border border-gray-100 rounded-xl overflow-hidden">
-                                            {/* Subject Row */}
-                                            <div className="flex items-center justify-between p-4 bg-gray-50 hover:bg-gray-100 transition-colors">
-                                                <div className="flex items-center gap-3">
-                                                    <input
-                                                        type="checkbox"
-                                                        checked={subject.isSelected}
-                                                        onChange={() => handleSelection('subject', subject.id)}
-                                                        className="w-5 h-5 text-teal-600 rounded focus:ring-teal-500"
-                                                    />
-                                                    <div className="flex items-center gap-2 cursor-pointer" onClick={() => toggleNode('subject', subject.id)}>
-                                                        <Layers className="w-4 h-4 text-slate-400" />
-                                                        <span className="font-bold text-slate-800">{subject.name}</span>
-                                                    </div>
-                                                </div>
-                                                <button onClick={() => toggleNode('subject', subject.id)}>
-                                                    {subject.expanded ? <ChevronUp className="w-5 h-5 text-slate-400" /> : <ChevronDown className="w-5 h-5 text-slate-400" />}
-                                                </button>
-                                            </div>
-
-                                            {/* Topics List */}
-                                            {subject.expanded && (
-                                                <div className="border-t border-gray-100 bg-white">
-                                                    {subject.children?.map(topic => (
-                                                        <div key={topic.id} className="ml-8 border-l-2 border-gray-100">
-                                                            <div className="flex items-center gap-3 p-3 hover:bg-teal-50/30 transition-colors">
-                                                                <input
-                                                                    type="checkbox"
-                                                                    checked={topic.isSelected}
-                                                                    onChange={() => handleSelection('topic', topic.id, subject.id)}
-                                                                    className="w-4 h-4 text-teal-600 rounded focus:ring-teal-500"
-                                                                />
-                                                                <div className="flex-1 flex items-center justify-between cursor-pointer" onClick={() => toggleNode('topic', topic.id)}>
-                                                                    <div className="flex items-center gap-2">
-                                                                        <BookOpen className="w-3.5 h-3.5 text-slate-400" />
-                                                                        <span className="text-sm font-bold text-slate-700">{topic.name}</span>
-                                                                    </div>
-                                                                    {topic.children && topic.children.length > 0 && (
-                                                                        topic.expanded ? <ChevronUp className="w-4 h-4 text-slate-300" /> : <ChevronDown className="w-4 h-4 text-slate-300" />
-                                                                    )}
-                                                                </div>
+                                    {loading ? (
+                                        <div className="flex items-center justify-center py-16 gap-3 text-slate-400">
+                                            <RefreshCw className="w-5 h-5 animate-spin" />
+                                            <span className="text-sm font-medium">Loading mappings...</span>
+                                        </div>
+                                    ) : (
+                                        <>
+                                            {hierarchy.map(subject => (
+                                                <div key={subject.id} className="mb-4 border border-gray-100 rounded-xl overflow-hidden">
+                                                    {/* Subject Row */}
+                                                    <div className="flex items-center justify-between p-4 bg-gray-50 hover:bg-gray-100 transition-colors">
+                                                        <div className="flex items-center gap-3">
+                                                            <input
+                                                                type="checkbox"
+                                                                checked={subject.isSelected ?? false}
+                                                                onChange={() => handleSelection('subject', subject.id)}
+                                                                className="w-5 h-5 text-teal-600 rounded focus:ring-teal-500 cursor-pointer"
+                                                            />
+                                                            <div className="flex items-center gap-2 cursor-pointer" onClick={() => toggleNode('subject', subject.id)}>
+                                                                <Layers className="w-4 h-4 text-slate-400" />
+                                                                <span className="font-bold text-slate-800">{subject.name}</span>
+                                                                {subject.isSelected && (
+                                                                    <span className="text-[10px] font-black text-teal-600 bg-teal-50 px-2 py-0.5 rounded-full">
+                                                                        {subject.children?.filter(t => t.isSelected).length} topics
+                                                                    </span>
+                                                                )}
                                                             </div>
+                                                        </div>
+                                                        <button onClick={() => toggleNode('subject', subject.id)} className="p-1">
+                                                            {subject.expanded ? <ChevronUp className="w-5 h-5 text-slate-400" /> : <ChevronDown className="w-5 h-5 text-slate-400" />}
+                                                        </button>
+                                                    </div>
 
-                                                            {/* Subtopics List */}
-                                                            {topic.expanded && (
-                                                                <div className="ml-8 mb-2 space-y-1">
-                                                                    {topic.children?.map(subtopic => (
-                                                                        <label key={subtopic.id} className="flex items-center gap-3 p-2 rounded-lg hover:bg-gray-50 cursor-pointer transition-colors">
-                                                                            <input
-                                                                                type="checkbox"
-                                                                                checked={subtopic.isSelected}
-                                                                                onChange={() => handleSelection('subtopic', subtopic.id, topic.id, subject.id)}
-                                                                                className="w-4 h-4 text-teal-600 rounded border-gray-300 focus:ring-teal-500"
-                                                                            />
-                                                                            <FileText className="w-3 h-3 text-slate-300" />
-                                                                            <span className="text-sm text-slate-600">{subtopic.name}</span>
-                                                                        </label>
-                                                                    ))}
-                                                                    {(!topic.children || topic.children.length === 0) && (
-                                                                        <div className="text-xs italic text-slate-400 pl-9 py-1">No lessons available</div>
+                                                    {/* Topics List */}
+                                                    {subject.expanded && (
+                                                        <div className="border-t border-gray-100 bg-white">
+                                                            {subject.children?.map(topic => (
+                                                                <div key={topic.id} className="ml-8 border-l-2 border-gray-100">
+                                                                    <div className="flex items-center gap-3 p-3 hover:bg-teal-50/30 transition-colors">
+                                                                        <input
+                                                                            type="checkbox"
+                                                                            checked={topic.isSelected ?? false}
+                                                                            onChange={() => handleSelection('topic', topic.id, subject.id)}
+                                                                            className="w-4 h-4 text-teal-600 rounded focus:ring-teal-500 cursor-pointer"
+                                                                        />
+                                                                        <div className="flex-1 flex items-center justify-between cursor-pointer" onClick={() => toggleNode('topic', topic.id)}>
+                                                                            <div className="flex items-center gap-2">
+                                                                                <BookOpen className="w-3.5 h-3.5 text-slate-400" />
+                                                                                <span className="text-sm font-bold text-slate-700">{topic.name}</span>
+                                                                                {topic.isSelected && topic.children && topic.children.length > 0 && (
+                                                                                    <span className="text-[10px] font-black text-teal-600 bg-teal-50 px-1.5 py-0.5 rounded-full">
+                                                                                        {topic.children.filter(st => st.isSelected).length}/{topic.children.length}
+                                                                                    </span>
+                                                                                )}
+                                                                            </div>
+                                                                            {topic.children && topic.children.length > 0 && (
+                                                                                topic.expanded ? <ChevronUp className="w-4 h-4 text-slate-300" /> : <ChevronDown className="w-4 h-4 text-slate-300" />
+                                                                            )}
+                                                                        </div>
+                                                                    </div>
+
+                                                                    {/* Subtopics List */}
+                                                                    {topic.expanded && (
+                                                                        <div className="ml-8 mb-2 space-y-1">
+                                                                            {topic.children?.map(subtopic => (
+                                                                                <label key={subtopic.id} className="flex items-center gap-3 p-2 rounded-lg hover:bg-gray-50 cursor-pointer transition-colors">
+                                                                                    <input
+                                                                                        type="checkbox"
+                                                                                        checked={subtopic.isSelected ?? false}
+                                                                                        onChange={() => handleSelection('subtopic', subtopic.id, topic.id, subject.id)}
+                                                                                        className="w-4 h-4 text-teal-600 rounded border-gray-300 focus:ring-teal-500 cursor-pointer"
+                                                                                    />
+                                                                                    <FileText className="w-3 h-3 text-slate-300" />
+                                                                                    <span className="text-sm text-slate-600">{subtopic.name}</span>
+                                                                                </label>
+                                                                            ))}
+                                                                            {(!topic.children || topic.children.length === 0) && (
+                                                                                <div className="text-xs italic text-slate-400 pl-9 py-1">No lessons available</div>
+                                                                            )}
+                                                                        </div>
                                                                     )}
                                                                 </div>
+                                                            ))}
+                                                            {(!subject.children || subject.children.length === 0) && (
+                                                                <div className="p-4 text-sm text-slate-400">No topics in this subject.</div>
                                                             )}
                                                         </div>
-                                                    ))}
-                                                    {(!subject.children || subject.children.length === 0) && (
-                                                        <div className="p-4 text-sm text-slate-400">No topics in this subject.</div>
                                                     )}
                                                 </div>
-                                            )}
-                                        </div>
-                                    ))}
+                                            ))}
 
-                                    {hierarchy.length === 0 && !loading && (
-                                        <div className="text-center text-slate-400 py-10">No content found. Please add content in Hierarchy Manager.</div>
+                                            {hierarchy.length === 0 && (
+                                                <div className="text-center text-slate-400 py-10">No content found. Please add content in Hierarchy Manager.</div>
+                                            )}
+                                        </>
                                     )}
                                 </div>
                             </div>

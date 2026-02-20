@@ -133,25 +133,50 @@ export default function UniversityDetailPage() {
     }
 
     async function loadContent(uniId: number, institutionId?: number | null) {
-        let access: any[] | null = null;
+        let query = supabase.from('university_content_access').select(`
+            subject_id,
+            topic_id,
+            subtopic_id,
+            institution_id,
+            subject:subjects(id, name),
+            topic:topics(id, name, content_markdown),
+            subtopic:subtopics(id, name, topic_id),
+            session_limit
+        `).eq('university_id', uniId).eq('is_active', true);
+
         if (institutionId) {
-            const { data } = await supabase.from('university_content_access').select(`
-                subject:subjects(id, name),
-                topic:topics(id, name, content_markdown),
-                subtopic:subtopics(id, name, topic_id),
-                session_limit
-            `).eq('university_id', uniId).eq('institution_id', institutionId).eq('is_active', true);
-            if (data && data.length > 0) access = data;
+            query = query.or(`institution_id.eq.${institutionId},institution_id.is.null`);
+        } else {
+            query = query.is('institution_id', null);
         }
-        if (!access) {
-            const { data } = await supabase.from('university_content_access').select(`
-                subject:subjects(id, name),
-                topic:topics(id, name, content_markdown),
-                subtopic:subtopics(id, name, topic_id),
-                session_limit
-            `).eq('university_id', uniId).is('institution_id', null).eq('is_active', true);
-            access = data;
+
+        const { data: mappings, error } = await query;
+
+        if (error) {
+            console.error('Error loading content access:', error);
+            return;
         }
+
+        // Merge logic: Institution mappings override global ones if IDs match
+        const mergedMappings: any[] = [];
+        const seen = new Set<string>();
+
+        // Sort mappings so institution ones come first
+        const sortedMappings = [...(mappings || [])].sort((a, b) => {
+            if (a.institution_id && !b.institution_id) return -1;
+            if (!a.institution_id && b.institution_id) return 1;
+            return 0;
+        });
+
+        sortedMappings.forEach(m => {
+            const key = `${m.subject_id}-${m.topic_id}-${m.subtopic_id}`;
+            if (!seen.has(key)) {
+                seen.add(key);
+                mergedMappings.push(m);
+            }
+        });
+
+        const access = mergedMappings;
 
         // 3. Fetch MCQ counts with fallback
         const mcqSubtopicMap: Record<number, number> = {};
