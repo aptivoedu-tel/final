@@ -3,7 +3,7 @@
 import React, { useEffect, useState } from 'react';
 import { BarChart3, Building2, Users, Download, RefreshCw, AlertCircle, ChevronRight, GraduationCap } from 'lucide-react';
 import { toast } from 'sonner';
-import { AnalyticsService } from '@/lib/services/analyticsService';
+import { AnalyticsService } from '@/lib/services/analyticsService'; // Intelligence Engine
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import Loader from '@/components/ui/Loader';
