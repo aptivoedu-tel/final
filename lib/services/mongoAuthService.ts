@@ -22,46 +22,49 @@ export class MongoAuthService {
      */
     static async login(credentials: LoginCredentials): Promise<{ user: any; error: string | null }> {
         try {
-            console.log('[MongoAuthService] Attempting signIn with:', credentials.email);
+            console.log('[MongoAuthService] Attempting signIn for:', credentials.email);
             const result = await signIn('credentials', {
                 redirect: false,
                 email: credentials.email,
                 password: credentials.password,
             });
 
-            console.log('[MongoAuthService] signIn result:', JSON.stringify(result, null, 2));
-
             if (result?.error) {
                 console.error('[MongoAuthService] signIn error:', result.error);
-                const userFriendlyError = result.error === 'CredentialsSignin'
-                    ? 'Invalid email or password'
-                    : result.error;
-                return { user: null, error: userFriendlyError };
+                return {
+                    user: null,
+                    error: result.error === 'CredentialsSignin' ? 'Invalid email or password' : 'Authentication failed'
+                };
             }
 
-            const session = await getSession();
+            // Wait for session to be established (retry up to 3 times)
+            let session = null;
+            for (let i = 0; i < 3; i++) {
+                session = await getSession();
+                if (session?.user) break;
+                await new Promise(r => setTimeout(r, 500 * (i + 1))); // Increased delay
+            }
+
             if (session?.user) {
-                // Fetch full profile from our mongo API
                 try {
                     const response = await fetch('/api/auth/me');
                     if (response.ok) {
                         const data = await response.json();
                         if (typeof window !== 'undefined' && data.user) {
                             localStorage.setItem('aptivo_user', JSON.stringify(data.user));
+                            return { user: data.user, error: null };
                         }
-                        return { user: data.user || session.user, error: null };
                     }
                 } catch (apiErr) {
-                    console.error('Failed to fetch /api/auth/me:', apiErr);
+                    console.error('Failed to fetch /api/auth/me after login:', apiErr);
                 }
-
                 return { user: session.user, error: null };
             }
 
-            return { user: null, error: 'Login successful but session not found' };
+            return { user: null, error: 'Session could not be established. Please try again.' };
         } catch (error) {
             console.error('Mongo Login error:', error);
-            return { user: null, error: 'An error occurred during login' };
+            return { user: null, error: 'An unexpected error occurred during login' };
         }
     }
 
@@ -130,14 +133,27 @@ export class MongoAuthService {
                 return null;
             }
 
-            const response = await fetch('/api/auth/me');
-            if (!response.ok) return null;
-
-            const data = await response.json();
-            if (data.user && typeof window !== 'undefined') {
-                localStorage.setItem('aptivo_user', JSON.stringify(data.user));
+            // Session exists, try to get fresh profile info
+            try {
+                const response = await fetch('/api/auth/me');
+                if (response.ok) {
+                    const data = await response.json();
+                    if (data.user && typeof window !== 'undefined') {
+                        localStorage.setItem('aptivo_user', JSON.stringify(data.user));
+                        return data.user;
+                    }
+                }
+            } catch (err) {
+                console.warn('[MongoAuthService] Sync fetch failed, using local fallback', err);
             }
-            return data.user;
+
+            // Fallback to what we have in localStorage or the basic session user
+            if (typeof window !== 'undefined') {
+                const local = localStorage.getItem('aptivo_user');
+                if (local) return JSON.parse(local);
+            }
+            return session.user;
+
         } catch (error) {
             console.error('Mongo syncSession failed:', error);
             return null;

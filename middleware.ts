@@ -33,12 +33,19 @@ export async function middleware(request: NextRequest) {
     });
 
     if (!token) {
+        if (pathname !== '/login' && !PUBLIC_PATHS.includes(pathname)) {
+            console.log(`[MIDDLEWARE] No token found for ${pathname}. Redirecting to /login`);
+        }
         const loginUrl = new URL('/login', request.url);
         return NextResponse.redirect(loginUrl);
     }
 
     // Role-based path protection
     const role = token.role as string | undefined;
+
+    if (pathname !== '/login') {
+        process.stdout.write(`[MIDDLEWARE] Access: ${pathname} | Role: ${role}\n`);
+    }
 
     // Protect admin routes — only super_admin and institution_admin can access
     if (pathname.startsWith('/admin') && role !== 'super_admin' && role !== 'institution_admin') {

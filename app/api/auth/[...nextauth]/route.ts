@@ -15,6 +15,21 @@ export const authOptions: AuthOptions = {
     // Use JSON Web Tokens for session management
     session: {
         strategy: "jwt",
+        maxAge: 30 * 24 * 60 * 60, // 30 days
+        updateAge: 24 * 60 * 60,   // 24 hours
+    },
+
+    // Cookie settings for better persistence on Vercel
+    cookies: {
+        sessionToken: {
+            name: `next-auth.session-token`,
+            options: {
+                httpOnly: true,
+                sameSite: 'lax',
+                path: '/',
+                secure: process.env.NODE_ENV === 'production'
+            }
+        }
     },
 
     // Authentication providers
