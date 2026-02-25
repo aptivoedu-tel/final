@@ -7,8 +7,8 @@ import {
     Eye, Edit3, Columns
 } from 'lucide-react';
 import MarkdownRenderer from './MarkdownRenderer';
-import { supabase } from '@/lib/supabase/client';
 import { useLoading } from '@/lib/context/LoadingContext';
+// Supabase storage removed — using MongoDB GridFS upload API
 
 interface RichTextEditorProps {
     value: string;
@@ -82,19 +82,20 @@ const RichTextEditor: React.FC<RichTextEditorProps> = ({
 
         setGlobalLoading(true, 'Uploading Asset...');
         try {
-            const fileExt = file.name.split('.').pop();
-            const fileName = `${Math.random().toString(36).substring(2)}-${Date.now()}.${fileExt}`;
-            const filePath = `questions/${fileName}`;
+            const formData = new FormData();
+            formData.append('file', file);
 
-            const { error: uploadError } = await supabase.storage
-                .from('lessons') // Reusing lessons bucket
-                .upload(filePath, file);
+            const response = await fetch('/api/upload', {
+                method: 'POST',
+                body: formData,
+            });
 
-            if (uploadError) throw uploadError;
+            if (!response.ok) throw new Error('Upload failed');
 
-            const { data: { publicUrl } } = supabase.storage
-                .from('lessons')
-                .getPublicUrl(filePath);
+            const result = await response.json();
+            const publicUrl = result.url || result.fileUrl || result.path;
+
+            if (!publicUrl) throw new Error('No URL returned from upload');
 
             const imageMarkdown = `\n![Image Description](${publicUrl})\n`;
             onChange(value + imageMarkdown);

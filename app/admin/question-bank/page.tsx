@@ -96,7 +96,7 @@ export default function SuperAdminQuestionBankPage() {
                         const processedTopics = subjectTopics.map((t: any): HierarchyItem => {
                             const topicSubtopics = subtopics?.filter((st: any) => st.topic_id === t.id) || [];
                             const processedSubtopics: HierarchyItem[] = topicSubtopics.map((st: any): HierarchyItem => {
-                                const count = allMcqs?.filter(m => m.subtopic_id === st.id).length || 0;
+                                const count = allMcqs?.filter((m: any) => m.subtopic_id === st.id).length || 0;
                                 return {
                                     id: `st-${st.id}`,
                                     dbId: st.id,
@@ -106,8 +106,8 @@ export default function SuperAdminQuestionBankPage() {
                                 };
                             });
 
-                            const directTopicCount = allMcqs?.filter(m => m.topic_id === t.id).length || 0;
-                            const totalTopicCount = processedSubtopics.reduce((sum, st) => sum + (st.mcqCount || 0), 0) + directTopicCount;
+                            const directTopicCount = allMcqs?.filter((m: any) => m.topic_id === t.id).length || 0;
+                            const totalTopicCount = processedSubtopics.reduce((sum: number, st: any) => sum + (st.mcqCount || 0), 0) + directTopicCount;
 
                             return {
                                 id: `t-${t.id}`,
@@ -119,7 +119,7 @@ export default function SuperAdminQuestionBankPage() {
                                 children: processedSubtopics
                             };
                         });
-                        const subjectCount = processedTopics.reduce((sum, t) => sum + (t.mcqCount || 0), 0);
+                        const subjectCount = processedTopics.reduce((sum: number, t: any) => sum + (t.mcqCount || 0), 0);
                         return {
                             id: `s-${s.id}`,
                             dbId: s.id,

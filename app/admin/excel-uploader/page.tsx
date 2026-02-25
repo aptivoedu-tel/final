@@ -169,7 +169,7 @@ export default function ExcelUploaderPage() {
         const fileSubjects = new Set<string>();
         const fileTopics = new Set<string>();
 
-        const mcqRows = data.map(row => {
+        const mcqRows = data.map((row: any) => {
             const getVal = (patterns: string[]) => {
                 const rowKeys = Object.keys(row);
                 let key = rowKeys.find(k => patterns.some(p => k.toLowerCase().trim() === p.toLowerCase().trim()));
@@ -250,7 +250,7 @@ export default function ExcelUploaderPage() {
     // Computational derived data for table
     const processedTableData = useMemo(() => {
         return previewData
-            .map((row, idx) => {
+            .map((row: any, idx: number) => {
                 const excelSubj = getRowValue(row, ['subject'])?.toString() || '';
                 const excelTopic = getRowValue(row, ['topic'])?.toString() || '';
 
@@ -288,8 +288,8 @@ export default function ExcelUploaderPage() {
     }, [processedTableData, activeTab]);
 
     const stats = useMemo(() => {
-        const unid = processedTableData.filter(d => !d.hierarchyValid).length;
-        const dups = processedTableData.filter(d => !!d.dupInfo).length;
+        const unid = processedTableData.filter((d: any) => !d.hierarchyValid).length;
+        const dups = processedTableData.filter((d: any) => !!d.dupInfo).length;
         return { total: processedTableData.length, unidentified: unid, duplicates: dups };
     }, [processedTableData]);
 

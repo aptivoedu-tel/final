@@ -505,7 +505,7 @@ export default function UniversityContentMapperPage() {
                                                                 <span className="font-bold text-slate-800">{subject.name}</span>
                                                                 {subject.isSelected && (
                                                                     <span className="text-[10px] font-black text-teal-600 bg-teal-50 px-2 py-0.5 rounded-full">
-                                                                        {subject.children?.filter(t => t.isSelected).length} topics
+                                                                        {subject.children?.filter((t: any) => t.isSelected).length} topics
                                                                     </span>
                                                                 )}
                                                             </div>
@@ -533,7 +533,7 @@ export default function UniversityContentMapperPage() {
                                                                                 <span className="text-sm font-bold text-slate-700">{topic.name}</span>
                                                                                 {topic.isSelected && topic.children && topic.children.length > 0 && (
                                                                                     <span className="text-[10px] font-black text-teal-600 bg-teal-50 px-1.5 py-0.5 rounded-full">
-                                                                                        {topic.children.filter(st => st.isSelected).length}/{topic.children.length}
+                                                                                        {topic.children.filter((st: any) => st.isSelected).length}/{topic.children.length}
                                                                                     </span>
                                                                                 )}
                                                                             </div>

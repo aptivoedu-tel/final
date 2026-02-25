@@ -37,7 +37,7 @@ export async function GET(req: NextRequest) {
                 const scores = subjectScores[s.id] || [];
                 return {
                     subject: s.name,
-                    score: scores.length > 0 ? Math.round(scores.reduce((a, b) => a + b, 0) / scores.length) : 0,
+                    score: scores.length > 0 ? Math.round(scores.reduce((a: number, b: number) => a + b, 0) / scores.length) : 0,
                     fullMark: 100
                 };
             }).filter(p => p.score > 0 || performance.length < 5); // Keep at least some or those with scores
@@ -114,11 +114,11 @@ export async function GET(req: NextRequest) {
 
         const recentSessions = sessions.slice(0, 10);
         const avgScore = recentSessions.length > 0
-            ? Math.round(recentSessions.reduce((sum, s) => sum + (s.score_percentage || 0), 0) / recentSessions.length)
+            ? Math.round(recentSessions.reduce((sum: number, s: any) => sum + (s.score_percentage || 0), 0) / recentSessions.length)
             : 0;
 
         const totalTimeMinutes = Math.round(
-            sessions.reduce((sum, s) => sum + (s.time_spent_seconds || 0), 0) / 60
+            sessions.reduce((sum: number, s: any) => sum + (s.time_spent_seconds || 0), 0) / 60
         );
 
         return NextResponse.json({
@@ -130,7 +130,7 @@ export async function GET(req: NextRequest) {
                 avg_score: avgScore,
                 total_study_minutes: totalTimeMinutes,
                 recent_sessions: recentSessions.slice(0, 5),
-                totalStudyTime: sessions.reduce((sum, s) => sum + (s.time_spent_seconds || 0), 0),
+                totalStudyTime: sessions.reduce((sum: number, s: any) => sum + (s.time_spent_seconds || 0), 0),
                 questionsSolved: totalAttempts
             }
         });

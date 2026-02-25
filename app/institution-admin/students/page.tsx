@@ -243,7 +243,7 @@ export default function StudentManagerPage() {
         setPasswordVisible(prev => ({ ...prev, [id]: !prev[id] }));
     };
 
-    const filteredStudents = students.filter(s =>
+    const filteredStudents = students.filter((s: any) =>
         (s.full_name || s.name)?.toLowerCase().includes(search.toLowerCase()) ||
         s.student_id_code?.toLowerCase().includes(search.toLowerCase()) ||
         s.email?.toLowerCase().includes(search.toLowerCase())
@@ -305,7 +305,7 @@ export default function StudentManagerPage() {
                 <div className="flex items-center justify-between sm:justify-end gap-3 text-[10px] lg:text-sm font-black uppercase tracking-widest text-slate-400">
                     <div>Total: <span className="text-slate-900">{students.length}</span></div>
                     <div className="w-1 h-1 rounded-full bg-slate-200" />
-                    <div>Active: <span className="text-emerald-600">{students.filter(s => s.status !== 'blocked').length}</span></div>
+                    <div>Active: <span className="text-emerald-600">{students.filter((s: any) => s.status !== 'blocked').length}</span></div>
                 </div>
             </div>
 

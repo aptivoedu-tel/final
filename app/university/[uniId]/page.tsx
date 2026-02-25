@@ -171,7 +171,7 @@ export default function UniversityDetailPage() {
             }
             const currentSubject = subjectMap.get(row.subject.id)!;
             if (row.topic) {
-                let topic = currentSubject.topics.find(t => t.id === row.topic.id);
+                let topic = (currentSubject.topics as any[]).find((t: any) => t.id === row.topic.id);
                 if (!topic) {
                     const newTopic = {
                         ...row.topic,
@@ -182,7 +182,7 @@ export default function UniversityDetailPage() {
                     topic = newTopic;
                 }
                 if (row.subtopic && row.subtopic.topic_id === row.topic.id && topic) {
-                    if (topic.subtopics && !topic.subtopics.find(st => st.id === row.subtopic.id)) {
+                    if (topic.subtopics && !(topic.subtopics as any[]).find((st: any) => st.id === row.subtopic.id)) {
                         const subtopicWithCount = { ...row.subtopic, mcqCount: mcqSubtopicMap[row.subtopic.id] || 0 };
                         topic.subtopics.push(subtopicWithCount);
                         topic.mcqCount = (topic.mcqCount || 0) + subtopicWithCount.mcqCount;
@@ -252,10 +252,10 @@ export default function UniversityDetailPage() {
     function calculateCompletion() {
         if (content.length === 0) return 0;
         let total = 0; let completed = 0;
-        content.forEach(subject => {
-            subject.topics.forEach(topic => {
+        content.forEach((subject: any) => {
+            subject.topics.forEach((topic: any) => {
                 if (topic.subtopics && topic.subtopics.length > 0) {
-                    topic.subtopics.forEach(st => {
+                    topic.subtopics.forEach((st: any) => {
                         total++;
                         if (progressMap[st.id]?.isMastered) completed++;
                     });
@@ -269,13 +269,13 @@ export default function UniversityDetailPage() {
     }
 
     const calculateSubjectProgress = (subjectId: number) => {
-        const subject = content.find(s => s.subject.id === subjectId);
+        const subject = content.find((s: any) => s.subject.id === subjectId);
         if (!subject) return 0;
         let total = 0;
         let completed = 0;
-        subject.topics.forEach(topic => {
+        subject.topics.forEach((topic: any) => {
             if (topic.subtopics && topic.subtopics.length > 0) {
-                topic.subtopics.forEach(st => {
+                topic.subtopics.forEach((st: any) => {
                     total++;
                     if (progressMap[st.id]?.isMastered) completed++;
                 });
@@ -302,11 +302,11 @@ export default function UniversityDetailPage() {
         }
     }, [content]);
 
-    const activeSubject = content.find(s => s.subject.id === selectedSubjectId);
+    const activeSubject = content.find((s: any) => s.subject.id === selectedSubjectId);
     const flatModules: LearningModule[] = [];
-    activeSubject?.topics.forEach(topic => {
+    activeSubject?.topics.forEach((topic: any) => {
         if (topic.subtopics && topic.subtopics.length > 0) {
-            topic.subtopics.forEach(st => {
+            topic.subtopics.forEach((st: any) => {
                 flatModules.push({
                     id: st.id,
                     name: st.name,

@@ -212,7 +212,7 @@ export default function HierarchyManagerPage() {
     }, []);
 
     const toggleExpand = (id: string, items: HierarchyItem[]): HierarchyItem[] => {
-        return items.map(item => {
+        return items.map((item: HierarchyItem) => {
             if (item.id === id) {
                 return { ...item, expanded: !item.expanded };
             }
@@ -243,7 +243,7 @@ export default function HierarchyManagerPage() {
     };
 
     const handleSave = async () => {
-        const validItems = inputList.filter(item => item.trim() !== '');
+        const validItems = inputList.filter((item: string) => item.trim() !== '');
         if (validItems.length === 0) return;
 
         try {
@@ -505,7 +505,7 @@ export default function HierarchyManagerPage() {
                                         <div>
                                             <label className="block text-sm font-medium text-slate-700 mb-2">Names</label>
                                             <div className="space-y-3 max-h-[200px] overflow-y-auto pr-2 custom-scrollbar">
-                                                {inputList.map((item, index) => (
+                                                {inputList.map((item: string, index: number) => (
                                                     <div key={index} className="flex gap-2">
                                                         <input
                                                             type="text"
@@ -522,7 +522,7 @@ export default function HierarchyManagerPage() {
                                                         {inputList.length > 1 && (
                                                             <button
                                                                 onClick={() => {
-                                                                    const newList = inputList.filter((_, i) => i !== index);
+                                                                    const newList = inputList.filter((_: string, i: number) => i !== index);
                                                                     setInputList(newList);
                                                                 }}
                                                                 className="p-2 text-red-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
@@ -551,7 +551,7 @@ export default function HierarchyManagerPage() {
                                                     value={parentId || ''}
                                                 >
                                                     <option value="" disabled>Select Subject</option>
-                                                    {data.filter(i => i.type === 'subject').map(s => (
+                                                    {data.filter((i: HierarchyItem) => i.type === 'subject').map((s: HierarchyItem) => (
                                                         <option key={s.dbId} value={s.dbId}>{s.title}</option>
                                                     ))}
                                                 </select>
@@ -567,9 +567,9 @@ export default function HierarchyManagerPage() {
                                                     value={parentId || ''}
                                                 >
                                                     <option value="" disabled>Select Topic</option>
-                                                    {data.filter(i => i.type === 'subject').map(s => (
+                                                    {data.filter((i: HierarchyItem) => i.type === 'subject').map((s: HierarchyItem) => (
                                                         <optgroup key={s.dbId} label={s.title}>
-                                                            {s.children?.map(t => (
+                                                            {s.children?.map((t: HierarchyItem) => (
                                                                 <option key={t.dbId} value={t.dbId}>{t.title}</option>
                                                             ))}
                                                         </optgroup>

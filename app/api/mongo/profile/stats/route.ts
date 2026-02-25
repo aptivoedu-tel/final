@@ -21,12 +21,12 @@ export async function GET(req: NextRequest) {
         }).lean();
 
         const totalSessions = sessions.length;
-        const totalSeconds = sessions.reduce((sum, s) => sum + (s.time_spent_seconds || 0), 0);
+        const totalSeconds = (sessions as any[]).reduce((sum: number, s: any) => sum + (s.time_spent_seconds || 0), 0);
         const totalHours = Math.round(totalSeconds / 3600);
 
-        const completedWithScore = sessions.filter(s => s.score_percentage != null);
+        const completedWithScore = (sessions as any[]).filter((s: any) => s.score_percentage != null);
         const avgScore = completedWithScore.length > 0
-            ? Math.round(completedWithScore.reduce((sum, s) => sum + (s.score_percentage || 0), 0) / completedWithScore.length)
+            ? Math.round(completedWithScore.reduce((sum: number, s: any) => sum + (s.score_percentage || 0), 0) / completedWithScore.length)
             : 0;
 
         const streakData = await LearningStreak.find({ student_id: studentId })
