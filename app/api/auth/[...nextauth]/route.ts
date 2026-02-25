@@ -6,7 +6,7 @@ import bcrypt from "bcryptjs";
 
 // Extremely robust setup for Vercel
 // NextAuth REQUIRED a secret in production. We use a fallback if the env var is missing.
-const secret = process.env.NEXTAUTH_SECRET || "aptivo_super_secret_2026_fallback";
+const secret = process.env.NEXTAUTH_SECRET || "aptivo_portal_secret_2026";
 
 export const authOptions: AuthOptions = {
     // 1. Essential Security
@@ -95,22 +95,10 @@ export const authOptions: AuthOptions = {
     },
 
     // 5. Custom UI paths
+    // 5. Custom UI paths
     pages: {
         signIn: '/login',
         error: '/login',
-    },
-
-    // 6. Security & Persistence Settings
-    cookies: {
-        sessionToken: {
-            name: `next-auth.session-token`,
-            options: {
-                httpOnly: true,
-                sameSite: 'lax',
-                path: '/',
-                secure: process.env.NODE_ENV === 'production',
-            }
-        }
     },
 
     // Debugging (Disable in production unless needed)

@@ -219,7 +219,7 @@ export default function UserManagementPage() {
     };
 
     const handleDeleteUser = async (userId: string, fullName: string) => {
-        if (!confirm(`Are you sure you want to PERMANENTLY delete user ${fullName}? This will remove them from both the database and Supabase Auth.`)) {
+        if (!confirm(`Are you sure you want to PERMANENTLY delete user ${fullName}? This will remove them from the database.`)) {
             return;
         }
 

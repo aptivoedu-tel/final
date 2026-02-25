@@ -98,16 +98,16 @@ export class AuthService {
     }
 
     /**
-     * Password reset - not supported without Supabase.
-     * Placeholder that returns an informative error.
+     * Password reset placeholder.
+     * To be implemented with an email provider.
      */
     static async resetPassword(_email: string): Promise<{ error: string | null }> {
         return { error: 'Password reset is handled by your email provider. Please contact support.' };
     }
 
     /**
-     * Update password - not supported without Supabase.
-     * Placeholder that returns an informative error.
+     * Update password placeholder.
+     * To be implemented via a secure profile update route.
      */
     static async updatePassword(_password: string): Promise<{ error: string | null }> {
         return { error: 'Password update via this method is not supported. Please contact support.' };
