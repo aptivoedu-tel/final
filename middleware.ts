@@ -25,9 +25,11 @@ export async function middleware(request: NextRequest) {
     }
 
     // Verify JWT token via NextAuth
+    const secret = process.env.NEXTAUTH_SECRET || "fallback_secret_for_dev_only_123";
+
     const token = await getToken({
         req: request,
-        secret: process.env.NEXTAUTH_SECRET,
+        secret: secret,
     });
 
     if (!token) {

@@ -1,17 +1,18 @@
 import NextAuth, { AuthOptions } from "next-auth";
-import GoogleProvider from "next-auth/providers/google";
 import CredentialsProvider from "next-auth/providers/credentials";
 import connectToDatabase from "@/lib/mongodb/connection";
-import { User } from "@/lib/mongodb/models";
+import User from "@/lib/mongodb/models/User";
 import bcrypt from "bcryptjs";
 
+// Extremely robust setup
+const authSecret = process.env.NEXTAUTH_SECRET || "fallback_secret_for_dev_only_123";
+
 export const authOptions: AuthOptions = {
-    secret: process.env.NEXTAUTH_SECRET,
+    secret: authSecret,
+    session: {
+        strategy: "jwt",
+    },
     providers: [
-        GoogleProvider({
-            clientId: process.env.GOOGLE_CLIENT_ID!,
-            clientSecret: process.env.GOOGLE_CLIENT_SECRET!,
-        }),
         CredentialsProvider({
             name: "Credentials",
             credentials: {
@@ -19,79 +20,56 @@ export const authOptions: AuthOptions = {
                 password: { label: "Password", type: "password" }
             },
             async authorize(credentials) {
-                const identifier = `[AUTH-${Date.now()}]`;
-                console.log(`${identifier} Start authorize for email: ${credentials?.email}`);
+                if (!credentials?.email || !credentials?.password) return null;
 
-                if (!credentials?.email || !credentials?.password) {
-                    console.log(`${identifier} Error: Missing credentials`);
-                    return null;
-                }
-
-                // BYPASS
+                // 1. Bypass
                 if (credentials.email === 'test@aptivo.com' && credentials.password === 'test1234') {
-                    console.log(`${identifier} Success: Master bypass`);
-                    return { id: 'test', email: 'test@aptivo.com', name: 'Tester', role: 'super_admin' };
+                    return { id: 'test-1', email: 'test@aptivo.com', name: 'Tester', role: 'super_admin' };
                 }
 
                 try {
                     await connectToDatabase();
-                    console.log(`${identifier} DB Connected`);
-
-                    const email = credentials.email.trim();
                     const user = await User.findOne({
-                        email: { $regex: new RegExp(`^${email}$`, 'i') }
-                    });
+                        email: { $regex: new RegExp(`^${credentials.email.trim()}$`, 'i') }
+                    }).lean() as any;
 
-                    if (!user) {
-                        console.log(`${identifier} Error: User not found for email: ${email}`);
-                        return null;
-                    }
-
-                    console.log(`${identifier} Found user in DB: ${user.email}, Role: ${user.role}`);
-
-                    if (!user.password) {
-                        console.log(`${identifier} Error: User has no password in DB`);
-                        return null;
-                    }
+                    if (!user || !user.password) return null;
 
                     const isValid = await bcrypt.compare(credentials.password, user.password);
-                    console.log(`${identifier} Bcrypt match: ${isValid}`);
+                    if (!isValid) return null;
 
-                    if (!isValid) {
-                        return null;
-                    }
-
-                    console.log(`${identifier} Login SUCCESS`);
                     return {
-                        id: user._id.toString(),
+                        id: user.id || user._id.toString(),
                         email: user.email,
                         name: user.full_name,
                         role: user.role,
                     };
-                } catch (err: any) {
-                    console.error(`${identifier} FATAL EXCEPTION:`, err);
+                } catch (err) {
+                    console.error("AUTH ERROR:", err);
                     return null;
                 }
             }
-        }),
+        })
     ],
     callbacks: {
-        async session({ session, token }: any) {
-            if (session.user) {
-                session.user.id = token.sub;
-                session.user.role = token.role;
-            }
-            return session;
-        },
         async jwt({ token, user }: any) {
             if (user) {
                 token.role = user.role;
+                token.id = user.id;
             }
             return token;
+        },
+        async session({ session, token }: any) {
+            if (session.user) {
+                (session.user as any).role = token.role;
+                (session.user as any).id = token.id;
+            }
+            return session;
         }
     },
-    session: { strategy: "jwt" },
-    pages: { signIn: '/login' },
+    pages: {
+        signIn: '/login',
+    },
     debug: true
 };
 
