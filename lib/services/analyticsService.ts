@@ -162,4 +162,34 @@ export class AnalyticsService {
             return { stats: null, error: error.message };
         }
     }
+
+    /**
+     * Get detailed institutional analytics including university and student breakdowns
+     */
+    static async getInstitutionDetailedAnalytics(institutionId: number, startDate?: Date) {
+        try {
+            const dateStr = startDate ? `&start_date=${startDate.toISOString()}` : '';
+            const res = await fetch(`/api/mongo/admin/analytics/institution?institution_id=${institutionId}${dateStr}`);
+            if (!res.ok) throw new Error('Failed to fetch detailed analytics');
+            return res.json();
+        } catch (error) {
+            console.error('getInstitutionDetailedAnalytics error:', error);
+            throw error;
+        }
+    }
+
+    /**
+     * Get granular analytics for a specific student (topic/subject breakdown)
+     */
+    static async getStudentDrilldownAnalytics(studentId: string, startDate?: Date) {
+        try {
+            const dateStr = startDate ? `&start_date=${startDate.toISOString()}` : '';
+            const res = await fetch(`/api/mongo/admin/analytics/student-drilldown?student_id=${studentId}${dateStr}`);
+            if (!res.ok) throw new Error('Failed to fetch student drilldown');
+            return res.json();
+        } catch (error) {
+            console.error('getStudentDrilldownAnalytics error:', error);
+            throw error;
+        }
+    }
 }
