@@ -1,11 +1,5 @@
-'use client';
-
-// Force this page to use SSR (required for useSearchParams)
-export const runtime = 'edge';
-
 import React, { useState, useEffect } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { supabase } from '@/lib/supabase/client';
 import Sidebar from '@/components/layout/Sidebar';
 import Header from '@/components/layout/Header';
 import { AuthService } from '@/lib/services/authService';
@@ -52,7 +46,7 @@ function UniversityPortalContent() {
 
     useEffect(() => {
         const init = async () => {
-            const u = AuthService.getCurrentUser();
+            const u = AuthService.getCurrentUser() || await AuthService.syncSession();
             if (u) {
                 setUser(u);
                 await checkEnrollment(u.id);
@@ -67,70 +61,75 @@ function UniversityPortalContent() {
     const checkEnrollment = async (userId: string) => {
         setLoadingEnrollments(true);
         try {
-            const { data: profile } = await supabase
-                .from('users')
-                .select('institution_id')
-                .eq('id', userId)
-                .single();
+            // 1. Fetch all public universities
+            const uniRes = await fetch('/api/mongo/universities');
+            const uniData = await uniRes.json();
+            const publicUnis = (uniData.universities || []).filter((u: any) => u.is_active && u.is_public);
+            setAllUnis(publicUnis);
 
-            const { data: allUniversities } = await supabase.from('universities').select('*').eq('is_active', true).eq('is_public', true);
-            setAllUnis(allUniversities || []);
+            // 2. Fetch student enrollments
+            const enrollRes = await fetch(`/api/mongo/profile/universities?student_id=${userId}`);
+            const enrollData = await enrollRes.json();
+            let finalEnrollments = enrollData.universities || [];
 
-            const { data: initialEnrolls } = await supabase
-                .from('student_university_enrollments')
-                .select(`
-                    *,
-                    university:universities(*)
-                `)
-                .eq('student_id', userId);
+            // 3. Handle Institution Access Rules if any
+            const currentUser = AuthService.getCurrentUser();
+            if (currentUser?.institution_id) {
+                const rulesRes = await fetch(`/api/mongo/institutions/university-access?institution_id=${currentUser.institution_id}`);
+                const rulesData = await rulesRes.json();
+                const rules = rulesData.rules || [];
 
-            let finalEnrollments = [...(initialEnrolls || [])];
+                const lockedUniIds = rules.filter((r: any) => r.is_locked).map((r: any) => r.university_id);
+                const unlockedUniIds = rules.filter((r: any) => !r.is_locked).map((r: any) => r.university_id);
 
-            if (profile?.institution_id) {
-                const { data: accessRules } = await supabase
-                    .from('institution_university_access')
-                    .select('university_id, is_locked')
-                    .eq('institution_id', profile.institution_id);
-
-                const rules = accessRules || [];
-                const lockedUniIds = rules.filter(r => r.is_locked).map(r => r.university_id);
-                const unlockedUniIds = rules.filter(r => !r.is_locked).map(r => r.university_id);
-
-                const toRemove = finalEnrollments.filter(e => lockedUniIds.includes(e.university_id));
-                if (toRemove.length > 0) {
-                    const idsToRemove = toRemove.map(e => e.university_id);
-                    await supabase
-                        .from('student_university_enrollments')
-                        .delete()
-                        .eq('student_id', userId)
-                        .in('university_id', idsToRemove);
-
-                    finalEnrollments = finalEnrollments.filter(e => !idsToRemove.includes(e.university_id));
+                // Remove locked enrollments
+                const toRemoveEntries = finalEnrollments.filter((e: any) => lockedUniIds.includes(e.universities.id));
+                if (toRemoveEntries.length > 0) {
+                    for (const entry of toRemoveEntries) {
+                        await fetch(`/api/mongo/profile/universities?student_id=${userId}&university_id=${entry.universities.id}`, {
+                            method: 'DELETE'
+                        });
+                    }
+                    finalEnrollments = finalEnrollments.filter((e: any) => !lockedUniIds.includes(e.universities.id));
                 }
 
+                // Add missing unlocked enrollments
                 for (const assignedUniId of unlockedUniIds) {
-                    const alreadyEnrolled = finalEnrollments.some(e => e.university_id === assignedUniId);
+                    const alreadyEnrolled = finalEnrollments.some((e: any) => e.universities.id === assignedUniId);
                     if (!alreadyEnrolled) {
-                        const { data: newEnroll } = await supabase
-                            .from('student_university_enrollments')
-                            .insert({
+                        const addRes = await fetch('/api/mongo/profile/universities', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({
                                 student_id: userId,
                                 university_id: assignedUniId,
-                                institution_id: profile.institution_id,
-                                status: 'approved',
-                                enrollment_date: new Date().toISOString()
+                                institution_id: currentUser.institution_id,
+                                status: 'approved'
                             })
-                            .select(`*, university:universities(*)`)
-                            .single();
-
-                        if (newEnroll) finalEnrollments.push(newEnroll);
+                        });
+                        if (addRes.ok) {
+                            const newData = await addRes.json();
+                            // We might need to refetch to get the full object or manually construct it
+                            // For simplicity, refetching enrollments once
+                            const refetchRes = await fetch(`/api/mongo/profile/universities?student_id=${userId}`);
+                            const refetchData = await refetchRes.json();
+                            finalEnrollments = refetchData.universities || [];
+                        }
                     }
                 }
                 setAllUnis(prev => prev.filter(u => !lockedUniIds.includes(u.id)));
             }
 
-            setEnrollments(finalEnrollments);
-            if (!profile?.institution_id && finalEnrollments.length === 0) {
+            // Normalizing the object structure for the UI
+            // The API returns { enrollment_date, universities: {...} }
+            // The UI expects en.university.name
+            const normalizedEnrollments = finalEnrollments.map((en: any) => ({
+                ...en,
+                university: en.universities // UI expects 'university', API returns 'universities' (plural from previous dev)
+            }));
+
+            setEnrollments(normalizedEnrollments);
+            if (!currentUser?.institution_id && normalizedEnrollments.length === 0) {
                 setShowRegistration(true);
             }
         } catch (e) {
@@ -143,14 +142,15 @@ function UniversityPortalContent() {
     const handleUnenroll = async (uniId: number) => {
         if (!confirm('Are you sure you want to unenroll from this university?')) return;
         try {
-            const { error } = await supabase
-                .from('student_university_enrollments')
-                .delete()
-                .eq('student_id', user.id)
-                .eq('university_id', uniId);
-            if (error) throw error;
-            setEnrollments(prev => prev.filter(e => e.university_id !== uniId));
-            toast.success("Successfully unenrolled");
+            const res = await fetch(`/api/mongo/profile/universities?student_id=${user.id}&university_id=${uniId}`, {
+                method: 'DELETE'
+            });
+            if (res.ok) {
+                setEnrollments(prev => prev.filter(e => e.university.id !== uniId));
+                toast.success("Successfully unenrolled");
+            } else {
+                throw new Error("Failed to unenroll");
+            }
         } catch (e: any) {
             toast.error(e.message);
         }
@@ -159,16 +159,22 @@ function UniversityPortalContent() {
     const handleRegister = async (uniId: number) => {
         if (!user) return;
         try {
-            const { error } = await supabase.from('student_university_enrollments').insert({
-                student_id: user.id,
-                university_id: uniId,
-                status: 'approved',
-                is_active: true
+            const res = await fetch('/api/mongo/profile/universities', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    student_id: user.id,
+                    university_id: uniId,
+                    status: 'approved'
+                })
             });
-            if (error) throw error;
-            toast.success("Successfully joined institution");
-            await checkEnrollment(user.id);
-            setShowRegistration(false);
+            if (res.ok) {
+                toast.success("Successfully joined institution");
+                await checkEnrollment(user.id);
+                setShowRegistration(false);
+            } else {
+                throw new Error("Failed to join");
+            }
         } catch (e: any) {
             toast.error(e.message);
         }

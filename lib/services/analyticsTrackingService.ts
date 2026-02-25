@@ -1,15 +1,15 @@
-import { SupabaseClient } from '@supabase/supabase-js';
+// MongoDB-only analytics tracking service
+// Queries MongoDB models directly instead of using Supabase client
+
+import connectToDatabase from '@/lib/mongodb/connection';
+import { PracticeSession, MCQAttempt, Topic, Subtopic } from '@/lib/mongodb/models';
 
 export interface WeakTopic {
     topic: string;
     topicId?: number;
     accuracy: number;
     totalQuestions: number;
-    weakestSubtopics: {
-        id: number;
-        name: string;
-        accuracy: number;
-    }[];
+    weakestSubtopics: { id: number; name: string; accuracy: number }[];
 }
 
 export interface PerformanceTrend {
@@ -27,147 +27,89 @@ export class AnalyticsTrackingService {
     /**
      * Get weak topics where accuracy < 60%
      */
-    static async getWeakTopics(client: SupabaseClient, studentId: string, universityId?: string): Promise<{ data: WeakTopic[]; error?: string }> {
+    static async getWeakTopics(
+        _client: any,
+        studentId: string,
+        universityId?: string
+    ): Promise<{ data: WeakTopic[]; error?: string }> {
         try {
-            // 1. Fetch data from practice_attempts as requested
-            let query = client
-                .from('practice_attempts')
-                .select('topic, total_questions, correct')
-                .eq('student_id', studentId);
+            await connectToDatabase();
 
+            const filter: any = { student_id: studentId, is_completed: true };
             if (universityId && universityId !== 'general') {
-                query = query.eq('university_id', universityId);
+                filter.university_id = parseInt(universityId);
             }
 
-            const { data: attempts, error } = await query;
+            const sessions = await PracticeSession.find(filter)
+                .select('topic_id total_questions correct_answers score_percentage')
+                .lean();
 
-            if (error) throw error;
-
-            // Aggregate by topic name
-            const topicMap: Record<string, { total: number; correct: number }> = {};
-
-            attempts.forEach(attempt => {
-                if (!topicMap[attempt.topic]) {
-                    topicMap[attempt.topic] = { total: 0, correct: 0 };
-                }
-                topicMap[attempt.topic].total += attempt.total_questions;
-                topicMap[attempt.topic].correct += attempt.correct;
-            });
-
-            const weakTopicEntries = Object.entries(topicMap)
-                .map(([topic, stats]) => ({
-                    topic,
-                    accuracy: Math.round((stats.correct / stats.total) * 100),
-                    totalQuestions: stats.total
-                }))
-                .filter(topic => topic.accuracy < 60)
-                .sort((a, b) => a.accuracy - b.accuracy);
-
-            if (weakTopicEntries.length === 0) {
-                // Fallback: Try to get data from practice_sessions if attempts are empty
-                let fallbackQuery = client
-                    .from('practice_sessions')
-                    .select('topic_id, score_percentage, total_questions, topics(name)')
-                    .eq('student_id', studentId)
-                    .eq('is_completed', true);
-
-                if (universityId && universityId !== 'general') {
-                    fallbackQuery = fallbackQuery.eq('university_id', universityId);
-                }
-
-                const { data: sessionData } = await fallbackQuery;
-
-                if (sessionData && sessionData.length > 0) {
-                    const sessionTopicMap: Record<string, { total: number; correct: number; id: number }> = {};
-                    sessionData.forEach(s => {
-                        const name = (s.topics as any)?.name || 'General';
-                        if (!sessionTopicMap[name]) sessionTopicMap[name] = { total: 0, correct: 0, id: s.topic_id };
-                        sessionTopicMap[name].total += s.total_questions;
-                        sessionTopicMap[name].correct += Math.round((s.score_percentage * s.total_questions) / 100);
-                    });
-
-                    const fallbackWeak = Object.entries(sessionTopicMap)
-                        .map(([name, stats]) => ({
-                            topic: name,
-                            topicId: stats.id,
-                            accuracy: Math.round((stats.correct / stats.total) * 100),
-                            totalQuestions: stats.total,
-                            weakestSubtopics: []
-                        }))
-                        .filter(t => t.accuracy < 60)
-                        .slice(0, 3);
-
-                    return { data: fallbackWeak };
-                }
-
+            if (!sessions || sessions.length === 0) {
                 return { data: [] };
             }
 
-            // 2. For each weak topic, find the weakest subtopics
-            const weakTopicsWithSubtopics: WeakTopic[] = [];
+            // Aggregate by topic_id
+            const topicMap: Record<number, { total: number; correct: number }> = {};
+            sessions.forEach((s: any) => {
+                if (!s.topic_id) return;
+                if (!topicMap[s.topic_id]) topicMap[s.topic_id] = { total: 0, correct: 0 };
+                topicMap[s.topic_id].total += s.total_questions || 0;
+                topicMap[s.topic_id].correct += s.correct_answers || 0;
+            });
 
-            for (const entry of weakTopicEntries) {
-                // Find topic_id by name
-                const { data: topicData } = await client
-                    .from('topics')
-                    .select('id')
-                    .eq('name', entry.topic)
-                    .maybeSingle();
+            const topicIds = Object.keys(topicMap).map(Number);
+            const topics = await Topic.find({ id: { $in: topicIds } }).lean() as any[];
 
-                let weakestSubtopics: { id: number; name: string; accuracy: number }[] = [];
+            const weakTopics: WeakTopic[] = await Promise.all(
+                topics
+                    .map(t => {
+                        const stats = topicMap[t.id];
+                        const accuracy = stats.total > 0
+                            ? Math.round((stats.correct / stats.total) * 100)
+                            : 0;
+                        return { topic: t.name, topicId: t.id, accuracy, total: stats.total };
+                    })
+                    .filter(t => t.accuracy < 60)
+                    .sort((a, b) => a.accuracy - b.accuracy)
+                    .slice(0, 5)
+                    .map(async t => {
+                        // Find weakest subtopics for this topic
+                        const subtopics = await Subtopic.find({ topic_id: t.topicId, is_active: true }).lean() as any[];
+                        const subtopicIds = subtopics.map((s: any) => s.id);
 
-                if (topicData) {
-                    // Get subtopics for this topic
-                    const { data: subtopics } = await client
-                        .from('subtopics')
-                        .select('id, name')
-                        .eq('topic_id', topicData.id);
+                        const attempts = await MCQAttempt.find({
+                            student_id: studentId,
+                            subtopic_id: { $in: subtopicIds }
+                        }).lean() as any[];
 
-                    if (subtopics && subtopics.length > 0) {
-                        const subtopicIds = subtopics.map(s => s.id);
+                        const subMap: Record<number, { total: number; correct: number }> = {};
+                        attempts.forEach((a: any) => {
+                            if (!subMap[a.subtopic_id]) subMap[a.subtopic_id] = { total: 0, correct: 0 };
+                            subMap[a.subtopic_id].total++;
+                            if (a.is_correct) subMap[a.subtopic_id].correct++;
+                        });
 
-                        // Fetch mcq_attempts for these subtopics
-                        const { data: mcqAttempts } = await client
-                            .from('mcq_attempts')
-                            .select('is_correct, mcqs!inner(subtopic_id, topic_id)')
-                            .eq('student_id', studentId)
-                            .or(`mcqs.subtopic_id.in.(${subtopicIds.join(',')}),mcqs.topic_id.eq.${topicData.id}`);
+                        const weakestSubtopics = subtopics
+                            .filter((s: any) => subMap[s.id])
+                            .map((s: any) => ({
+                                id: s.id,
+                                name: s.name,
+                                accuracy: Math.round((subMap[s.id].correct / subMap[s.id].total) * 100)
+                            }))
+                            .sort((a, b) => a.accuracy - b.accuracy)
+                            .slice(0, 3);
 
-                        if (mcqAttempts && mcqAttempts.length > 0) {
-                            const subtopicStats: Record<number, { total: number; correct: number }> = {};
+                        return {
+                            topic: t.topic,
+                            topicId: t.topicId,
+                            accuracy: t.accuracy,
+                            totalQuestions: t.total,
+                            weakestSubtopics,
+                        };
+                    })
+            );
 
-                            mcqAttempts.forEach((att: any) => {
-                                const subId = att.mcqs.subtopic_id;
-                                if (subId) {
-                                    if (!subtopicStats[subId]) subtopicStats[subId] = { total: 0, correct: 0 };
-                                    subtopicStats[subId].total += 1;
-                                    if (att.is_correct) subtopicStats[subId].correct += 1;
-                                }
-                            });
-
-                            weakestSubtopics = subtopics
-                                .map(s => ({
-                                    id: s.id,
-                                    name: s.name,
-                                    accuracy: subtopicStats[s.id]
-                                        ? Math.round((subtopicStats[s.id].correct / subtopicStats[s.id].total) * 100)
-                                        : 0
-                                }))
-                                .filter(s => subtopicStats[s.id])
-                                .sort((a, b) => a.accuracy - b.accuracy)
-                                .slice(0, 3);
-                        }
-                    }
-                }
-
-                weakTopicsWithSubtopics.push({
-                    ...entry,
-                    topicId: topicData?.id,
-                    weakestSubtopics
-                });
-            }
-
-            return { data: weakTopicsWithSubtopics };
+            return { data: weakTopics };
         } catch (error: any) {
             console.error('Error fetching weak topics:', error);
             return { data: [], error: error.message };
@@ -175,54 +117,33 @@ export class AnalyticsTrackingService {
     }
 
     /**
-     * Get performance trend
+     * Get performance trend (last 30 sessions)
      */
-    static async getPerformanceTrend(client: SupabaseClient, studentId: string, universityId?: string): Promise<{ data: PerformanceTrend[]; error?: string }> {
+    static async getPerformanceTrend(
+        _client: any,
+        studentId: string,
+        universityId?: string
+    ): Promise<{ data: PerformanceTrend[]; error?: string }> {
         try {
-            let query = client
-                .from('practice_attempts')
-                .select('created_at, total_questions, correct')
-                .eq('student_id', studentId);
+            await connectToDatabase();
 
+            const filter: any = { student_id: studentId, is_completed: true };
             if (universityId && universityId !== 'general') {
-                query = query.eq('university_id', universityId);
+                filter.university_id = parseInt(universityId);
             }
 
-            const { data, error } = await query.order('created_at', { ascending: true });
+            const sessions = await PracticeSession.find(filter)
+                .sort({ completed_at: 1 })
+                .limit(30)
+                .select('completed_at score_percentage')
+                .lean() as any[];
 
-            if (error) throw error;
-
-            if (!data || data.length === 0) {
-                // Fallback: use practice_sessions for trend data
-                let fallbackQuery = client
-                    .from('practice_sessions')
-                    .select('completed_at, score_percentage')
-                    .eq('student_id', studentId)
-                    .eq('is_completed', true)
-                    .not('score_percentage', 'is', null);
-
-                if (universityId && universityId !== 'general') {
-                    fallbackQuery = fallbackQuery.eq('university_id', universityId);
-                }
-
-                const { data: sessions } = await fallbackQuery
-                    .order('completed_at', { ascending: true })
-                    .limit(30);
-
-                if (sessions && sessions.length > 0) {
-                    const trend: PerformanceTrend[] = sessions.map(s => ({
-                        date: new Date(s.completed_at).toLocaleDateString(),
-                        accuracy: Math.round(s.score_percentage)
-                    }));
-                    return { data: trend };
-                }
-                return { data: [] };
-            }
-
-            const trend: PerformanceTrend[] = data.map(attempt => ({
-                date: new Date(attempt.created_at).toLocaleDateString(),
-                accuracy: Math.round((attempt.correct / attempt.total_questions) * 100)
-            }));
+            const trend: PerformanceTrend[] = sessions
+                .filter(s => s.score_percentage != null)
+                .map(s => ({
+                    date: new Date(s.completed_at || s.started_at).toLocaleDateString(),
+                    accuracy: Math.round(s.score_percentage)
+                }));
 
             return { data: trend };
         } catch (error: any) {
@@ -234,68 +155,37 @@ export class AnalyticsTrackingService {
     /**
      * Get behavior summary
      */
-    static async getBehaviorSummary(client: SupabaseClient, studentId: string, universityId?: string): Promise<{ data: BehaviorSummary | null; error?: string }> {
+    static async getBehaviorSummary(
+        _client: any,
+        studentId: string,
+        universityId?: string
+    ): Promise<{ data: BehaviorSummary | null; error?: string }> {
         try {
-            let query = client
-                .from('practice_attempts')
-                .select('overthink_count, rush_count, avg_time_seconds, total_questions')
-                .eq('student_id', studentId);
+            await connectToDatabase();
 
+            const filter: any = { student_id: studentId, is_completed: true };
             if (universityId && universityId !== 'general') {
-                query = query.eq('university_id', universityId);
+                filter.university_id = parseInt(universityId);
             }
 
-            const { data, error } = await query;
+            const sessions = await PracticeSession.find(filter)
+                .select('total_questions time_spent_seconds')
+                .lean() as any[];
 
-            if (error) throw error;
-
-            if (!data || data.length === 0) {
-                // Try fallback from practice_sessions
-                let fallbackQuery = client
-                    .from('practice_sessions')
-                    .select('score_percentage, total_questions, time_spent_seconds')
-                    .eq('student_id', studentId)
-                    .eq('is_completed', true);
-
-                if (universityId && universityId !== 'general') {
-                    fallbackQuery = fallbackQuery.eq('university_id', universityId);
-                }
-
-                const { data: sessions } = await fallbackQuery;
-
-                if (sessions && sessions.length > 0) {
-                    const totalQs = sessions.reduce((sum, s) => sum + s.total_questions, 0);
-                    const totalTime = sessions.reduce((sum, s) => sum + s.time_spent_seconds, 0);
-                    const avgTime = totalQs > 0 ? Number((totalTime / totalQs).toFixed(1)) : 0;
-
-                    return {
-                        data: {
-                            totalOverthinkCount: 0,
-                            totalRushCount: 0,
-                            averageTimePerQuestion: avgTime
-                        }
-                    };
-                }
-
+            if (!sessions || sessions.length === 0) {
                 return {
-                    data: {
-                        totalOverthinkCount: 0,
-                        totalRushCount: 0,
-                        averageTimePerQuestion: 0
-                    }
+                    data: { totalOverthinkCount: 0, totalRushCount: 0, averageTimePerQuestion: 0 }
                 };
             }
 
-            const totalOverthink = data.reduce((sum, item) => sum + (item.overthink_count || 0), 0);
-            const totalRush = data.reduce((sum, item) => sum + (item.rush_count || 0), 0);
-            const totalWeightedTime = data.reduce((sum, item) => sum + ((item.avg_time_seconds || 0) * item.total_questions), 0);
-            const totalQs = data.reduce((sum, item) => sum + item.total_questions, 0);
-            const avgTime = totalQs > 0 ? Number((totalWeightedTime / totalQs).toFixed(1)) : 0;
+            const totalQs = sessions.reduce((sum, s) => sum + (s.total_questions || 0), 0);
+            const totalTime = sessions.reduce((sum, s) => sum + (s.time_spent_seconds || 0), 0);
+            const avgTime = totalQs > 0 ? Number((totalTime / totalQs).toFixed(1)) : 0;
 
             return {
                 data: {
-                    totalOverthinkCount: totalOverthink,
-                    totalRushCount: totalRush,
+                    totalOverthinkCount: 0,
+                    totalRushCount: 0,
                     averageTimePerQuestion: avgTime
                 }
             };
@@ -308,40 +198,16 @@ export class AnalyticsTrackingService {
     /**
      * Get topic accuracy distribution
      */
-    static async getTopicAccuracyData(client: SupabaseClient, studentId: string, universityId?: string): Promise<{ data: { topic: string; accuracy: number }[]; error?: string }> {
-        try {
-            let query = client
-                .from('practice_attempts')
-                .select('topic, total_questions, correct')
-                .eq('student_id', studentId);
+    static async getTopicAccuracyData(
+        _client: any,
+        studentId: string,
+        universityId?: string
+    ): Promise<{ data: { topic: string; accuracy: number }[]; error?: string }> {
+        const { data: weakTopics, error } = await this.getWeakTopics(_client, studentId, universityId);
+        if (error) return { data: [], error };
 
-            if (universityId && universityId !== 'general') {
-                query = query.eq('university_id', universityId);
-            }
-
-            const { data, error } = await query;
-
-            if (error) throw error;
-
-            const topicMap: Record<string, { total: number; correct: number }> = {};
-
-            data.forEach(attempt => {
-                if (!topicMap[attempt.topic]) {
-                    topicMap[attempt.topic] = { total: 0, correct: 0 };
-                }
-                topicMap[attempt.topic].total += attempt.total_questions;
-                topicMap[attempt.topic].correct += attempt.correct;
-            });
-
-            const result = Object.entries(topicMap).map(([topic, stats]) => ({
-                topic,
-                accuracy: Math.round((stats.correct / stats.total) * 100)
-            }));
-
-            return { data: result };
-        } catch (error: any) {
-            console.error('Error fetching topic accuracy:', error);
-            return { data: [], error: error.message };
-        }
+        return {
+            data: weakTopics.map(t => ({ topic: t.topic, accuracy: t.accuracy }))
+        };
     }
 }

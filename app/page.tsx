@@ -32,7 +32,6 @@ import {
   Linkedin
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { supabase } from '@/lib/supabase/client';
 
 export default function LandingPage() {
   const [feedbacks, setFeedbacks] = React.useState<any[]>([]);
@@ -42,83 +41,38 @@ export default function LandingPage() {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = React.useState(false);
 
   React.useEffect(() => {
+    const IS_MONGO = process.env.NEXT_PUBLIC_DATABASE_TYPE === 'MONGODB';
+
     const fetchData = async () => {
-      // Fetch Feedbacks & Average Rating
-      const { data: feedbackData } = await supabase
-        .from('feedbacks')
-        .select(`
-          *,
-          users:user_id (full_name, avatar_url, role)
-        `)
-        .eq('is_published', true)
-        .order('created_at', { ascending: false });
+      try {
+        const response = await fetch('/api/mongo/v2-landing');
+        const data = await response.json();
+        if (data.error) throw new Error(data.error);
 
-      if (feedbackData) {
-        setFeedbacks(feedbackData.slice(0, 6));
-        const avg = feedbackData.reduce((acc, curr) => acc + (curr.rating || 0), 0) / (feedbackData.length || 1);
-        setStudentMetrics(prev => ({ ...prev, averageRating: Math.round(avg * 10) / 10 }));
-      }
-
-      // Fetch Student Count & Top Avatars
-      const { count: studentCount } = await supabase
-        .from('users')
-        .select('*', { count: 'exact', head: true })
-        .eq('role', 'student');
-
-      const avatarsSet = new Set<string>();
-
-      // Try to get avatars from students first
-      const { data: studentAvatars } = await supabase
-        .from('users')
-        .select('avatar_url')
-        .eq('role', 'student')
-        .not('avatar_url', 'is', null)
-        .limit(10);
-
-      studentAvatars?.forEach(s => { if (s.avatar_url) avatarsSet.add(s.avatar_url); });
-
-      // If not enough, get from any user
-      if (avatarsSet.size < 4) {
-        const { data: anyAvatars } = await supabase
-          .from('users')
-          .select('avatar_url')
-          .not('avatar_url', 'is', null)
-          .limit(10);
-        anyAvatars?.forEach(s => { if (s.avatar_url) avatarsSet.add(s.avatar_url); });
-      }
-
-      setStudentMetrics(prev => ({
-        ...prev,
-        count: studentCount || 0,
-        avatars: Array.from(avatarsSet).slice(0, 4)
-      }));
-
-      // Fetch Universities
-      const { data: uniData } = await supabase
-        .from('universities')
-        .select('name, logo_url')
-        .order('name');
-      if (uniData) setUniversities(uniData || []);
-
-      // Fetch Courses/Tracks
-      const { data: subjectData } = await supabase
-        .from('subjects')
-        .select('id, name')
-        .limit(6);
-
-      if (subjectData) {
-        const enrichedTracks = subjectData.map((s, i) => {
-          const icons = [Calculator, Share2, Brain, Activity, Award, Trophy];
-          const mockTags = [['Algebra', 'Geometry'], ['Vocabulary', 'Grammar'], ['Logic', 'Patterns'], ['Mechanics', 'Optics'], ['Organic', 'Inorganic'], ['Calculus', 'Trig']];
-          return {
-            id: s.id,
-            title: s.name,
-            icon: icons[i % icons.length],
-            count: 'Verified Curriculum',
-            tags: mockTags[i % mockTags.length]
-          };
+        setFeedbacks(data.feedbacks || []);
+        setUniversities(data.universities || []);
+        setStudentMetrics({
+          count: data.studentCount || 0,
+          avatars: data.avatars || [],
+          averageRating: data.averageRating || 4.8
         });
-        setTracks(enrichedTracks);
+
+        if (data.subjects) {
+          const enrichedTracks = data.subjects.map((s: any, i: number) => {
+            const icons = [Calculator, Share2, Brain, Activity, Award, Trophy];
+            const mockTags = [['Algebra', 'Geometry'], ['Vocabulary', 'Grammar'], ['Logic', 'Patterns'], ['Mechanics', 'Optics'], ['Organic', 'Inorganic'], ['Calculus', 'Trig']];
+            return {
+              id: s.id,
+              title: s.name,
+              icon: icons[i % icons.length],
+              count: 'Verified Curriculum',
+              tags: mockTags[i % mockTags.length]
+            };
+          });
+          setTracks(enrichedTracks);
+        }
+      } catch (e) {
+        console.error('Landing Data Fetch Error:', e);
       }
     };
     fetchData();
@@ -631,7 +585,7 @@ export default function LandingPage() {
       </section>
 
       {/* Footer */}
-      <footer className="bg-slate-50 pt-24 pb-12 border-t border-slate-100">
+      <footer className="bg-slate-50 pt-24 pb-12 border-t border-slate-100 mt-24">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-12 mb-20">
             <div className="col-span-2 space-y-6">

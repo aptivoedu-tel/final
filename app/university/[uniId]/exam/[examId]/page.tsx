@@ -1,8 +1,5 @@
-'use client';
-
 import React, { useState, useEffect, useCallback } from 'react';
 import { useParams, useRouter } from 'next/navigation';
-import { supabase } from '@/lib/supabase/client';
 import { AuthService } from '@/lib/services/authService';
 import {
     Clock, ChevronLeft, ChevronRight, X, AlertCircle,
@@ -33,6 +30,7 @@ interface Section {
     order_index: number;
     negative_marking?: number;
     default_marks_per_question?: number;
+    questions?: Question[];
 }
 
 interface Question {
@@ -66,7 +64,7 @@ export default function StudentExamPage() {
     const [sections, setSections] = useState<Section[]>([]);
     const [questions, setQuestions] = useState<Question[]>([]);
     const [passages, setPassages] = useState<Record<number, Passage>>({});
-    const [attemptId, setAttemptId] = useState<number | null>(null);
+    const [attemptId, setAttemptId] = useState<string | null>(null);
 
     // Real-time State
     const [activeSectionId, setActiveSectionId] = useState<number | null>(null);
@@ -99,7 +97,7 @@ export default function StudentExamPage() {
 
     useEffect(() => {
         const init = async () => {
-            const u = AuthService.getCurrentUser();
+            const u = AuthService.getCurrentUser() || await AuthService.syncSession();
             if (!u) {
                 router.push('/login');
                 return;
@@ -114,48 +112,44 @@ export default function StudentExamPage() {
 
     const loadExamData = async (userId: string) => {
         try {
-            console.log("[loadExamData] Starting fetch for Exam ID:", examId);
-            const { data: ex, error: exError } = await supabase.from('university_exams').select('*').eq('id', Number(examId)).single();
-            if (exError) {
-                console.error("[loadExamData] Exam fetch error:", exError);
-                throw new Error(`Fetch Exam Error: ${exError.message} (${exError.code})`);
-            }
+            // 1. Fetch Exam with Sections and Questions
+            const res = await fetch(`/api/mongo/exams?exam_id=${examId}&with_sections=true`);
+            const data = await res.json();
+            const ex = data.exams?.[0];
+
             if (!ex) throw new Error('Exam not found');
             setExam(ex);
-            console.log("[loadExamData] Exam found:", ex.name);
 
-            const { data: sects, error: sectsError } = await supabase.from('exam_sections').select('*').eq('exam_id', Number(examId)).order('order_index');
-            if (sectsError) throw new Error(`Fetch Sections Error: ${sectsError.message}`);
-            setSections(sects || []);
-            const firstSect = sects?.[0];
+            const sects = ex.sections || [];
+            setSections(sects);
+
+            // Flatten questions from sections
+            const allQs: Question[] = [];
+            sects.forEach((s: any) => {
+                if (s.questions) allQs.push(...s.questions);
+            });
+            setQuestions(allQs);
+
+            const firstSect = sects[0];
             setActiveSectionId(firstSect?.id || null);
             if (firstSect?.section_duration) {
                 setSectionTimeLeft(firstSect.section_duration * 60);
             }
 
-            const { data: qs, error: qsError } = await supabase.from('exam_questions').select('*').in('section_id', (sects || []).map(s => s.id)).order('order_index');
-            if (qsError) throw new Error(`Fetch Questions Error: ${qsError.message}`);
-            setQuestions(qs || []);
-
-            // Fetch any linked passages
-            const pIds = (qs || []).map(q => q.passage_id).filter(Boolean);
+            // 2. Fetch any linked passages
+            const pIds = allQs.map(q => q.passage_id).filter(Boolean);
             if (pIds.length > 0) {
-                const { data: ps, error: psError } = await supabase.from('passages').select('*').in('id', pIds);
-                if (psError) console.error('Error fetching passages:', psError); // Non-critical
+                const pRes = await fetch(`/api/mongo/content?type=passages&ids=${pIds.join(',')}`);
+                const pData = await pRes.json();
                 const pMap: Record<number, Passage> = {};
-                ps?.forEach(p => pMap[p.id] = p);
+                pData.passages?.forEach((p: any) => pMap[p.id] = p);
                 setPassages(pMap);
             }
 
             await handleAttemptSession(userId, ex);
             setGlobalLoading(false);
         } catch (err: any) {
-            console.error('Exam initialization failed details:', {
-                message: err.message,
-                stack: err.stack,
-                code: err.code,
-                errorObject: err // For deep inspection in dev tools
-            });
+            console.error('Exam initialization failed', err);
             toast.error(`Session Error: ${err.message || 'Unknown error'}`);
             setGlobalLoading(false);
         }
@@ -163,97 +157,62 @@ export default function StudentExamPage() {
 
 
     const handleAttemptSession = async (userId: string, ex: Exam) => {
-        console.log("[AttemptSync] Initializing session check for Exam:", ex.name, "(ID:", ex.id, ")");
-        console.log("[AttemptSync] total_duration:", ex.total_duration);
-
         // Time Window Check
         const now = new Date();
         if (ex.start_time && new Date(ex.start_time) > now) {
-            console.warn("[AttemptSync] Exam not started yet. Starts at:", ex.start_time);
             toast.error("This exam has not started yet.");
             throw new Error(`Exam starts at ${new Date(ex.start_time).toLocaleString()}`);
         }
 
-        console.log("[AttemptSync] Fetching existing attempt for Student:", userId);
-        const { data: existing, error: existingError } = await supabase
-            .from('exam_attempts')
-            .select('*')
-            .eq('student_id', userId)
-            .eq('exam_id', Number(ex.id))
-            .order('created_at', { ascending: false })
-            .limit(1)
-            .maybeSingle();
-
-        if (existingError) {
-            console.error("[AttemptSync] Fetch error:", JSON.stringify(existingError, null, 2));
-            throw new Error(`Attempt Sync Error: ${existingError.message}`);
-        }
-
-        console.log("[AttemptSync] Existing attempt result:", existing ? `Found (Status: ${existing.status})` : "None found");
+        const res = await fetch(`/api/mongo/exams/attempts?student_id=${userId}&exam_id=${ex.id}`);
+        const data = await res.json();
+        const existing = data.attempt;
 
         // Check End Time compliance
         if (ex.end_time && new Date(ex.end_time) < now) {
-            const isFinishedOrEmpty = !existing || existing.status === 'completed';
-            console.warn("[AttemptSync] Exam window passed. Finalized?", !isFinishedOrEmpty);
+            const isFinishedOrEmpty = !existing || existing.status === 'completed' || existing.status === 'submitted';
             if (isFinishedOrEmpty) {
                 throw new Error(`Exam ended at ${new Date(ex.end_time).toLocaleString()}`);
             }
         }
 
-        // Support both 'ongoing' and legacy 'in_progress' status
-        const isOngoing = existing && (existing.status === 'ongoing' || existing.status === 'in_progress');
+        const isOngoing = existing && existing.status === 'in_progress';
 
         if (isOngoing) {
-            console.log("[AttemptSync] Resuming ongoing session:", existing.id);
             setAttemptId(existing.id);
-            const { data: ans } = await supabase.from('exam_answers').select('*').eq('attempt_id', existing.id);
+            const ansRes = await fetch(`/api/mongo/exams/answers?attempt_id=${existing.id}`);
+            const ansData = await ansRes.json();
             const ansMap: any = {};
-            ans?.forEach(a => ansMap[a.question_id] = a.answer);
+            ansData.answers?.forEach((a: any) => ansMap[a.question_id] = a.answer);
             setAnswers(ansMap);
 
-            const startTimeStr = existing.started_at || existing.created_at;
-            const startTime = new Date(startTimeStr).getTime();
-            const currentTime = new Date().getTime();
-            const elapsed = Math.floor((currentTime - startTime) / 1000);
+            const startTime = new Date(existing.start_time).getTime();
+            const elapsed = Math.floor((new Date().getTime() - startTime) / 1000);
             const totalSecs = (ex.total_duration || 1) * 60;
             const remaining = totalSecs - elapsed;
-
-            console.log("[AttemptSync] Calculation:", { totalSecs, elapsed, remaining });
             setTimeLeft(remaining > 0 ? remaining : 0);
-        } else if (existing && existing.status === 'completed') {
-            console.log("[AttemptSync] Viewing completed session:", existing.id);
+        } else if (existing && (existing.status === 'completed' || existing.status === 'submitted')) {
             setAttemptId(existing.id);
             setResults({ score: existing.score, total: existing.total_marks });
             setStatus('completed');
 
-            const { data: ans } = await supabase.from('exam_answers').select('*').eq('attempt_id', existing.id);
+            const ansRes = await fetch(`/api/mongo/exams/answers?attempt_id=${existing.id}`);
+            const ansData = await ansRes.json();
             const ansMap: any = {};
-            ans?.forEach(a => ansMap[a.question_id] = a.answer);
+            ansData.answers?.forEach((a: any) => ansMap[a.question_id] = a.answer);
             setAnswers(ansMap);
             setTimeLeft(0);
         } else {
-            console.log("[AttemptSync] Creating fresh session...");
-            const { data: newAtt, error } = await supabase
-                .from('exam_attempts')
-                .insert([{
-                    student_id: userId,
-                    exam_id: Number(ex.id),
-                    status: 'ongoing',
-                    started_at: new Date().toISOString()
-                }])
-                .select()
-                .single();
-
-            if (error) {
-                console.error("[AttemptSync] Creation failed:", JSON.stringify(error, null, 2));
-                throw new Error(`Sync Error: ${error.message}`);
+            const createRes = await fetch('/api/mongo/exams/attempts', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ student_id: userId, exam_id: ex.id })
+            });
+            const newData = await createRes.json();
+            if (newData.attempt) {
+                setAttemptId(newData.attempt.id);
+                setTimeLeft((ex.total_duration || 1) * 60);
             }
-
-            console.log("[AttemptSync] Fresh session created with ID:", newAtt.id);
-            setAttemptId(newAtt.id);
-            const initialTime = (ex.total_duration || 1) * 60;
-            console.log("[AttemptSync] Setting initial time:", initialTime);
-            setTimeLeft(initialTime);
         }
     };
 
@@ -336,11 +295,16 @@ export default function StudentExamPage() {
         setAnswers(prev => ({ ...prev, [questionId]: answer }));
         // Also ensure it's marked as visited when answered
         setVisitedQuestions(prev => ({ ...prev, [questionId]: true }));
-        await supabase.from('exam_answers').upsert([{
-            attempt_id: attemptId,
-            question_id: questionId,
-            answer: answer
-        }], { onConflict: 'attempt_id, question_id' });
+
+        await fetch('/api/mongo/exams/answers', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                attempt_id: attemptId,
+                question_id: questionId,
+                answer: answer
+            })
+        });
     };
 
     const toggleMarkForReview = (questionId: number) => {
@@ -353,7 +317,7 @@ export default function StudentExamPage() {
         }
     }, [activeQuestion?.id]);
 
-    const finalizeAttempt = async (attId: number) => {
+    const finalizeAttempt = async (attId: string) => {
         setGlobalLoading(true, 'Calculating Results & Finalizing Session...');
 
         try {
@@ -379,12 +343,16 @@ export default function StudentExamPage() {
             // Ensure score doesn't go below zero
             score = Math.max(0, score);
 
-            await supabase.from('exam_attempts').update({
-                status: 'completed',
-                completed_at: new Date().toISOString(),
-                score: score,
-                total_marks: total
-            }).eq('id', attId);
+            await fetch('/api/mongo/exams/attempts', {
+                method: 'PATCH',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    attempt_id: attId,
+                    status: 'completed',
+                    score: score,
+                    total_marks: total
+                })
+            });
 
             setResults({ score, total });
             setStatus('completed');

@@ -14,6 +14,7 @@ import {
 import { useUI } from '@/lib/context/UIContext';
 import Sidebar from '@/components/layout/Sidebar';
 import Header from '@/components/layout/Header';
+import Footer from '@/components/shared/Footer';
 import { AuthService } from '@/lib/services/authService';
 import { DashboardService } from '@/lib/services/dashboardService';
 // Removed top-level imports of jsPDF to avoid SSR DOMParser error
@@ -346,6 +347,7 @@ export default function ProgressPage() {
                         })}
                     </div>
                 </div>
+                <Footer />
             </main>
         </div>
     );

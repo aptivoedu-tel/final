@@ -3,7 +3,6 @@
 import React, { useEffect, useState } from 'react';
 import { Building2, CheckCircle2, ChevronRight, School, GraduationCap } from 'lucide-react';
 import { AuthService } from '@/lib/services/authService';
-import { supabase } from '@/lib/supabase/client';
 
 export default function OnboardingPage() {
     const [universities, setUniversities] = useState<any[]>([]);
@@ -25,15 +24,13 @@ export default function OnboardingPage() {
 
     const loadUniversities = async () => {
         try {
-            const { data, error } = await supabase
-                .from('universities')
-                .select('*')
-                .eq('status', 'active');
+            const res = await fetch('/api/mongo/content?type=universities&university_search=true');
+            const data = await res.json();
 
-            if (data) {
-                setUniversities(data);
+            if (data.universities && data.universities.length > 0) {
+                setUniversities(data.universities);
             } else {
-                // Fallback data if table is empty
+                // Fallback data if collection is empty
                 setUniversities([
                     { id: '1', name: 'Stanford University', domain: 'stanford.edu', type: 'university', logo_url: null },
                     { id: '2', name: 'MIT', domain: 'mit.edu', type: 'university', logo_url: null },

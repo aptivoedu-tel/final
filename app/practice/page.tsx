@@ -5,7 +5,6 @@ import { useSearchParams, useRouter } from 'next/navigation';
 import Loader from '@/components/ui/Loader';
 import { AuthService } from '@/lib/services/authService';
 import { ProfileService } from '@/lib/services/profileService';
-import { supabase } from '@/lib/supabase/client';
 
 function PracticeRouter() {
     const searchParams = useSearchParams();
@@ -47,14 +46,12 @@ function PracticeRouter() {
                 } else if (topicName) {
                     // Legacy name fallback (still keep for safety)
                     // Find topic ID by name to route to topic-level practice
-                    const { data: topicData } = await supabase
-                        .from('topics')
-                        .select('id')
-                        .eq('name', topicName)
-                        .maybeSingle();
+                    const res = await fetch(`/api/mongo/content?type=topics&name=${encodeURIComponent(topicName)}`);
+                    const data = await res.json();
+                    const topic = data.topics?.[0];
 
-                    if (topicData) {
-                        router.push(`/university/${universityId}/practice/topic/${topicData.id}`);
+                    if (topic) {
+                        router.push(`/university/${universityId}/practice/topic/${topic.id}`);
                     } else {
                         router.push(`/university/${universityId}`);
                     }

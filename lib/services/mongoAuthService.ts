@@ -1,0 +1,146 @@
+import { signIn, signOut, getSession } from 'next-auth/react';
+
+export interface LoginCredentials {
+    email: string;
+    password: string;
+}
+
+export interface RegisterData {
+    email: string;
+    password: string;
+    fullName: string;
+    role: 'student' | 'institution_admin';
+    institutionId?: number;
+    institutionName?: string;
+    institutionType?: string;
+    isSolo?: boolean;
+}
+
+export class MongoAuthService {
+    /**
+     * Login using NextAuth credentials provider
+     */
+    static async login(credentials: LoginCredentials): Promise<{ user: any; error: string | null }> {
+        try {
+            console.log('[MongoAuthService] Attempting signIn with:', credentials.email);
+            const result = await signIn('credentials', {
+                redirect: false,
+                email: credentials.email,
+                password: credentials.password,
+            });
+
+            console.log('[MongoAuthService] signIn result:', JSON.stringify(result, null, 2));
+
+            if (result?.error) {
+                console.error('[MongoAuthService] signIn error:', result.error);
+                const userFriendlyError = result.error === 'CredentialsSignin'
+                    ? 'Invalid email or password'
+                    : result.error;
+                return { user: null, error: userFriendlyError };
+            }
+
+            const session = await getSession();
+            if (session?.user) {
+                // Fetch full profile from our mongo API
+                try {
+                    const response = await fetch('/api/auth/me');
+                    if (response.ok) {
+                        const data = await response.json();
+                        if (typeof window !== 'undefined' && data.user) {
+                            localStorage.setItem('aptivo_user', JSON.stringify(data.user));
+                        }
+                        return { user: data.user || session.user, error: null };
+                    }
+                } catch (apiErr) {
+                    console.error('Failed to fetch /api/auth/me:', apiErr);
+                }
+
+                return { user: session.user, error: null };
+            }
+
+            return { user: null, error: 'Login successful but session not found' };
+        } catch (error) {
+            console.error('Mongo Login error:', error);
+            return { user: null, error: 'An error occurred during login' };
+        }
+    }
+
+    /**
+     * Register using our MongoDB API
+     */
+    static async register(data: RegisterData): Promise<{ user: any; error: string | null }> {
+        try {
+            const response = await fetch('/api/auth/register', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    email: data.email,
+                    password: data.password,
+                    full_name: data.fullName,
+                    role: data.role,
+                    institution_id: data.institutionId,
+                }),
+            });
+
+            const result = await response.json();
+
+            if (!response.ok) {
+                return { user: null, error: result.error || 'Registration failed' };
+            }
+
+            return { user: result.user, error: null };
+        } catch (error) {
+            console.error('Mongo Registration error:', error);
+            return { user: null, error: 'An unexpected error occurred' };
+        }
+    }
+
+    static async logout(): Promise<void> {
+        await signOut({ redirect: false });
+        if (typeof window !== 'undefined') {
+            localStorage.removeItem('aptivo_user');
+        }
+    }
+
+    static async loginWithProvider(provider: 'google'): Promise<{ error: string | null }> {
+        try {
+            await signIn(provider);
+            return { error: null };
+        } catch (error: any) {
+            return { error: error.message };
+        }
+    }
+
+    static async getSession() {
+        return await getSession();
+    }
+
+    /**
+     * Sync session from NextAuth to local state
+     */
+    static async syncSession(): Promise<any | null> {
+        try {
+            const session = await getSession();
+            if (!session) {
+                if (typeof window !== 'undefined') {
+                    localStorage.removeItem('aptivo_user');
+                }
+                return null;
+            }
+
+            const response = await fetch('/api/auth/me');
+            if (!response.ok) return null;
+
+            const data = await response.json();
+            if (data.user && typeof window !== 'undefined') {
+                localStorage.setItem('aptivo_user', JSON.stringify(data.user));
+            }
+            return data.user;
+        } catch (error) {
+            console.error('Mongo syncSession failed:', error);
+            return null;
+        }
+    }
+}

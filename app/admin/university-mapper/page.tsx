@@ -1,9 +1,11 @@
 'use client';
 
 import React, { useState, useEffect, useCallback } from 'react';
-import { supabase } from '@/lib/supabase/client';
+// Supabase removed — using MongoDB API via fetch
+// import { supabase } from '@/lib/supabase/client';
 import Sidebar from '@/components/layout/Sidebar';
 import Header from '@/components/layout/Header';
+import Footer from '@/components/shared/Footer';
 import { Save, CheckCircle, AlertCircle, RefreshCw, ChevronDown, ChevronUp, Layers, BookOpen, FileText } from 'lucide-react';
 import { useUI } from '@/lib/context/UIContext';
 
@@ -42,14 +44,31 @@ export default function UniversityContentMapperPage() {
         const loadData = async () => {
             setLoading(true);
             try {
-                const { data: unis } = await supabase.from('universities').select('*').eq('is_active', true).order('name');
-                const { data: insts } = await supabase.from('institutions').select('*').order('name');
-                setUniversities(unis || []);
-                setInstitutions(insts || []);
+                let unis: any[] = [];
+                let insts: any[] = [];
+                let subjects: any[] = [];
+                let topics: any[] = [];
+                let subtopics: any[] = [];
 
-                const { data: subjects } = await supabase.from('subjects').select('*').eq('is_active', true).order('name');
-                const { data: topics } = await supabase.from('topics').select('*').eq('is_active', true).order('name');
-                const { data: subtopics } = await supabase.from('subtopics').select('*').eq('is_active', true).order('name');
+                // Fetch from MongoDB APIs
+                const [uniRes, instRes, contentRes] = await Promise.all([
+                    fetch('/api/mongo/universities?active=true'),
+                    fetch('/api/mongo/admin/institutions?active=true'),
+                    fetch('/api/mongo/content')
+                ]);
+
+                const uniData = await uniRes.json();
+                const instData = await instRes.json();
+                const contentData = await contentRes.json();
+
+                unis = uniData.universities || [];
+                insts = instData.institutions || [];
+                subjects = contentData.subjects || [];
+                topics = contentData.topics || [];
+                subtopics = contentData.subtopics || [];
+
+                setUniversities(unis);
+                setInstitutions(insts);
 
                 if (subjects && topics && subtopics) {
                     const tree: BaseTree[] = subjects.map((sub: any) => ({
@@ -571,6 +590,7 @@ export default function UniversityContentMapperPage() {
                         )}
                     </div>
                 </main>
+                <Footer />
             </div>
         </div>
     );

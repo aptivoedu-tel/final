@@ -7,7 +7,8 @@ import {
 } from 'lucide-react';
 import { useLoading } from '@/lib/context/LoadingContext';
 
-import { supabase } from '@/lib/supabase/client';
+// Supabase removed — using MongoDB Service via API
+// import { supabase } from '@/lib/supabase/client';
 import Sidebar from '@/components/layout/Sidebar';
 import Header from '@/components/layout/Header';
 import { AuthService } from '@/lib/services/authService';
@@ -59,8 +60,11 @@ export default function AdminNotificationsPage() {
         try {
             // 1. Get Institutions (Role-based)
             if (activeUser.role === 'super_admin') {
-                const { data: insts } = await supabase.from('institutions').select('id, name').order('name');
-                if (insts) setInstitutions(insts);
+                const res = await fetch('/api/mongo/profile/institutions');
+                if (res.ok) {
+                    const data = await res.json();
+                    setInstitutions(data.institutions?.map((i: any) => i.institutions) || []);
+                }
             } else if (activeUser.role === 'institution_admin') {
                 const { institution } = await AdminDashboardService.getInstitutionDetails(activeUser.id);
                 if (institution) {

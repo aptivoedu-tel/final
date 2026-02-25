@@ -1,0 +1,135 @@
+import { NextRequest, NextResponse } from 'next/server';
+import { getServerSession } from 'next-auth';
+import { authOptions } from '@/app/api/auth/[...nextauth]/route';
+import connectToDatabase from '@/lib/mongodb/connection';
+import { MCQ, Subject, Topic, Subtopic, Upload, University } from '@/lib/mongodb/models';
+import UniversityContentAccess from '@/lib/mongodb/models/UniversityContentAccess';
+import crypto from 'crypto';
+
+export async function POST(req: NextRequest) {
+    try {
+        const session = await getServerSession(authOptions);
+        if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+
+        const body = await req.json();
+        const { mcqs, subtopicId, fileName, uploadType } = body; // uploadType: 'mcq_excel' or 'mcq_excel_auto'
+
+        await connectToDatabase();
+
+        // 1. Create Upload record
+        const uploadId = Math.floor(Date.now() / 1000);
+        const uploadRecord = await Upload.create({
+            id: uploadId,
+            upload_type: uploadType || 'mcq_excel',
+            file_name: fileName,
+            status: 'processing',
+            total_rows: mcqs.length,
+            processed_rows: 0,
+            failed_rows: 0,
+            created_by: session.user.id,
+            created_at: new Date()
+        });
+
+        let insertedCount = 0;
+        let skippedInFile = 0;
+        let skippedExact = 0;
+        const errors: any[] = [];
+
+        // 2. Process MCQs
+        const seenNormalized = new Set<string>();
+        const toInsert: any[] = [];
+
+        for (const mcq of mcqs) {
+            const normalized = mcq.question.toLowerCase().replace(/[^\w\s]|_/g, "").replace(/\s+/g, " ").trim();
+
+            if (seenNormalized.has(normalized)) {
+                skippedInFile++;
+                continue;
+            }
+            seenNormalized.add(normalized);
+
+            const hash = crypto.createHash('sha256').update(normalized).digest('hex');
+
+            // Check if exists in DB
+            const existing = await MCQ.findOne({ question_hash: hash });
+            if (existing) {
+                skippedExact++;
+                continue;
+            }
+
+            toInsert.push({
+                subtopic_id: subtopicId || mcq.subtopicId,
+                question: mcq.question,
+                question_hash: hash,
+                question_image_url: mcq.image_url,
+                option_a: mcq.option_a,
+                option_b: mcq.option_b,
+                option_c: mcq.option_c,
+                option_d: mcq.option_d,
+                correct_option: mcq.correct_option,
+                explanation: mcq.explanation,
+                explanation_url: mcq.explanation_url,
+                difficulty: mcq.difficulty || 'medium',
+                upload_id: uploadId,
+                is_active: true,
+                created_at: new Date()
+            });
+        }
+
+        if (toInsert.length > 0) {
+            await MCQ.insertMany(toInsert);
+            insertedCount = toInsert.length;
+        }
+
+        // 3. Update Upload record
+        uploadRecord.status = 'completed';
+        uploadRecord.processed_rows = insertedCount;
+        uploadRecord.completed_at = new Date();
+        await uploadRecord.save();
+
+        // 4. Auto-linking logic (if subtopicId provided)
+        if (subtopicId) {
+            const subtopic = await Subtopic.findOne({ id: subtopicId });
+            if (subtopic) {
+                const topic = await Topic.findOne({ id: subtopic.topic_id });
+                if (topic) {
+                    const universities = await University.find({ is_active: true });
+                    const mappings = universities.map(uni => ({
+                        university_id: uni.id,
+                        subject_id: topic.subject_id,
+                        topic_id: topic.id,
+                        subtopic_id: subtopicId,
+                        is_active: true
+                    }));
+
+                    // Bulk upsert mappings using UniversityContentAccess model
+                    for (const mapping of mappings) {
+                        await UniversityContentAccess.findOneAndUpdate(
+                            {
+                                university_id: mapping.university_id,
+                                subject_id: mapping.subject_id,
+                                topic_id: mapping.topic_id,
+                                subtopic_id: mapping.subtopic_id
+                            },
+                            mapping,
+                            { upsert: true, new: true }
+                        );
+                    }
+                }
+            }
+        }
+
+        return NextResponse.json({
+            success: true,
+            totalRows: mcqs.length,
+            inserted: insertedCount,
+            skipped_in_file: skippedInFile,
+            skipped_exact: skippedExact,
+            uploadId
+        });
+
+    } catch (error: any) {
+        console.error('MCQ Bulk Upload Error:', error);
+        return NextResponse.json({ error: error.message }, { status: 500 });
+    }
+}

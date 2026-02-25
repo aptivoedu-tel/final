@@ -14,7 +14,6 @@ import Link from 'next/link';
 import Sidebar from '@/components/layout/Sidebar';
 import Header from '@/components/layout/Header';
 import Footer from '@/components/shared/Footer';
-import { supabase } from '@/lib/supabase/client';
 import { AuthService } from '@/lib/services/authService';
 import {
     DashboardService,
@@ -24,6 +23,7 @@ import {
     ContinueLearningItem
 } from '@/lib/services/dashboardService';
 import { useUI } from '@/lib/context/UIContext';
+import { getTimeGreeting } from '@/lib/utils';
 
 export default function StudentDashboard() {
     const { isSidebarCollapsed } = useUI();
@@ -108,11 +108,13 @@ export default function StudentDashboard() {
                         <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
                             <div className="flex items-center gap-4">
                                 <div className="w-16 h-16 bg-white rounded-3xl shadow-sm border border-slate-100 flex items-center justify-center text-3xl transform rotate-3">
-                                    🚀
+                                    {getTimeGreeting() === 'Good Morning' ? '🌅' :
+                                        getTimeGreeting() === 'Good Afternoon' ? '☀️' :
+                                            getTimeGreeting() === 'Good Evening' ? '🌆' : '🌙'}
                                 </div>
                                 <div>
                                     <h1 className="text-xl lg:text-4xl font-black text-slate-900 mb-1 lg:mb-2 tracking-tight">
-                                        Good Morning, {user?.full_name?.split(' ')[0] || 'Student'}! 👋
+                                        {getTimeGreeting()}, {user?.full_name?.split(' ')[0] || 'Student'}! 👋
                                     </h1>
                                     <p className="text-slate-600 font-bold text-sm lg:text-lg">
                                         You're on a <span className="text-teal-600 font-extrabold underline decoration-indigo-100 underline-offset-4 tracking-tight">{stats.currentStreak}-day streak!</span> Keep it up.

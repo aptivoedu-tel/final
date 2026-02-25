@@ -1,4 +1,7 @@
 import { supabase } from '../supabase/client';
+import { MongoContentService } from './mongoContentService';
+
+const IS_MONGO = process.env.NEXT_PUBLIC_DATABASE_TYPE === 'MONGODB';
 
 export interface Subject {
     id: number;
@@ -37,6 +40,7 @@ export class ContentService {
     // ==================== SUBJECTS ====================
 
     static async getAllSubjects(): Promise<Subject[]> {
+        if (IS_MONGO) return MongoContentService.getAllSubjects();
         const { data, error } = await supabase
             .from('subjects')
             .select('*')
@@ -52,6 +56,7 @@ export class ContentService {
     }
 
     static async getSubjectById(id: number): Promise<Subject | null> {
+        if (IS_MONGO) return MongoContentService.getSubjectById(id);
         const { data, error } = await supabase
             .from('subjects')
             .select('*')
@@ -67,6 +72,7 @@ export class ContentService {
     }
 
     static async createSubject(subject: Omit<Subject, 'id'>): Promise<{ success: boolean; data?: Subject; error?: string }> {
+        if (IS_MONGO) return MongoContentService.createSubject(subject);
         const { data, error } = await supabase
             .from('subjects')
             .insert([subject])
@@ -81,6 +87,7 @@ export class ContentService {
     }
 
     static async updateSubject(id: number, updates: Partial<Subject>): Promise<{ success: boolean; error?: string }> {
+        if (IS_MONGO) return MongoContentService.updateSubject(id, updates);
         const { error } = await supabase
             .from('subjects')
             .update(updates)
@@ -94,6 +101,7 @@ export class ContentService {
     }
 
     static async deleteSubject(id: number): Promise<{ success: boolean; error?: string }> {
+        if (IS_MONGO) return MongoContentService.deleteSubject(id);
         const { error } = await supabase
             .from('subjects')
             .update({ is_active: false })
@@ -109,6 +117,7 @@ export class ContentService {
     // ==================== TOPICS ====================
 
     static async getTopicsBySubject(subjectId: number): Promise<Topic[]> {
+        if (IS_MONGO) return MongoContentService.getTopicsBySubject(subjectId);
         const { data, error } = await supabase
             .from('topics')
             .select('*')
@@ -125,6 +134,7 @@ export class ContentService {
     }
 
     static async getTopicById(id: number): Promise<Topic | null> {
+        if (IS_MONGO) return MongoContentService.getTopicById(id);
         const { data, error } = await supabase
             .from('topics')
             .select('*')
@@ -140,6 +150,7 @@ export class ContentService {
     }
 
     static async createTopic(topic: Omit<Topic, 'id'>): Promise<{ success: boolean; data?: Topic; error?: string }> {
+        if (IS_MONGO) return MongoContentService.createTopic(topic);
         const { data, error } = await supabase
             .from('topics')
             .insert([topic])
@@ -154,6 +165,7 @@ export class ContentService {
     }
 
     static async updateTopic(id: number, updates: Partial<Topic>): Promise<{ success: boolean; error?: string }> {
+        if (IS_MONGO) return MongoContentService.updateTopic(id, updates);
         const { error } = await supabase
             .from('topics')
             .update(updates)
@@ -167,6 +179,7 @@ export class ContentService {
     }
 
     static async deleteTopic(id: number): Promise<{ success: boolean; error?: string }> {
+        if (IS_MONGO) return MongoContentService.deleteTopic(id);
         const { error } = await supabase
             .from('topics')
             .update({ is_active: false })
@@ -182,6 +195,7 @@ export class ContentService {
     // ==================== SUBTOPICS ====================
 
     static async getSubtopicsByTopic(topicId: number): Promise<Subtopic[]> {
+        if (IS_MONGO) return MongoContentService.getSubtopicsByTopic(topicId);
         const { data, error } = await supabase
             .from('subtopics')
             .select('*')
@@ -198,6 +212,7 @@ export class ContentService {
     }
 
     static async getSubtopicById(id: number): Promise<Subtopic | null> {
+        if (IS_MONGO) return MongoContentService.getSubtopicById(id);
         const { data, error } = await supabase
             .from('subtopics')
             .select('*')
@@ -213,6 +228,7 @@ export class ContentService {
     }
 
     static async createSubtopic(subtopic: Omit<Subtopic, 'id'>): Promise<{ success: boolean; data?: Subtopic; error?: string }> {
+        if (IS_MONGO) return MongoContentService.createSubtopic(subtopic);
         const { data, error } = await supabase
             .from('subtopics')
             .insert([subtopic])
@@ -227,6 +243,7 @@ export class ContentService {
     }
 
     static async updateSubtopic(id: number, updates: Partial<Subtopic>): Promise<{ success: boolean; error?: string }> {
+        if (IS_MONGO) return MongoContentService.updateSubtopic(id, updates);
         const { error } = await supabase
             .from('subtopics')
             .update(updates)
@@ -240,6 +257,7 @@ export class ContentService {
     }
 
     static async deleteSubtopic(id: number): Promise<{ success: boolean; error?: string }> {
+        if (IS_MONGO) return MongoContentService.deleteSubtopic(id);
         const { error } = await supabase
             .from('subtopics')
             .update({ is_active: false })
@@ -255,6 +273,7 @@ export class ContentService {
     // ==================== CONTENT WITH HIERARCHY ====================
 
     static async getCompleteHierarchy(): Promise<any[]> {
+        if (IS_MONGO) return MongoContentService.getCompleteHierarchy();
         const subjects = await this.getAllSubjects();
 
         const hierarchy = await Promise.all(
@@ -276,6 +295,7 @@ export class ContentService {
     }
 
     static async searchContent(query: string): Promise<any[]> {
+        if (IS_MONGO) return MongoContentService.searchContent(query);
         const { data, error } = await supabase
             .from('subtopics')
             .select(`

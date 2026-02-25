@@ -17,7 +17,7 @@ import {
     RotateCcw,
     Layout
 } from 'lucide-react';
-import { supabase } from '@/lib/supabase/client';
+import { AuthService } from '@/lib/services/authService';
 import { PracticeService, MCQ } from '@/lib/services/practiceService';
 import { toast } from 'sonner';
 import { useLoading } from '@/lib/context/LoadingContext';
@@ -48,19 +48,17 @@ export default function TopicPracticeSessionPage() {
         const initSession = async () => {
             setGlobalLoading(true, 'Initialising Topic Practice...');
             try {
-                const { data: { user } } = await supabase.auth.getUser();
-                if (!user) {
+                const currentUser = AuthService.getCurrentUser() || await AuthService.syncSession();
+                if (!currentUser) {
                     router.push('/login');
                     return;
                 }
-                setUser(user);
+                setUser(currentUser);
 
-                // Fetch topic info
-                const { data: topic } = await supabase
-                    .from('topics')
-                    .select('name')
-                    .eq('id', topicId)
-                    .single();
+                // Fetch topic info via MongoDB API
+                const res = await fetch(`/api/mongo/content?type=topics&id=${topicId}`);
+                const data = await res.json();
+                const topic = data.topics?.[0];
                 setTopicName(topic?.name || 'Topic');
 
                 // 1. Generate Questions (Topic Mode)
@@ -68,7 +66,7 @@ export default function TopicPracticeSessionPage() {
                     null, // No subtopicId
                     uniId,
                     0, // subjectId derived in service
-                    user.id,
+                    currentUser.id,
                     topicId // Pass topicId
                 );
 
@@ -81,8 +79,8 @@ export default function TopicPracticeSessionPage() {
                 setQuestions(mcqs);
 
                 // 2. Create Session in DB
-                const { session, error } = await PracticeService.createSession(
-                    user.id,
+                const { session: sess, error } = await PracticeService.createSession(
+                    currentUser.id,
                     null, // No subtopicId
                     uniId,
                     'practice',
@@ -90,7 +88,7 @@ export default function TopicPracticeSessionPage() {
                 );
 
                 if (error) throw new Error(error);
-                setSession(session);
+                setSession(sess);
 
                 setLastInteractionTime(Date.now());
                 setGlobalLoading(false);
@@ -101,6 +99,7 @@ export default function TopicPracticeSessionPage() {
                 }, 1000);
 
             } catch (error: any) {
+                console.error('Practice Init Error:', error);
                 toast.error(error.message);
                 router.back();
             }
@@ -113,7 +112,7 @@ export default function TopicPracticeSessionPage() {
         return () => {
             if (timerRef.current) clearInterval(timerRef.current);
         };
-    }, [topicId, uniId, router]);
+    }, [topicId, uniId, router, setGlobalLoading]);
 
     const handleSelectOption = (option: string) => {
         if (isCompleted || submittedAnswers[currentIndex]) return;

@@ -6,7 +6,6 @@ import { useUI } from '@/lib/context/UIContext';
 import { AuthService } from '@/lib/services/authService';
 import { getInitials, getAvatarColor } from '@/lib/utils';
 import { NotificationService } from '@/lib/services/notificationService';
-import { supabase } from '@/lib/supabase/client';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 
@@ -107,25 +106,13 @@ const Header: React.FC<HeaderProps> = ({ userName, userEmail, userAvatar, avatar
 
         fetchNotifications();
 
-        // 1. Setup Real-time subscription
-        const user = AuthService.getCurrentUser();
-        if (!user) return;
-
-        const channel = supabase
-            .channel(`notifs-${user.id}`)
-            .on('postgres_changes', {
-                event: '*',
-                schema: 'public',
-                table: 'notification_recipients',
-                filter: `user_id=eq.${user.id}`
-                // Correct syntax for filter: it needs to be a string that matches the format expected by Supabase
-            }, () => {
-                fetchNotifications();
-            })
-            .subscribe();
+        // Polling for real-time notification updates (replaces Supabase real-time)
+        const notifInterval = setInterval(() => {
+            fetchNotifications();
+        }, 30000); // Poll every 30 seconds
 
         return () => {
-            supabase.removeChannel(channel);
+            clearInterval(notifInterval);
         };
     }, []);
 
@@ -146,9 +133,12 @@ const Header: React.FC<HeaderProps> = ({ userName, userEmail, userAvatar, avatar
                 const isSuperAdmin = userRole === 'super_admin';
                 const isInstitutionAdmin = userRole === 'institution_admin';
 
-                // Search Unis
-                const { data: unis } = await supabase.from('universities').select('id, name').ilike('name', `%${q}%`).limit(3);
-                unis?.forEach(u => {
+                // Search via MongoDB content API
+                const response = await fetch(`/api/mongo/content?q=${encodeURIComponent(q)}`);
+                const data = await response.json();
+
+                // Map Universities
+                (data.universities || []).forEach((u: any) => {
                     let link = `/university?id=${u.id}`;
                     if (isSuperAdmin) link = `/admin/universities?id=${u.id}`;
                     else if (isInstitutionAdmin) link = `/institution-admin/universities?id=${u.id}`;
@@ -161,9 +151,8 @@ const Header: React.FC<HeaderProps> = ({ userName, userEmail, userAvatar, avatar
                     });
                 });
 
-                // Search Subjects
-                const { data: subs } = await supabase.from('subjects').select('id, name').ilike('name', `%${q}%`).limit(3);
-                subs?.forEach(s => {
+                // Map Subjects
+                (data.subjects || []).forEach((s: any) => {
                     let link = `/university?search=${encodeURIComponent(s.name)}`;
                     if (isSuperAdmin) link = `/admin/content-editor?subject=${s.id}`;
                     else if (isInstitutionAdmin) link = `/institution-admin/content-editor?subject=${s.id}`;
@@ -176,9 +165,8 @@ const Header: React.FC<HeaderProps> = ({ userName, userEmail, userAvatar, avatar
                     });
                 });
 
-                // Search Topics
-                const { data: topics } = await supabase.from('topics').select('id, name').ilike('name', `%${q}%`).limit(3);
-                topics?.forEach(t => {
+                // Map Topics
+                (data.topics || []).forEach((t: any) => {
                     let link = `/university?search=${encodeURIComponent(t.name)}`;
                     if (isSuperAdmin) link = `/admin/content-editor?topic=${t.id}`;
                     else if (isInstitutionAdmin) link = `/institution-admin/content-editor?topic=${t.id}`;
@@ -191,9 +179,8 @@ const Header: React.FC<HeaderProps> = ({ userName, userEmail, userAvatar, avatar
                     });
                 });
 
-                // Search Subtopics
-                const { data: subtopics } = await supabase.from('subtopics').select('id, name').ilike('name', `%${q}%`).limit(3);
-                subtopics?.forEach(st => {
+                // Map Subtopics
+                (data.subtopics || []).forEach((st: any) => {
                     let link = `/university?search=${encodeURIComponent(st.name)}`;
                     if (isSuperAdmin) link = `/admin/content-editor?subtopic=${st.id}`;
                     else if (isInstitutionAdmin) link = `/institution-admin/content-editor?subtopic=${st.id}`;

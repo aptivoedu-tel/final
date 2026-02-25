@@ -3,7 +3,6 @@
 import React, { useState, useEffect } from 'react';
 import { Mail, Lock, User, GraduationCap, Building2, Eye, EyeOff, AlertCircle, CheckCircle, Globe, ArrowLeft, Shield, Check, Info } from 'lucide-react';
 import { AuthService } from '@/lib/services/authService';
-import { supabase } from '@/lib/supabase/client';
 import Link from 'next/link';
 import { useLoading } from '@/lib/context/LoadingContext';
 
@@ -51,8 +50,13 @@ export default function RegisterPage() {
         }
 
         const fetchInstitutions = async () => {
-            const { data } = await supabase.from('institutions').select('id, name').eq('status', 'approved').eq('is_active', true);
-            if (data) setInstitutions(data);
+            try {
+                const res = await fetch('/api/mongo/institutions?status=approved&is_active=true');
+                const data = await res.json();
+                if (data.institutions) setInstitutions(data.institutions);
+            } catch (err) {
+                console.error('Failed to fetch institutions:', err);
+            }
         };
         fetchInstitutions();
 

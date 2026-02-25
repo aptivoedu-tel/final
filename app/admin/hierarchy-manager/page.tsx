@@ -7,7 +7,8 @@ import Header from '@/components/layout/Header';
 import { useUI } from '@/lib/context/UIContext';
 import { useLoading } from '@/lib/context/LoadingContext';
 import { AuthService } from '@/lib/services/authService';
-import { supabase } from '@/lib/supabase/client';
+// Supabase removed — using MongoDB API via fetch
+// import { supabase } from '@/lib/supabase/client';
 import {
     DndContext,
     DragOverlay,
@@ -160,24 +161,30 @@ export default function HierarchyManagerPage() {
 
     const loadHierarchy = async () => {
         setGlobalLoading(true, 'Architecting Content Hierarchy...');
-        const { data: subjects } = await supabase.from('subjects').select('*').order('id');
-        const { data: topics } = await supabase.from('topics').select('*').order('id');
-        const { data: subtopics } = await supabase.from('subtopics').select('*').order('id');
+        try {
+            const [subRes, topRes, stRes] = await Promise.all([
+                fetch('/api/mongo/content?type=subjects').then(r => r.json()),
+                fetch('/api/mongo/content?type=topics').then(r => r.json()),
+                fetch('/api/mongo/content?type=subtopics').then(r => r.json()),
+            ]);
 
-        if (subjects) {
+            const subjects = subRes.subjects || [];
+            const topics = topRes.topics || [];
+            const subtopics = stRes.subtopics || [];
+
             const tree: HierarchyItem[] = subjects.map((s: any) => ({
                 id: `s-${s.id}`,
                 dbId: s.id,
                 type: 'subject',
                 title: s.name,
                 expanded: false,
-                children: topics?.filter((t: any) => t.subject_id === s.id).map((t: any) => ({
+                children: topics.filter((t: any) => t.subject_id === s.id).map((t: any) => ({
                     id: `t-${t.id}`,
                     dbId: t.id,
                     type: 'topic',
                     title: t.name,
                     expanded: false,
-                    children: subtopics?.filter((st: any) => st.topic_id === t.id).map((st: any) => ({
+                    children: subtopics.filter((st: any) => st.topic_id === t.id).map((st: any) => ({
                         id: `st-${st.id}`,
                         dbId: st.id,
                         type: 'subtopic',
@@ -186,9 +193,13 @@ export default function HierarchyManagerPage() {
                 })) || []
             }));
             setData(tree);
+        } catch (err) {
+            console.error('Error loading hierarchy:', err);
+        } finally {
+            setGlobalLoading(false);
         }
-        setGlobalLoading(false);
     };
+
 
     useEffect(() => {
         setMounted(true);
@@ -238,17 +249,19 @@ export default function HierarchyManagerPage() {
         try {
             setGlobalLoading(true, 'Committing structural changes...');
             for (const item of validItems) {
-                if (addType === 'subject') {
-                    const { error } = await supabase.from('subjects').insert({ name: item });
-                    if (error) throw error;
-                } else if (addType === 'topic') {
-                    if (!parentId) return;
-                    const { error } = await supabase.from('topics').insert({ name: item, subject_id: parentId });
-                    if (error) throw error;
-                } else if (addType === 'subtopic') {
-                    if (!parentId) return;
-                    const { error } = await supabase.from('subtopics').insert({ name: item, topic_id: parentId });
-                    if (error) throw error;
+                const res = await fetch('/api/mongo/content', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        type: addType,
+                        name: item,
+                        subject_id: addType === 'topic' ? parentId : undefined,
+                        topic_id: addType === 'subtopic' ? parentId : undefined
+                    })
+                });
+                if (!res.ok) {
+                    const err = await res.json();
+                    throw new Error(err.error || `Failed to add ${addType}`);
                 }
             }
             setIsAddModalOpen(false);
@@ -263,17 +276,19 @@ export default function HierarchyManagerPage() {
     const handleDelete = async (item: HierarchyItem) => {
         if (!confirm(`Are you sure you want to delete ${item.title}? This will delete all children as well.`)) return;
 
-        let table = '';
-        if (item.type === 'subject') table = 'subjects';
-        if (item.type === 'topic') table = 'topics';
-        if (item.type === 'subtopic') table = 'subtopics';
+        try {
+            const res = await fetch(`/api/mongo/content?id=${item.dbId}&type=${item.type}`, {
+                method: 'DELETE'
+            });
+            if (!res.ok) {
+                const err = await res.json();
+                throw new Error(err.error || 'Delete failed');
+            }
 
-        const { error } = await supabase.from(table).delete().eq('id', item.dbId);
-
-        if (error) {
-            alert(`Failed to delete: ${error.message}`);
-        } else {
             loadHierarchy();
+        } catch (e: any) {
+            console.error(e);
+            alert(`Failed to delete: ${e.message}`);
         }
     };
 
@@ -310,14 +325,22 @@ export default function HierarchyManagerPage() {
         // Logic for Handling Drops
         try {
             let success = false;
+            // Helper for updates
+            const updateItem = async (id: number, type: string, updates: any) => {
+                const res = await fetch('/api/mongo/content', {
+                    method: 'PATCH',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ id, type, ...updates })
+                });
+                if (!res.ok) throw new Error('Update failed');
+            };
 
             // Case 1: Topic -> Subject (Reparent Topic to new Subject)
             if (activeItem.type === 'topic' && overItem.type === 'subject') {
                 const confirmMove = confirm(`Move topic "${activeItem.title}" to subject "${overItem.title}"?`);
                 if (!confirmMove) return;
 
-                const { error } = await supabase.from('topics').update({ subject_id: overItem.dbId }).eq('id', activeItem.dbId);
-                if (error) throw error;
+                await updateItem(activeItem.dbId, 'topic', { subject_id: overItem.dbId });
                 success = true;
             }
 
@@ -326,14 +349,12 @@ export default function HierarchyManagerPage() {
                 const confirmMove = confirm(`Move subtopic "${activeItem.title}" to topic "${overItem.title}"?`);
                 if (!confirmMove) return;
 
-                const { error } = await supabase.from('subtopics').update({ topic_id: overItem.dbId }).eq('id', activeItem.dbId);
-                if (error) throw error;
+                await updateItem(activeItem.dbId, 'subtopic', { topic_id: overItem.dbId });
                 success = true;
             }
 
             // Case 3: Topic -> Topic (Convert Topic to Subtopic)
             if (activeItem.type === 'topic' && overItem.type === 'topic') {
-                // Check if topic has children - if so, warn or prevent
                 if (activeItem.children && activeItem.children.length > 0) {
                     alert(`Cannot convert topic "${activeItem.title}" to subtopic because it has its own subtopics. Please delete or move them first.`);
                     return;
@@ -342,14 +363,14 @@ export default function HierarchyManagerPage() {
                 const confirmConvert = confirm(`Convert topic "${activeItem.title}" to a Subtopic of "${overItem.title}"? \n\nThis will change its type (Topic -> Subtopic).`);
                 if (!confirmConvert) return;
 
-                // 1. Delete from topics
-                await supabase.from('topics').delete().eq('id', activeItem.dbId);
-                // 2. Insert into subtopics
-                const { error } = await supabase.from('subtopics').insert({
-                    name: activeItem.title,
-                    topic_id: overItem.dbId
+                // 1. Delete
+                await fetch(`/api/mongo/content?id=${activeItem.dbId}&type=topic`, { method: 'DELETE' });
+                // 2. Insert
+                await fetch('/api/mongo/content', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ type: 'subtopic', name: activeItem.title, topic_id: overItem.dbId })
                 });
-                if (error) throw error;
                 success = true;
             }
 
@@ -358,14 +379,14 @@ export default function HierarchyManagerPage() {
                 const confirmConvert = confirm(`Convert subtopic "${activeItem.title}" to a Topic under "${overItem.title}"? \n\nThis will change its type (Subtopic -> Topic).`);
                 if (!confirmConvert) return;
 
-                // 1. Delete from subtopics
-                await supabase.from('subtopics').delete().eq('id', activeItem.dbId);
-                // 2. Insert into topics
-                const { error } = await supabase.from('topics').insert({
-                    name: activeItem.title,
-                    subject_id: overItem.dbId
+                // 1. Delete
+                await fetch(`/api/mongo/content?id=${activeItem.dbId}&type=subtopic`, { method: 'DELETE' });
+                // 2. Insert
+                await fetch('/api/mongo/content', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ type: 'topic', name: activeItem.title, subject_id: overItem.dbId })
                 });
-                if (error) throw error;
                 success = true;
             }
 

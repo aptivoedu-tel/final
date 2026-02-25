@@ -1,4 +1,7 @@
-import { supabase } from '../supabase/client';
+// MongoDB-only implementation of NotificationService
+// Removes all Supabase dependencies. All logic routed via MongoNotificationService/API.
+
+import { MongoNotificationService } from './mongoNotificationService';
 
 export interface Notification {
     id: number;
@@ -12,6 +15,7 @@ export interface Notification {
     is_read?: boolean;
     read_at?: string;
     image_url?: string;
+    target?: string;
 }
 
 export interface CreateNotificationData {
@@ -23,41 +27,34 @@ export interface CreateNotificationData {
     imageUrl?: string;
 }
 
+export interface HistoryFilter {
+    senderRole?: string;
+    institutionId?: number;
+}
+
 export class NotificationService {
     /**
      * Send notification to all users (Super Admin only)
      */
     static async sendToAllUsers(data: CreateNotificationData): Promise<{ success: boolean; error?: string; notificationId?: number }> {
         try {
-            const { data: users, error: usersError } = await supabase
-                .from('users')
-                .select('id')
-                .in('status', ['active', 'pending']);
-
-            if (usersError) throw usersError;
-            if (!users || users.length === 0) {
-                return { success: false, error: 'No recipients found' };
-            }
-
-            const userIds = users.map(u => u.id);
-
-            let dbCategory = data.category;
-            if (dbCategory === 'info' || dbCategory === 'success') dbCategory = 'normal';
-            if (dbCategory !== 'important' && dbCategory !== 'alert' && dbCategory !== 'normal') dbCategory = 'normal';
-
-            const { data: result, error } = await supabase.rpc('send_bulk_notification', {
-                p_title: data.title,
-                p_message: data.message,
-                p_category: dbCategory,
-                p_sender_role: data.senderRole,
-                p_institution_id: data.institutionId || null,
-                p_user_ids: userIds as any,
-                p_image_url: data.imageUrl || null
+            // In MongoDB, we can fetch all users via an internal API or just pass a flag to the notification API
+            const response = await fetch('/api/mongo/admin/notifications/send-bulk', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    ...data,
+                    recipientType: 'all'
+                })
             });
 
-            if (error) throw error;
+            if (!response.ok) {
+                const res = await response.json();
+                return { success: false, error: res.error };
+            }
 
-            return { success: true, notificationId: result as number };
+            const result = await response.json();
+            return { success: true, notificationId: result.notificationId };
         } catch (error: any) {
             console.error('Error sending notification to all users:', error);
             return { success: false, error: error.message };
@@ -69,19 +66,22 @@ export class NotificationService {
      */
     static async sendToAllAdmins(data: CreateNotificationData): Promise<{ success: boolean; error?: string; notificationId?: number }> {
         try {
-            const { data: admins, error: adminsError } = await supabase
-                .from('users')
-                .select('id')
-                .in('role', ['super_admin', 'institution_admin'])
-                .in('status', ['active', 'pending']);
+            const response = await fetch('/api/mongo/admin/notifications/send-bulk', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    ...data,
+                    recipientType: 'admins'
+                })
+            });
 
-            if (adminsError) throw adminsError;
-            if (!admins || admins.length === 0) {
-                return { success: false, error: 'No admin recipients found' };
+            if (!response.ok) {
+                const res = await response.json();
+                return { success: false, error: res.error };
             }
 
-            const userIds = admins.map(u => u.id);
-            return this.sendToSpecificUsers(userIds, data);
+            const result = await response.json();
+            return { success: true, notificationId: result.notificationId };
         } catch (error: any) {
             console.error('Error sending notification to all admins:', error);
             return { success: false, error: error.message };
@@ -93,332 +93,124 @@ export class NotificationService {
      */
     static async sendToAllStudents(data: CreateNotificationData): Promise<{ success: boolean; error?: string; notificationId?: number }> {
         try {
-            const { data: students, error: studentsError } = await supabase
-                .from('users')
-                .select('id')
-                .eq('role', 'student')
-                .in('status', ['active', 'pending']);
-
-            if (studentsError) throw studentsError;
-            if (!students || students.length === 0) {
-                return { success: false, error: 'No student recipients found' };
-            }
-
-            const userIds = students.map(u => u.id);
-            return this.sendToSpecificUsers(userIds, data);
-        } catch (error: any) {
-            console.error('Error sending notification to all students:', error);
-            return { success: false, error: error.message };
-        }
-    }
-
-    /**
-     * Send notification to all users in a specific institution
-     */
-    static async sendToInstitution(
-        institutionId: number,
-        data: CreateNotificationData
-    ): Promise<{ success: boolean; error?: string; notificationId?: number }> {
-        try {
-            // Get all users associated with this institution
-            const { data: users, error: usersError } = await supabase
-                .from('users')
-                .select('id')
-                .eq('institution_id', institutionId)
-                .in('status', ['active', 'pending']);
-
-            if (usersError) throw usersError;
-            if (!users || users.length === 0) {
-                return { success: false, error: 'No users found for this institution' };
-            }
-
-            const userIds = users.map(u => u.id);
-            return this.sendToSpecificUsers(userIds, data);
-        } catch (error: any) {
-            console.error('Error sending notification to institution:', error);
-            return { success: false, error: error.message };
-        }
-    }
-
-    /**
-     * Send notification to specific institution's students (Institution Admin)
-     */
-    static async sendToInstitutionStudents(
-        institutionId: number,
-        data: CreateNotificationData
-    ): Promise<{ success: boolean; error?: string; notificationId?: number }> {
-        try {
-            // Get all students enrolled in this institution
-            // Note: student_university_enrollments table column might be active/status
-            const { data: enrollments, error: enrollError } = await supabase
-                .from('student_university_enrollments' as any)
-                .select('student_id')
-                .eq('institution_id', institutionId);
-
-            if (enrollError) throw enrollError;
-            if (!enrollments || enrollments.length === 0) {
-                return { success: false, error: 'No students found for this institution' };
-            }
-
-            const userIds = [...new Set(enrollments.map((e: any) => e.student_id))];
-
-            let dbCategory = data.category;
-            if (dbCategory === 'info' || dbCategory === 'success') dbCategory = 'normal';
-            if (dbCategory !== 'important' && dbCategory !== 'alert' && dbCategory !== 'normal') dbCategory = 'normal';
-
-            const { data: result, error } = await supabase.rpc('send_bulk_notification', {
-                p_title: data.title,
-                p_message: data.message,
-                p_category: dbCategory,
-                p_sender_role: data.senderRole,
-                p_institution_id: institutionId,
-                p_user_ids: userIds as any,
-                p_image_url: data.imageUrl || null
+            const response = await fetch('/api/mongo/admin/notifications/send-bulk', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    ...data,
+                    recipientType: 'students'
+                })
             });
 
-            if (error) throw error;
+            if (!response.ok) {
+                const res = await response.json();
+                return { success: false, error: res.error };
+            }
 
-            return { success: true, notificationId: result as number };
+            const result = await response.json();
+            return { success: true, notificationId: result.notificationId };
         } catch (error: any) {
-            console.error('Error sending notification to institution students:', error);
             return { success: false, error: error.message };
-        }
-    }
-
-    static async sendToSpecificUsers(
-        userIds: string[],
-        data: CreateNotificationData
-    ): Promise<{ success: boolean; error?: string; notificationId?: number }> {
-        try {
-            let dbCategory = data.category;
-            if (dbCategory === 'info' || dbCategory === 'success') dbCategory = 'normal';
-            if (dbCategory !== 'important' && dbCategory !== 'alert' && dbCategory !== 'normal') dbCategory = 'normal';
-
-            const { data: result, error } = await supabase.rpc('send_bulk_notification', {
-                p_title: data.title,
-                p_message: data.message,
-                p_category: dbCategory,
-                p_sender_role: data.senderRole,
-                p_institution_id: data.institutionId || null,
-                p_user_ids: userIds as any,
-                p_image_url: data.imageUrl || null
-            });
-
-            if (error) throw error;
-
-            return { success: true, notificationId: result as number };
-        } catch (error: any) {
-            console.error('Error sending notification to specific users:', error);
-            return { success: false, error: error.message };
-        }
-    }
-
-    static async sendNotification(
-        data: CreateNotificationData,
-        recipients: string[]
-    ): Promise<{ success: boolean; error?: string; notificationId?: number }> {
-        return this.sendToSpecificUsers(recipients, data);
-    }
-
-    static async getUserNotifications(
-        userId: string,
-        limit: number = 20,
-        offset: number = 0
-    ): Promise<{ notifications: Notification[]; error?: string }> {
-        try {
-            const { data, error } = await supabase
-                .from('notification_recipients')
-                .select(`
-                    id,
-                    is_read,
-                    read_at,
-                    created_at,
-                    notifications:notification_id (
-                        id,
-                        title,
-                        message,
-                        category,
-                        sender_role,
-                        institution_id,
-                        image_url,
-                        created_at,
-                        institution:institutions(name)
-                    )
-                `)
-                .eq('user_id', userId)
-                .order('created_at', { ascending: false })
-                .range(offset, offset + limit - 1);
-
-            if (error) throw error;
-
-            const notifications: Notification[] = (data || []).map((item: any) => ({
-                id: item.notifications.id,
-                title: item.notifications.title,
-                message: item.notifications.message,
-                category: item.notifications.category,
-                sender_role: item.notifications.sender_role,
-                institution_id: item.notifications.institution_id,
-                institution_name: item.notifications.institution?.name,
-                image_url: item.notifications.image_url,
-                created_at: item.notifications.created_at,
-                is_read: item.is_read,
-                read_at: item.read_at
-            }));
-
-            return { notifications };
-        } catch (error: any) {
-            console.error('Error fetching user notifications:', error);
-            return { notifications: [], error: error.message };
-        }
-    }
-
-    static async getUnreadCount(userId: string): Promise<{ count: number; error?: string }> {
-        try {
-            // Use direct query instead of RPC to ensure accuracy
-            // We count rows where read_at is NULL
-            const { count, error } = await supabase
-                .from('notification_recipients')
-                .select('*', { count: 'exact', head: true })
-                .eq('user_id', userId)
-                .is('read_at', null);
-
-            if (error) throw error;
-
-            return { count: count || 0 };
-        } catch (error: any) {
-            console.error('Error fetching unread count:', error);
-            return { count: 0, error: error.message };
-        }
-    }
-
-    static async markAsRead(notificationId: number, userId: string): Promise<{ success: boolean; error?: string }> {
-        try {
-            // Update directly
-            const { error } = await supabase
-                .from('notification_recipients')
-                .update({
-                    is_read: true,
-                    read_at: new Date().toISOString()
-                })
-                .eq('notification_id', notificationId)
-                .eq('user_id', userId);
-
-            if (error) throw error;
-
-            return { success: true };
-        } catch (error: any) {
-            console.error('Error marking notification as read:', error);
-            return { success: false, error: error.message };
-        }
-    }
-
-    static async markAllAsRead(userId: string): Promise<{ success: boolean; count: number; error?: string }> {
-        try {
-            // Direct update for all unread
-            const { error, count } = await supabase
-                .from('notification_recipients')
-                .update({
-                    is_read: true,
-                    read_at: new Date().toISOString()
-                })
-                .eq('user_id', userId)
-                .is('read_at', null)
-                .select();
-
-            if (error) throw error;
-
-            return { success: true, count: 0 };
-        } catch (error: any) {
-            console.error('Error marking all notifications as read:', error);
-            return { success: false, count: 0, error: error.message };
         }
     }
 
     /**
-     * Get history of sent notifications
+     * Send notification to a specific institution
      */
-    static async getSentHistory(options: {
-        senderRole?: string;
-        institutionId?: number;
-        limit?: number;
-    } = {}): Promise<{ history: any[]; error?: string }> {
+    static async sendToInstitution(institutionId: number, data: CreateNotificationData): Promise<{ success: boolean; error?: string; notificationId?: number }> {
         try {
-            let query = supabase
-                .from('notifications')
-                .select(`
-                    *,
-                    recipients:notification_recipients(
-                        user_id,
-                        is_read,
-                        read_at,
-                        user:users(id, full_name, email)
-                    )
-                `)
-                .order('created_at', { ascending: false });
+            const response = await fetch('/api/mongo/admin/notifications/send-bulk', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    ...data,
+                    recipientType: 'institution',
+                    institutionId
+                })
+            });
 
-            if (options.senderRole) {
-                query = query.eq('sender_role', options.senderRole);
+            if (!response.ok) {
+                const res = await response.json();
+                return { success: false, error: res.error };
             }
 
-            if (options.institutionId) {
-                query = query.eq('institution_id', options.institutionId);
-            }
-
-            if (options.limit) {
-                query = query.limit(options.limit);
-            } else {
-                query = query.limit(20);
-            }
-
-            const { data, error } = await query;
-
-            if (error) throw error;
-
-            return {
-                history: (data || []).map((n: any) => ({
-                    ...n,
-                    created_at: n.created_at,
-                    recipientCount: n.recipients?.length || 0,
-                    recipients: n.recipients?.map((r: any) => ({
-                        id: r.user?.id,
-                        name: r.user?.full_name,
-                        email: r.user?.email,
-                        isRead: r.is_read
-                    }))
-                }))
-            };
+            const result = await response.json();
+            return { success: true, notificationId: result.notificationId };
         } catch (error: any) {
-            console.error('Error fetching sent history:', error);
+            return { success: false, error: error.message };
+        }
+    }
+
+    /**
+     * Get sent notification history
+     */
+    static async getSentHistory(filter?: HistoryFilter): Promise<{ history: Notification[]; error?: string }> {
+        try {
+            const params = new URLSearchParams();
+            if (filter?.senderRole) params.append('sender_role', filter.senderRole);
+            if (filter?.institutionId) params.append('institution_id', filter.institutionId.toString());
+
+            const response = await fetch(`/api/mongo/admin/notifications/history?${params.toString()}`);
+            if (!response.ok) throw new Error('Failed to fetch history');
+
+            const data = await response.json();
+            return { history: data.history };
+        } catch (error: any) {
             return { history: [], error: error.message };
         }
     }
 
     /**
-     * Upload notification attachment image
+     * Upload notification image
      */
     static async uploadNotificationImage(file: File): Promise<{ url: string | null; error?: string }> {
         try {
-            const fileExt = file.name.split('.').pop();
-            const fileName = `${Date.now()}-${Math.random().toString(36).substring(2)}.${fileExt}`;
-            const filePath = `announcements/${fileName}`;
+            const formData = new FormData();
+            formData.append('file', file);
+            formData.append('type', 'notification');
 
-            const { data, error: uploadError } = await supabase.storage
-                .from('notifications')
-                .upload(filePath, file, {
-                    cacheControl: '3600',
-                    upsert: true
-                });
+            const response = await fetch('/api/upload', {
+                method: 'POST',
+                body: formData
+            });
 
-            if (uploadError) throw uploadError;
+            if (!response.ok) {
+                const data = await response.json();
+                throw new Error(data.error || 'Upload failed');
+            }
 
-            const { data: { publicUrl } } = supabase.storage
-                .from('notifications')
-                .getPublicUrl(filePath);
-
-            return { url: publicUrl };
+            const data = await response.json();
+            return { url: data.url };
         } catch (error: any) {
-            console.error('Error uploading notification image:', error);
             return { url: null, error: error.message };
         }
+    }
+
+    /**
+     * Get user notifications
+     */
+    static async getUserNotifications(userId: string, limit: number = 20, offset: number = 0) {
+        return MongoNotificationService.getUserNotifications(userId, limit, offset);
+    }
+
+    /**
+     * Get unread count
+     */
+    static async getUnreadCount(userId: string) {
+        return MongoNotificationService.getUnreadCount(userId);
+    }
+
+    /**
+     * Mark as read
+     */
+    static async markAsRead(notificationId: number, userId: string) {
+        return MongoNotificationService.markAsRead(notificationId, userId);
+    }
+
+    /**
+     * Mark all as read
+     */
+    static async markAllAsRead(userId: string) {
+        return MongoNotificationService.markAllAsRead(userId);
     }
 }

@@ -1,7 +1,8 @@
 'use client';
 
 import React, { useEffect, useState } from 'react';
-import { supabase } from '@/lib/supabase/client';
+// Supabase removed — using MongoDB API via fetch
+// import { supabase } from '@/lib/supabase/client';
 import Sidebar from '@/components/layout/Sidebar';
 import Header from '@/components/layout/Header';
 import { AuthService } from '@/lib/services/authService';
@@ -29,16 +30,11 @@ export default function AdminFeedbacksPage() {
     const loadFeedbacks = async () => {
         setGlobalLoading(true, 'Reviewing Academic Testimonials...');
         try {
-            const { data, error } = await supabase
-                .from('feedbacks')
-                .select(`
-                    *,
-                    user:user_id (full_name, email, role)
-                `)
-                .order('created_at', { ascending: false });
-
-            if (error) throw error;
-            setFeedbacks(data || []);
+            const res = await fetch('/api/mongo/feedback');
+            if (res.ok) {
+                const data = await res.json();
+                setFeedbacks(data.feedbacks || []);
+            }
         } catch (error) {
             console.error("Error loading feedbacks:", error);
         } finally {
@@ -48,12 +44,16 @@ export default function AdminFeedbacksPage() {
 
     const togglePublish = async (id: number, currentState: boolean) => {
         try {
-            const { error } = await supabase
-                .from('feedbacks')
-                .update({ is_published: !currentState })
-                .eq('id', id);
+            const res = await fetch('/api/mongo/feedback', {
+                method: 'PATCH',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    id,
+                    is_published: !currentState
+                })
+            });
 
-            if (error) throw error;
+            if (!res.ok) throw new Error('Toggle failed');
 
             setFeedbacks(feedbacks.map(f =>
                 f.id === id ? { ...f, is_published: !currentState } : f

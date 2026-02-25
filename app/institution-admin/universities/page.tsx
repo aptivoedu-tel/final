@@ -1,7 +1,6 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { supabase } from '@/lib/supabase/client';
 import { Lock, Unlock, Search, Building2, BookOpen, Target, FileText } from 'lucide-react';
 import Link from 'next/link';
 import { toast } from 'sonner';
@@ -16,35 +15,42 @@ export default function UniversitySelectorPage() {
 
     useEffect(() => {
         const loadData = async () => {
-            // 0. Get User Profile
-            const { data: { user } } = await supabase.auth.getUser();
-            if (!user) return;
+            try {
+                // 0. Get User Profile from MongoDB API
+                const profileRes = await fetch('/api/mongo/profile');
+                const profileData = await profileRes.json();
 
-            const instId = await AuthService.getInstitutionId(user.id);
-            setInstitutionId(instId);
+                if (!profileRes.ok) throw new Error("Failed to fetch profile");
 
-            if (!instId) {
-                toast.error("Institution link missing. You will not be able to manage university access.");
+                const instId = profileData.data?.institution_id;
+                setInstitutionId(instId);
+
+                if (!instId) {
+                    toast.error("Institution link missing. You will not be able to manage university access.");
+                }
+
+                // 1. Fetch Universities from MongoDB - ALWAYS do this
+                const uniRes = await fetch('/api/mongo/universities?active=true');
+                const uniData = await uniRes.json();
+                setUniversities(uniData.universities || []);
+
+                // 2. Fetch Access States if instId exists
+                if (instId) {
+                    const accessRes = await fetch(`/api/mongo/institutions/university-access?institution_id=${instId}`);
+                    const accessData = await accessRes.json();
+
+                    const states: Record<number, boolean> = {};
+                    accessData.rules?.forEach((a: any) => {
+                        states[a.university_id] = a.is_locked;
+                    });
+                    setLockedStates(states);
+                }
+            } catch (err: any) {
+                console.error(err);
+                toast.error("Failed to load data");
+            } finally {
+                setLoading(false);
             }
-
-            // 1. Fetch Universities - ALWAYS do this
-            const { data: unis } = await supabase.from('universities').select('*').eq('is_active', true);
-            setUniversities(unis || []);
-
-            // 2. Fetch Access States if instId exists
-            if (instId) {
-                const { data: access } = await supabase
-                    .from('institution_university_access')
-                    .select('*')
-                    .eq('institution_id', instId);
-
-                const states: Record<number, boolean> = {};
-                access?.forEach((a: any) => {
-                    states[a.university_id] = a.is_locked;
-                });
-                setLockedStates(states);
-            }
-            setLoading(false);
         };
         loadData();
     }, []);
@@ -60,19 +66,26 @@ export default function UniversitySelectorPage() {
             return;
         }
 
-        const { error } = await supabase
-            .from('institution_university_access')
-            .upsert({
-                institution_id: institutionId,
-                university_id: uniId,
-                is_locked: newLocked
-            }, { onConflict: 'institution_id,university_id' });
+        try {
+            const res = await fetch('/api/mongo/institutions/university-access', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    institution_id: institutionId,
+                    university_id: uniId,
+                    is_locked: newLocked
+                })
+            });
 
-        if (error) {
-            toast.error('Failed to update access');
-            setLockedStates(prev => ({ ...prev, [uniId]: currentLocked })); // Revert
-        } else {
+            if (!res.ok) {
+                const data = await res.json();
+                throw new Error(data.error || 'Failed to update access');
+            }
+
             toast.success(newLocked ? 'University Locked' : 'University Unlocked');
+        } catch (error: any) {
+            toast.error(error.message || 'Failed to update access');
+            setLockedStates(prev => ({ ...prev, [uniId]: currentLocked })); // Revert
         }
     };
 

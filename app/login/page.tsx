@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { Mail, Lock, Eye, EyeOff, AlertCircle, CheckCircle, Shield, GraduationCap, Chrome, Apple, User, Building2, ArrowRight, ArrowLeft } from 'lucide-react';
 import { AuthService } from '@/lib/services/authService';
-import { supabase } from '@/lib/supabase/client';
+
 import Link from 'next/link';
 import { useLoading } from '@/lib/context/LoadingContext';
 
@@ -48,24 +48,24 @@ export default function LoginPage() {
             try {
                 const { data: { session } } = await AuthService.getSession();
                 if (session) {
-                    const { data: profile } = await supabase
-                        .from('users')
-                        .select('*')
-                        .eq('id', session.user.id)
-                        .single();
+                    // Fetch profile from MongoDB
+                    const res = await fetch('/api/auth/me');
+                    if (res.ok) {
+                        const data = await res.json();
+                        const profile = data.user;
+                        if (profile) {
+                            localStorage.setItem('aptivo_user', JSON.stringify(profile));
+                            if (profile.status === 'suspended' || profile.status === 'blocked') {
+                                setAuthChecking(false);
+                                return;
+                            }
 
-                    if (profile) {
-                        localStorage.setItem('aptivo_user', JSON.stringify(profile));
-                        if (profile.status === 'suspended' || profile.status === 'blocked') {
-                            setAuthChecking(false);
+                            let target = '/dashboard';
+                            if (profile.role === 'super_admin') target = '/admin/dashboard';
+                            else if (profile.role === 'institution_admin') target = '/institution-admin';
+                            window.location.href = target;
                             return;
                         }
-
-                        let target = '/dashboard';
-                        if (profile.role === 'super_admin') target = '/admin/dashboard';
-                        else if (profile.role === 'institution_admin') target = '/institution-admin';
-                        window.location.href = target;
-                        return; // Keep loading state while redirecting
                     }
                 }
             } catch (error) {
@@ -102,6 +102,7 @@ export default function LoginPage() {
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         setError('');
+        console.log('Login attempt:', { email, role, databaseType: process.env.NEXT_PUBLIC_DATABASE_TYPE });
         setGlobalLoading(true, 'Verifying Credentials...');
 
         try {

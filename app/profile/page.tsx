@@ -8,7 +8,7 @@ import {
 } from 'lucide-react';
 import { useLoading } from '@/lib/context/LoadingContext';
 import { useUI } from '@/lib/context/UIContext';
-import { supabase } from '@/lib/supabase/client';
+
 import Sidebar from '@/components/layout/Sidebar';
 import Header from '@/components/layout/Header';
 import { AuthService } from '@/lib/services/authService';
@@ -144,13 +144,20 @@ export default function ProfilePage() {
 
         setGlobalLoading(true, 'Publishing Feedback...');
         try {
-            const { error } = await supabase.from('feedbacks').insert({
-                user_id: user.id,
-                rating: feedbackRating,
-                feedback_text: feedbackText
+            const res = await fetch('/api/mongo/feedback', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    user_id: user.id,
+                    rating: feedbackRating,
+                    feedback_text: feedbackText
+                })
             });
 
-            if (error) throw error;
+            if (!res.ok) {
+                const data = await res.json();
+                throw new Error(data.error || 'Failed to submit feedback');
+            }
 
             setMessage({ type: 'success', text: 'Thank you for your feedback!' });
             setFeedbackText('');

@@ -2,7 +2,6 @@
 
 import React, { useState, useEffect } from 'react';
 import { useSearchParams } from 'next/navigation';
-import { supabase } from '@/lib/supabase/client';
 import Sidebar from '@/components/layout/Sidebar';
 import Header from '@/components/layout/Header';
 import { AuthService } from '@/lib/services/authService';
@@ -50,14 +49,11 @@ function SearchContent() {
             const isSuperAdmin = user?.role === 'super_admin';
             const isInstitutionAdmin = user?.role === 'institution_admin';
 
-            // 1. Search Universities
-            const { data: unis } = await supabase
-                .from('universities')
-                .select('id, name, logo_url')
-                .ilike('name', `%${query}%`)
-                .limit(5);
+            const response = await fetch(`/api/mongo/content?q=${encodeURIComponent(query)}`);
+            const data = await response.json();
 
-            unis?.forEach(u => {
+            // 1. Map Universities
+            (data.universities || []).forEach((u: any) => {
                 let link = `/university?id=${u.id}`;
                 if (isSuperAdmin) link = `/admin/universities?id=${u.id}`;
                 else if (isInstitutionAdmin) link = `/institution-admin/universities?id=${u.id}`;
@@ -72,14 +68,8 @@ function SearchContent() {
                 });
             });
 
-            // 2. Search Subjects
-            const { data: subjects } = await supabase
-                .from('subjects')
-                .select('id, name')
-                .ilike('name', `%${query}%`)
-                .limit(5);
-
-            subjects?.forEach(s => {
+            // 2. Map Subjects
+            (data.subjects || []).forEach((s: any) => {
                 let link = `/university?search=${encodeURIComponent(s.name)}`;
                 if (isSuperAdmin) link = `/admin/content-editor?subject=${s.id}`;
 
@@ -92,14 +82,8 @@ function SearchContent() {
                 });
             });
 
-            // 3. Search Topics
-            const { data: topics } = await supabase
-                .from('topics')
-                .select('id, name')
-                .ilike('name', `%${query}%`)
-                .limit(10);
-
-            topics?.forEach(t => {
+            // 3. Map Topics
+            (data.topics || []).forEach((t: any) => {
                 let link = `/university?search=${encodeURIComponent(t.name)}`;
                 if (isSuperAdmin) link = `/admin/content-editor?topic=${t.id}`;
 
@@ -112,14 +96,8 @@ function SearchContent() {
                 });
             });
 
-            // 4. Search Subtopics (Lessons)
-            const { data: subtopics } = await supabase
-                .from('subtopics')
-                .select('id, name')
-                .ilike('name', `%${query}%`)
-                .limit(10);
-
-            subtopics?.forEach(st => {
+            // 4. Map Subtopics (Lessons)
+            (data.subtopics || []).forEach((st: any) => {
                 let link = `/university?search=${encodeURIComponent(st.name)}`;
                 if (isSuperAdmin) link = `/admin/content-editor?subtopic=${st.id}`;
 

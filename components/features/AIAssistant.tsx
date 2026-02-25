@@ -11,8 +11,8 @@ import rehypeKatex from 'rehype-katex';
 import 'katex/dist/katex.min.css';
 
 // --- PhysicsRAG API Config ---
-const EDGE_FUNCTION_URL = "https://cxfdymwobhddzuymxirl.supabase.co/functions/v1/physics-rag";
-const GITHUB_TOKEN = process.env.NEXT_PUBLIC_GITHUB_TOKEN || ""; // Removed hardcoded token for security
+const EDGE_FUNCTION_URL = "/api/ai-chat";
+const GITHUB_TOKEN = ""; // Client no longer needs this token; backend handles it
 
 const ENHANCED_PROMPT_INSTRUCTIONS = `
 [INSTRUCTIONS:

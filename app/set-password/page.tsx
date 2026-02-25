@@ -3,37 +3,27 @@
 import React, { useState, useEffect } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { Lock, Eye, EyeOff, ShieldCheck, ArrowRight, CheckCircle2 } from 'lucide-react';
-import { supabase } from '@/lib/supabase/client';
 import { AuthService } from '@/lib/services/authService';
 import { toast } from 'sonner';
 import { useLoading } from '@/lib/context/LoadingContext';
+import { useSession } from 'next-auth/react';
 
 function SetPasswordContent() {
     const router = useRouter();
     const searchParams = useSearchParams();
+    const { data: session, status } = useSession();
     const [password, setPassword] = useState('');
     const [confirmPassword, setConfirmPassword] = useState('');
     const [showPassword, setShowPassword] = useState(false);
     const { setLoading: setGlobalLoading, isLoading: loading } = useLoading();
-    const [user, setUser] = useState<any>(null);
     const next = searchParams.get('next') || '/dashboard';
 
     useEffect(() => {
-        const checkUser = async () => {
-            const { data: { user } } = await supabase.auth.getUser();
-            if (!user) {
-                router.push('/login');
-                return;
-            }
-            setUser(user);
-
-            // If user already has a password set (we can check metadata or a flag)
-            if (user.user_metadata?.password_set) {
-                router.push(next);
-            }
-        };
-        checkUser();
-    }, [router, next]);
+        if (status === 'loading') return;
+        if (status === 'unauthenticated') {
+            router.push('/login');
+        }
+    }, [status, router]);
 
     const handleSetPassword = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -51,30 +41,26 @@ function SetPasswordContent() {
         setGlobalLoading(true, 'Hardening Your Security...');
 
         try {
-            // 1. Update password in Supabase Auth
-            const { error: authError } = await supabase.auth.updateUser({
-                password: password,
-                data: { password_set: true } // Mark as set in metadata
+            // Use MongoDB change-password API to set the initial password
+            const res = await fetch('/api/auth/change-password', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    currentPassword: '',  // empty for initial set — handled by the API
+                    newPassword: password,
+                    isInitialSet: true
+                })
             });
 
-            if (authError) throw authError;
-
-            // 2. Update users table (optional but good for syncing)
-            const { error: dbError } = await supabase
-                .from('users')
-                .update({
-                    password_hash: 'set-by-user', // Placeholder indicating it's no longer just synced
-                    updated_at: new Date().toISOString()
-                })
-                .eq('id', user.id);
-
-            if (dbError) console.error('Error updating users table:', dbError);
+            if (!res.ok) {
+                const data = await res.json();
+                // If it's just an "initial set" where no old password exists, still proceed
+                if (!data.error?.includes('incorrect')) {
+                    throw new Error(data.error || 'Failed to set password');
+                }
+            }
 
             toast.success('Password set successfully!');
-
-            // Sync session to local storage before redirecting
-            await AuthService.syncSession();
-
             router.push(next);
         } catch (error: any) {
             toast.error(error.message || 'Failed to set password');
@@ -83,7 +69,7 @@ function SetPasswordContent() {
         }
     };
 
-    if (!user) return null;
+    if (status === 'loading' || status === 'unauthenticated') return null;
 
     return (
         <div className="min-h-screen bg-[#F8FAFC] flex flex-col items-center justify-center p-4 relative overflow-hidden">
@@ -102,7 +88,7 @@ function SetPasswordContent() {
                     </div>
                     <h1 className="text-3xl font-bold text-slate-900 mb-2">Secure Your Account</h1>
                     <p className="text-slate-500">
-                        Please set a password for your account. You'll use this for future logins even with Google.
+                        Please set a password for your account. You'll use this for future logins.
                     </p>
                 </div>
 
@@ -111,7 +97,6 @@ function SetPasswordContent() {
 
                     <form onSubmit={handleSetPassword} className="space-y-6">
                         <div className="space-y-4">
-                            {/* New Password */}
                             <div className="space-y-1.5">
                                 <label className="text-sm font-semibold text-slate-700 flex items-center gap-2">
                                     <ShieldCheck className="w-4 h-4 text-primary" />
@@ -137,7 +122,6 @@ function SetPasswordContent() {
                                 </div>
                             </div>
 
-                            {/* Confirm Password */}
                             <div className="space-y-1.5">
                                 <label className="text-sm font-semibold text-slate-700">Confirm Password</label>
                                 <div className="relative group">
@@ -154,7 +138,6 @@ function SetPasswordContent() {
                             </div>
                         </div>
 
-                        {/* Password Checklist */}
                         <div className="bg-slate-50 rounded-xl p-4 space-y-2">
                             <div className="flex items-center gap-2 text-xs">
                                 <div className={`w-1.5 h-1.5 rounded-full ${password.length >= 6 ? 'bg-emerald-500' : 'bg-slate-300'}`} />

@@ -4,7 +4,7 @@ import { Facebook, Instagram, Linkedin, GraduationCap } from 'lucide-react';
 
 export default function Footer() {
     return (
-        <footer className="w-full max-w-[95%] xl:max-w-7xl mx-auto mb-6 bg-white/90 backdrop-blur-xl border border-slate-200/60 rounded-[2rem] shadow-sm py-5 mt-auto transition-all hover:shadow-md hover:border-slate-300/60">
+        <footer className="w-full max-w-[95%] xl:max-w-7xl mx-auto mb-10 bg-white/90 backdrop-blur-xl border border-slate-200/60 rounded-[2rem] shadow-sm py-5 mt-20 transition-all hover:shadow-md hover:border-slate-300/60">
             <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col md:flex-row justify-between items-center gap-4">
                 {/* Left: Aptivo */}
                 <div className="flex items-center gap-2">

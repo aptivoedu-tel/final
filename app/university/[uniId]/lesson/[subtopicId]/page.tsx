@@ -1,8 +1,5 @@
-'use client';
-
 import React, { useState, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
-import { supabase } from '@/lib/supabase/client';
 import Sidebar from '@/components/layout/Sidebar';
 import Header from '@/components/layout/Header';
 import { AuthService } from '@/lib/services/authService';
@@ -18,6 +15,7 @@ import MarkdownRenderer from '@/components/shared/MarkdownRenderer';
 import Link from 'next/link';
 import { useUI } from '@/lib/context/UIContext';
 import { useLoading } from '@/lib/context/LoadingContext';
+import { toast } from 'sonner';
 
 export default function LessonReaderPage() {
     const { isSidebarCollapsed } = useUI();
@@ -36,52 +34,53 @@ export default function LessonReaderPage() {
     const [mcqCount, setMcqCount] = useState(0);
 
     useEffect(() => {
-        const currentUser = AuthService.getCurrentUser();
-        const storedUser = typeof window !== 'undefined' ? localStorage.getItem('aptivo_user') : null;
-        const userData = currentUser || (storedUser ? JSON.parse(storedUser) : null);
-
-        if (userData) {
-            setUser(userData);
-            setUserRole(userData.role || 'student');
-        }
-
-        if (subtopicId) {
-            loadLessonData();
-        }
+        const init = async () => {
+            const userData = AuthService.getCurrentUser() || await AuthService.syncSession();
+            if (userData) {
+                setUser(userData);
+                setUserRole(userData.role || 'student');
+                if (subtopicId) {
+                    await loadLessonData();
+                    await markAsRead(userData.id, parseInt(subtopicId));
+                }
+            } else {
+                router.push('/login');
+            }
+        };
+        init();
     }, [subtopicId]);
 
     const loadLessonData = async () => {
         setGlobalLoading(true, 'Retrieving Curriculum Content...');
         try {
-            // 1. Fetch subtopic
-            const { data: st, error: stError } = await supabase
-                .from('subtopics')
-                .select('*, topic:topics(*)')
-                .eq('id', subtopicId)
-                .single();
+            // 1. Fetch subtopic info from MongoDB content API
+            const stRes = await fetch(`/api/mongo/content?type=subtopics&id=${subtopicId}`);
+            const stData = await stRes.json();
+            const st = stData.subtopics?.[0];
 
-            if (stError) throw stError;
+            if (!st) throw new Error('Subtopic not found');
             setSubtopic(st);
-            setTopic(st.topic);
 
-            // 2. Fetch subject
-            if (st.topic) {
-                const { data: sub, error: subError } = await supabase
-                    .from('subjects')
-                    .select('*')
-                    .eq('id', st.topic.subject_id)
-                    .single();
-                if (subError) throw subError;
-                setSubject(sub);
+            // 2. Fetch topic/subject info if needed
+            // The content API might already include topic info or we can fetch it
+            if (st.topic_id) {
+                const topicRes = await fetch(`/api/mongo/content?type=topics&id=${st.topic_id}`);
+                const topicData = await topicRes.json();
+                const t = topicData.topics?.[0];
+                setTopic(t);
+
+                if (t?.subject_id) {
+                    const subjectRes = await fetch(`/api/mongo/content?type=subjects&id=${t.subject_id}`);
+                    const subjectData = await subjectRes.json();
+                    setSubject(subjectData.subjects?.[0]);
+                }
             }
 
             // 3. Fetch MCQ count
-            const { count } = await supabase
-                .from('mcqs')
-                .select('*', { count: 'exact', head: true })
-                .eq('subtopic_id', subtopicId)
-                .eq('is_active', true);
-            setMcqCount(count || 0);
+            const mcqRes = await fetch(`/api/mongo/mcqs?subtopic_id=${subtopicId}&limit=1`);
+            const mcqData = await mcqRes.json();
+            setMcqCount(mcqData.count || 0);
+
         } catch (e: any) {
             console.error('Error loading lesson:', e);
             setError(e.message);
@@ -92,30 +91,19 @@ export default function LessonReaderPage() {
 
     const markAsRead = async (userId: string, stId: number) => {
         try {
-            await supabase
-                .from('subtopic_progress')
-                .upsert({
+            await fetch('/api/mongo/progress', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
                     student_id: userId,
                     subtopic_id: stId,
-                    is_completed: true,
-                    reading_percentage: 100,
-                    last_accessed_at: new Date().toISOString(),
-                    completed_at: new Date().toISOString()
-                }, { onConflict: 'student_id,subtopic_id' });
-
-            // Update streak
-            const { PracticeService } = await import('@/lib/services/practiceService');
-            await PracticeService.updateStreak(userId);
+                    is_completed: true
+                })
+            });
         } catch (e) {
             console.error('Error marking progress:', e);
         }
     };
-
-    useEffect(() => {
-        if (user && subtopicId) {
-            markAsRead(user.id, parseInt(subtopicId));
-        }
-    }, [user, subtopicId]);
 
 
     if (loading) return null;

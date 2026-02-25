@@ -1,77 +1,59 @@
-import { createClient } from '@supabase/supabase-js';
-import { NextResponse } from 'next/server';
+// MongoDB-only: Delete User API
+// Completely removes all Supabase dependencies
 
-// Initialize Admin Client
-const supabaseAdmin = process.env.SUPABASE_SERVICE_ROLE_KEY
-    ? createClient(
-        process.env.NEXT_PUBLIC_SUPABASE_URL!,
-        process.env.SUPABASE_SERVICE_ROLE_KEY,
-        {
-            auth: {
-                autoRefreshToken: false,
-                persistSession: false
-            }
-        }
-    )
-    : null;
+import { NextResponse } from 'next/server';
+import connectToDatabase from '@/lib/mongodb/connection';
+import { User as MongoUser } from '@/lib/mongodb/models';
 
 export async function POST(request: Request) {
-    if (!supabaseAdmin) {
-        return NextResponse.json(
-            { error: 'Server Configuration Error: SUPABASE_SERVICE_ROLE_KEY is missing' },
-            { status: 500 }
-        );
-    }
-
+    let requestedUserId = 'unknown';
     try {
-        const body = await request.json();
+        const body = await request.json().catch(() => ({}));
         const { userId } = body;
+        requestedUserId = userId || 'missing';
 
         if (!userId) {
-            return NextResponse.json(
-                { error: 'Missing userId' },
-                { status: 400 }
-            );
+            return NextResponse.json({ error: 'Missing userId' }, { status: 400 });
         }
 
-        // 1. Delete from Auth
-        const { error: authError } = await supabaseAdmin.auth.admin.deleteUser(userId);
+        await connectToDatabase();
 
-        if (authError) {
-            console.error('Auth Delete Error:', authError);
-            // If user doesn't exist in Auth, we might still want to try deleting from DB
-            // but usually they are synced. 
-            // If they are only in DB, we'll continue.
+        // Check if userId is a valid ObjectId string for MongoDB (24 hex characters)
+        const isValidObjectId = /^[0-9a-fA-F]{24}$/.test(userId);
+
+        // Mongoose throws CastError if you query _id with a non-ObjectId string.
+        // For mongo_... IDs, we only search by the 'id' field.
+        const deleteQuery = isValidObjectId
+            ? { $or: [{ id: userId }, { _id: userId }] }
+            : { id: userId };
+
+        console.log(`[DeleteUser] Attempting to delete user ${userId} with query:`, deleteQuery);
+
+        // Delete from MongoDB users collection
+        const result = await MongoUser.findOneAndDelete(deleteQuery);
+
+        if (!result) {
+            console.warn(`[DeleteUser] User not found with ID: ${userId}`);
+            return NextResponse.json({ error: 'User not found' }, { status: 404 });
         }
 
-        // 2. Delete from public.users (though ON DELETE CASCADE from Auth should handle it if synced correctly)
-        // But in this schema, users table uses uuid_generate_v4() and might not be linked to Auth.uid() via FK in some cases?
-        // Wait, schema.sql says users table has id UUID PRIMARY KEY.
-        // AuthService syncs them using the same ID.
-
-        const { error: dbError } = await supabaseAdmin
-            .from('users')
-            .delete()
-            .eq('id', userId);
-
-        if (dbError) {
-            console.error('DB Delete Error:', dbError);
-            return NextResponse.json(
-                { error: 'Failed to delete user profile: ' + dbError.message },
-                { status: 500 }
-            );
-        }
+        console.log(`[DeleteUser] Successfully deleted user: ${userId}`);
 
         return NextResponse.json({
             success: true,
-            message: 'User deleted successfully from both Auth and Database'
+            message: 'User deleted successfully'
         });
 
     } catch (error: any) {
-        console.error('Delete User API Error:', error);
-        return NextResponse.json(
-            { error: 'Internal Server Error' },
-            { status: 500 }
-        );
+        console.error('[DeleteUser] Error:', {
+            message: error.message,
+            stack: error.stack,
+            userId: requestedUserId
+        });
+        return NextResponse.json({
+            error: 'Internal Server Error',
+            details: error.message,
+            userId: requestedUserId
+        }, { status: 500 });
     }
 }

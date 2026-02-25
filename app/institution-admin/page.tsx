@@ -3,42 +3,35 @@
 import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { Users, Building2, BarChart3, ArrowRight, RefreshCw, FileText } from 'lucide-react';
-import { supabase } from '@/lib/supabase/client';
 import { AnalyticsService } from '@/lib/services/analyticsService';
 import { useLoading } from '@/lib/context/LoadingContext';
+import { AuthService } from '@/lib/services/authService';
+import { getTimeGreeting } from '@/lib/utils';
 
 export default function InstitutionAdminDashboard() {
     const [stats, setStats] = useState<any>(null);
     const { setLoading: setGlobalLoading, isLoading: loading } = useLoading();
     const [instId, setInstId] = useState<number | null>(null);
+    const [user, setUser] = useState<any>(null);
 
     const loadStats = async () => {
         setGlobalLoading(true, 'Connecting to Live Servers...');
         try {
-            const { data: { user } } = await supabase.auth.getUser();
-            if (!user) return;
+            const currentUser = AuthService.getCurrentUser();
+            setUser(currentUser);
+            if (!currentUser) return;
 
-            const { data: profile } = await supabase
-                .from('users')
-                .select('institution_id')
-                .eq('id', user.id)
-                .single();
+            const { data: profile } = await fetch(`/api/mongo/profile?userId=${currentUser.id}`).then(r => r.json());
 
             let currentInstId = profile?.institution_id;
 
             if (!currentInstId) {
-                // FALLBACK: Try checking institution_admins table
-                const { data: adminLink } = await supabase
-                    .from('institution_admins')
-                    .select('institution_id')
-                    .eq('user_id', user.id)
-                    .maybeSingle();
+                // FALLBACK: Try checking institution_admins via profile API
+                const { data: adminLink } = await fetch(`/api/mongo/profile?userId=${currentUser.id}&checkAdmin=true`).then(r => r.json());
 
                 if (adminLink?.institution_id) {
                     console.log("Rescued institution link from institution_admins");
                     currentInstId = adminLink.institution_id;
-                    // Proactively update the users table for next time
-                    await supabase.from('users').update({ institution_id: currentInstId }).eq('id', user.id);
                 }
             }
 
@@ -96,7 +89,9 @@ export default function InstitutionAdminDashboard() {
 
     return (
         <div className="max-w-5xl mx-auto py-8">
-            <h1 className="text-3xl font-black text-slate-900 mb-2">Institution Dashboard</h1>
+            <h1 className="text-3xl font-black text-slate-900 mb-2">
+                {getTimeGreeting()}, {user?.full_name?.split(' ')[0] || 'Admin'}
+            </h1>
             <p className="text-slate-500 text-lg mb-10">Welcome back. Manage your institution's learning environment.</p>
 
             {/* DIAGNOSTIC BANNER */}

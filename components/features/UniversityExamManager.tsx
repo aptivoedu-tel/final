@@ -1,7 +1,6 @@
 'use client';
 
 import React, { useState, useEffect, useMemo } from 'react';
-import { supabase } from '@/lib/supabase/client';
 import {
     Plus, Search, Trash2, Edit2, X, FileText, Save, ChevronLeft,
     Clock, AlertCircle, Layout, BookOpen, ChevronRight,
@@ -140,31 +139,27 @@ export default function UniversityExamManager({ uniId, userRole, onBack }: Unive
     const fetchInitialData = async (currentUser: any = user) => {
         setGlobalLoading(true, 'Accessing Examination Archives...');
         try {
-            const { data: uni } = await supabase.from('universities').select('*').eq('id', uniId).single();
+            // Fetch University Details
+            const uniRes = await fetch(`/api/mongo/universities?id=${uniId}`);
+            const uniData = await uniRes.json();
+            const uniIdNum = Number(uniId);
+            const uni = uniData.universities?.find((u: any) => u.id === uniIdNum) || uniData.universities?.[0];
             setUniversity(uni);
 
-            let query = supabase
-                .from('university_exams')
-                .select('*')
-                .eq('university_id', uniId);
-
-            if (userRole === 'super_admin') {
-                query = query.is('institution_id', null);
-            } else if (userRole === 'institution_admin' && currentUser?.institution_id) {
-                query = query.or(`institution_id.is.null,institution_id.eq.${currentUser.institution_id}`);
-            } else if (userRole === 'institution_admin') {
-                query = query.is('institution_id', null);
+            // Fetch Exams with Filtering
+            let instParam = 'null';
+            if (userRole === 'institution_admin' && currentUser?.institution_id) {
+                instParam = currentUser.institution_id.toString();
             }
 
-            const { data: examsData } = await query.order('created_at', { ascending: false });
+            const examsRes = await fetch(`/api/mongo/exams?university_id=${uniId}&institution_id=${instParam}`);
+            const examsData = await examsRes.json();
+            if (examsData.exams) setExams(examsData.exams);
 
-            const { data: passagesData } = await supabase
-                .from('passages')
-                .select('*')
-                .order('created_at', { ascending: false });
-
-            if (examsData) setExams(examsData);
-            if (passagesData) setPassages(passagesData);
+            // Fetch Passages
+            const passagesRes = await fetch('/api/mongo/passages');
+            const passagesData = await passagesRes.json();
+            if (passagesData.passages) setPassages(passagesData.passages);
         } catch (error: any) {
             console.error('Error fetching exam data:', error);
             toast.error('Failed to load exam data');
@@ -182,25 +177,28 @@ export default function UniversityExamManager({ uniId, userRole, onBack }: Unive
         setGlobalLoading(true, 'Synchronizing Passage Asset...');
         try {
             if (activePassage) {
-                const { error } = await supabase
-                    .from('passages')
-                    .update(passageForm)
-                    .eq('id', activePassage.id);
-                if (error) throw error;
+                const res = await fetch('/api/mongo/passages', {
+                    method: 'PATCH',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ id: activePassage.id, ...passageForm })
+                });
+                if (!res.ok) throw new Error("Failed to update passage");
                 toast.success("Passage updated");
                 setPassages(passages.map(p => p.id === activePassage.id ? { ...p, ...passageForm } : p));
             } else {
-                const { data, error } = await supabase
-                    .from('passages')
-                    .insert([passageForm])
-                    .select()
-                    .single();
-
-                if (error) throw error;
+                const res = await fetch('/api/mongo/passages', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(passageForm)
+                });
+                if (!res.ok) throw new Error("Failed to create passage");
+                const data = await res.json();
                 toast.success("Passage created successfully");
-                setPassages([data, ...passages]);
-                setActivePassage(data);
+                setPassages([data.passage, ...passages]);
             }
+            setIsPassageModalOpen(false);
+            setPassageForm({ title: '', content: '' });
+            setActivePassage(null);
         } catch (error: any) {
             toast.error(error.message);
         } finally {
@@ -209,39 +207,58 @@ export default function UniversityExamManager({ uniId, userRole, onBack }: Unive
     };
 
     const fetchPassageQuestions = async (passageId: number) => {
-        const { data } = await supabase.from('exam_questions').select('*').eq('passage_id', passageId).order('id');
-        setPassageQuestions(data || []);
+        try {
+            const res = await fetch(`/api/mongo/exams/questions?passage_id=${passageId}`);
+            const data = await res.json();
+            setPassageQuestions(data.questions || []);
+        } catch (error) {
+            console.error("Error fetching passage questions:", error);
+        }
     };
 
     const fetchSections = async (examId: number) => {
         setGlobalLoading(true, 'Analyzing Curriculum Structure...');
-        const { data } = await supabase.from('exam_sections').select('*').eq('exam_id', examId).order('order_index');
-        setSections(data || []);
-        setGlobalLoading(false);
+        try {
+            const res = await fetch(`/api/mongo/exams/sections?exam_id=${examId}`);
+            const data = await res.json();
+            setSections(data.sections || []);
+        } catch (error) {
+            console.error("Error fetching sections:", error);
+            toast.error("Failed to load sections");
+        } finally {
+            setGlobalLoading(false);
+        }
     };
 
     const fetchQuestions = async (sectionId: number) => {
         setGlobalLoading(true, 'Retrieving Question Pool...');
-        const { data } = await supabase.from('exam_questions').select('*').eq('section_id', sectionId).order('id');
-        setQuestions(data || []);
-        setGlobalLoading(false);
+        try {
+            const res = await fetch(`/api/mongo/exams/questions?section_id=${sectionId}`);
+            const data = await res.json();
+            setQuestions(data.questions || []);
+        } catch (error) {
+            console.error("Error fetching questions:", error);
+            toast.error("Failed to load questions");
+        } finally {
+            setGlobalLoading(false);
+        }
     };
 
     const fetchResults = async (examId: number) => {
         setGlobalLoading(true, 'Analyzing Student Performance...');
         try {
-            const { data: attempts } = await supabase
-                .from('exam_attempts')
-                .select('*')
-                .eq('exam_id', examId)
-                .order('created_at', { ascending: false });
+            const res = await fetch(`/api/mongo/exams/attempts?exam_id=${examId}`);
+            const data = await res.json();
 
-            if (attempts && attempts.length > 0) {
-                const studentIds = [...new Set(attempts.map(a => a.student_id))];
-                const { data: students } = await supabase.from('users').select('id, full_name, email').in('id', studentIds);
+            if (data.attempts && data.attempts.length > 0) {
+                // Fetch student details for these attempts
+                const studentIds = [...new Set(data.attempts.map((a: any) => a.student_id))].join(',');
+                const profileRes = await fetch(`/api/mongo/profile?ids=${studentIds}`);
+                const profileData = await profileRes.json();
+                const students = profileData.users || [];
 
-                const combined = attempts.map(a => {
-                    const st = students?.find(s => s.id === a.student_id);
+                const combined = data.attempts.map((a: any) => {
+                    const st = students.find((s: any) => s.id === a.student_id);
                     return { ...a, student_name: st?.full_name || 'Unknown', student_email: st?.email };
                 });
                 setExamResults(combined);
@@ -249,6 +266,7 @@ export default function UniversityExamManager({ uniId, userRole, onBack }: Unive
                 setExamResults([]);
             }
         } catch (e: any) {
+            console.error(e);
             toast.error("Failed to load results");
         } finally {
             setGlobalLoading(false);
@@ -320,12 +338,20 @@ export default function UniversityExamManager({ uniId, userRole, onBack }: Unive
 
 
             if (activeExam) {
-                const { error } = await supabase.from('university_exams').update(payload).eq('id', activeExam.id);
-                if (error) throw error;
+                const res = await fetch('/api/mongo/exams', {
+                    method: 'PATCH',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ id: activeExam.id, ...payload })
+                });
+                if (!res.ok) throw new Error('Failed to update exam');
                 toast.success('Exam updated successfully');
             } else {
-                const { error } = await supabase.from('university_exams').insert([payload]);
-                if (error) throw error;
+                const res = await fetch('/api/mongo/exams', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+                if (!res.ok) throw new Error('Failed to create exam');
                 toast.success('Exam created successfully');
             }
             setIsExamModalOpen(false);
@@ -349,11 +375,21 @@ export default function UniversityExamManager({ uniId, userRole, onBack }: Unive
         try {
             const payload = { ...sectionForm, exam_id: activeExam.id };
             if (activeSection) {
-                const { error } = await supabase.from('exam_sections').update(payload).eq('id', activeSection.id);
-                if (error) throw error;
+                const res = await fetch('/api/mongo/exams/sections', {
+                    method: 'PATCH',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ id: activeSection.id, ...payload })
+                });
+                if (!res.ok) throw new Error('Failed to update section');
+                toast.success('Section updated');
             } else {
-                const { error } = await supabase.from('exam_sections').insert([payload]);
-                if (error) throw error;
+                const res = await fetch('/api/mongo/exams/sections', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+                if (!res.ok) throw new Error('Failed to create section');
+                toast.success('Section added');
             }
             setIsSectionModalOpen(false);
             fetchSections(activeExam.id);
@@ -380,17 +416,20 @@ export default function UniversityExamManager({ uniId, userRole, onBack }: Unive
             };
 
             if (questionForm.id) {
-                const { error } = await supabase
-                    .from('exam_questions')
-                    .update(payload)
-                    .eq('id', questionForm.id);
-                if (error) throw error;
+                const res = await fetch('/api/mongo/exams/questions', {
+                    method: 'PATCH',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ id: questionForm.id, ...payload })
+                });
+                if (!res.ok) throw new Error('Failed to update question');
                 toast.success('Question updated');
             } else {
-                const { error } = await supabase
-                    .from('exam_questions')
-                    .insert([payload]);
-                if (error) throw error;
+                const res = await fetch('/api/mongo/exams/questions', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+                if (!res.ok) throw new Error('Failed to add question');
                 toast.success('Question added');
             }
             setIsQuestionModalOpen(false);
@@ -430,12 +469,15 @@ export default function UniversityExamManager({ uniId, userRole, onBack }: Unive
         }
         if (!confirm('Permanent delete? Questions and sections will also be removed.')) return;
         setGlobalLoading(true, 'Removing Assessment Asset...');
-        const { error } = await supabase.from('university_exams').delete().eq('id', exam.id);
-        setGlobalLoading(false);
-        if (error) toast.error(error.message);
-        else {
+        try {
+            const res = await fetch(`/api/mongo/exams?id=${exam.id}`, { method: 'DELETE' });
+            if (!res.ok) throw new Error('Failed to delete exam');
             toast.success('Exam deleted');
             fetchInitialData();
+        } catch (error: any) {
+            toast.error(error.message);
+        } finally {
+            setGlobalLoading(false);
         }
     };
 
@@ -477,8 +519,12 @@ export default function UniversityExamManager({ uniId, userRole, onBack }: Unive
                     };
                 });
 
-                const { error } = await supabase.from('exam_questions').insert(questions_to_insert);
-                if (error) throw error;
+                const res = await fetch('/api/mongo/exams/questions', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(questions_to_insert)
+                });
+                if (!res.ok) throw new Error('Failed to bulk upload questions');
 
                 toast.success(`Uploaded ${questions_to_insert.length} questions`);
                 fetchQuestions(activeSection.id);
@@ -497,11 +543,18 @@ export default function UniversityExamManager({ uniId, userRole, onBack }: Unive
         if (!file) return;
         setGlobalLoading(true, 'Processing Media Asset...');
         try {
-            const fileExt = file.name.split('.').pop();
-            const fileName = `question-${Math.random().toString(36).substring(2)}-${Date.now()}.${fileExt}`;
-            const { error: uploadError } = await supabase.storage.from('exam_images').upload(fileName, file);
-            if (uploadError) throw uploadError;
-            const { data: { publicUrl } } = supabase.storage.from('exam_images').getPublicUrl(fileName);
+            const formData = new FormData();
+            formData.append('file', file);
+            formData.append('bucket', 'exam_images');
+
+            const res = await fetch('/api/upload', {
+                method: 'POST',
+                body: formData
+            });
+
+            if (!res.ok) throw new Error('Upload failed');
+            const { publicUrl } = await res.json();
+
             setQuestionForm({ ...questionForm, image_url: publicUrl });
             toast.success('Image uploaded');
         } catch (error: any) {
@@ -939,12 +992,15 @@ export default function UniversityExamManager({ uniId, userRole, onBack }: Unive
                                                                 onClick={async () => {
                                                                     if (!confirm('Remove this question?')) return;
                                                                     setGlobalLoading(true, 'Eliminating Question Entity...');
-                                                                    const { error } = await supabase.from('exam_questions').delete().eq('id', q.id);
-                                                                    setGlobalLoading(false);
-                                                                    if (error) toast.error(error.message);
-                                                                    else {
+                                                                    try {
+                                                                        const res = await fetch(`/api/mongo/exams/questions?id=${q.id}`, { method: 'DELETE' });
+                                                                        if (!res.ok) throw new Error('Failed to delete question');
                                                                         toast.success('Question removed');
                                                                         fetchQuestions(activeSection!.id);
+                                                                    } catch (error: any) {
+                                                                        toast.error(error.message);
+                                                                    } finally {
+                                                                        setGlobalLoading(false);
                                                                     }
                                                                 }}
                                                                 className="p-3 bg-slate-50 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-xl transition-all"
@@ -1034,14 +1090,14 @@ export default function UniversityExamManager({ uniId, userRole, onBack }: Unive
                                                         <span className="text-lg font-black text-emerald-600">{res.score?.toFixed(1)}%</span>
                                                     </td>
                                                     <td className="p-6 border-b border-slate-100 font-bold text-slate-600">
-                                                        {Math.floor(res.time_spent / 60)}m {res.time_spent % 60}s
+                                                        {Math.floor((res.time_spent_seconds || 0) / 60)}m {(res.time_spent_seconds || 0) % 60}s
                                                     </td>
                                                     <td className="p-6 border-b border-slate-100 text-slate-600 font-medium">
                                                         {new Date(res.created_at).toLocaleDateString()}
                                                     </td>
                                                     <td className="p-6 border-b border-slate-100">
-                                                        <span className={`px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest ${res.is_completed ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-700'}`}>
-                                                            {res.is_completed ? 'Finished' : 'In Progress'}
+                                                        <span className={`px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest ${(res.status === 'completed' || res.status === 'submitted') ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-700'}`}>
+                                                            {(res.status === 'completed' || res.status === 'submitted') ? 'Finished' : 'In Progress'}
                                                         </span>
                                                     </td>
                                                 </tr>

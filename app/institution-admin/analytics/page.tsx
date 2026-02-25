@@ -2,7 +2,6 @@
 
 import React, { useEffect, useState } from 'react';
 import { BarChart3, Building2, Users, Download, RefreshCw, AlertCircle, ChevronRight, GraduationCap } from 'lucide-react';
-import { supabase } from '@/lib/supabase/client';
 import { toast } from 'sonner';
 import { AnalyticsService } from '@/lib/services/analyticsService';
 import jsPDF from 'jspdf';
@@ -65,27 +64,19 @@ export default function PerformanceAnalyticsPage() {
     const loadAnalytics = async () => {
         setLoading(true);
         try {
-            const { data: { user } } = await supabase.auth.getUser();
-            if (!user) return;
+            const profileRes = await fetch('/api/mongo/profile');
+            const profileData = await profileRes.json();
 
-            // Fetch institutionId if not already in state
+            if (!profileRes.ok) throw new Error("Failed to fetch profile");
+
             let currentInstId = institutionId;
             if (!currentInstId) {
-                const { data: profile } = await supabase
-                    .from('users')
-                    .select('institution_id')
-                    .eq('id', user.id)
-                    .single();
-
-                currentInstId = profile?.institution_id;
+                currentInstId = profileData.data?.institution_id;
 
                 if (!currentInstId) {
-                    const { data: adminLink } = await supabase
-                        .from('institution_admins')
-                        .select('institution_id')
-                        .eq('user_id', user.id)
-                        .maybeSingle();
-                    currentInstId = adminLink?.institution_id;
+                    const adminLinkRes = await fetch(`/api/mongo/profile?checkAdmin=true`);
+                    const adminLinkData = await adminLinkRes.json();
+                    currentInstId = adminLinkData.data?.institution_id;
                 }
 
                 if (currentInstId) {

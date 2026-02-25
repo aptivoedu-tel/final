@@ -2,9 +2,11 @@
 
 import React, { useState, useEffect, Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
-import { supabase } from '@/lib/supabase/client';
+// Supabase removed — using MongoDB API via fetch
+// import { supabase } from '@/lib/supabase/client';
 import Sidebar from '@/components/layout/Sidebar';
 import Header from '@/components/layout/Header';
+import Footer from '@/components/shared/Footer';
 import { useUI } from '@/lib/context/UIContext';
 import { Plus, Search, Building2, Trash2, Edit2, X, CheckCircle, Globe, Mail, Phone, MapPin, AlertCircle, Ban, UserCheck, ShieldAlert } from 'lucide-react';
 import { toast } from 'sonner';
@@ -64,14 +66,17 @@ function InstitutionsContent() {
 
     const fetchInstitutions = async () => {
         setGlobalLoading(true, 'Accessing Institutional Directory...');
-        const { data, error } = await supabase
-            .from('institutions')
-            .select('*')
-            .order('created_at', { ascending: false });
-
-        if (data) setInstitutions(data);
-        if (error) console.error(error);
-        setGlobalLoading(false);
+        try {
+            const res = await fetch('/api/mongo/admin/institutions');
+            if (res.ok) {
+                const data = await res.json();
+                setInstitutions(data.institutions || []);
+            }
+        } catch (err) {
+            console.error(err);
+        } finally {
+            setGlobalLoading(false);
+        }
     };
 
     const handleUpdateStatus = async (id: number, newStatus: string) => {
@@ -93,12 +98,17 @@ function InstitutionsContent() {
                 }
             }
 
-            const { error } = await supabase
-                .from('institutions')
-                .update({ status: newStatus, is_active: newStatus === 'approved' })
-                .eq('id', id);
+            const res = await fetch('/api/mongo/admin/institutions', {
+                method: 'PATCH',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    id,
+                    status: newStatus,
+                    is_active: newStatus === 'approved'
+                })
+            });
 
-            if (error) throw error;
+            if (!res.ok) throw new Error('Failed to update status');
 
             fetchInstitutions();
             toast.success(`Institution ${newStatus} successfully`);
@@ -110,12 +120,16 @@ function InstitutionsContent() {
     const handleUpdateDomain = async () => {
         if (!editingInst) return;
         try {
-            const { error } = await supabase
-                .from('institutions')
-                .update({ domain: editDomain })
-                .eq('id', editingInst.id);
+            const res = await fetch('/api/mongo/admin/institutions', {
+                method: 'PATCH',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    id: editingInst.id,
+                    domain: editDomain
+                })
+            });
 
-            if (error) throw error;
+            if (!res.ok) throw new Error('Failed to update domain');
 
             toast.success('Domain updated successfully');
             setEditingInst(null);
@@ -126,13 +140,15 @@ function InstitutionsContent() {
     };
 
     const fetchAvailableAdmins = async () => {
-        const { data, error } = await supabase
-            .from('users')
-            .select('id, full_name, email')
-            .eq('role', 'institution_admin')
-            .eq('status', 'active');
-        if (data) setAvailableAdmins(data);
-        if (error) console.error(error);
+        try {
+            const res = await fetch('/api/mongo/admin/users?role=institution_admin');
+            if (res.ok) {
+                const data = await res.json();
+                setAvailableAdmins(data.users || []);
+            }
+        } catch (err) {
+            console.error(err);
+        }
     };
 
     const handleLinkAdmin = async () => {
@@ -141,29 +157,16 @@ function InstitutionsContent() {
         if (!admin) return;
 
         try {
-            // 1. Update institution_admins table
-            const { error: linkError } = await supabase
-                .from('institution_admins')
-                .upsert({
-                    user_id: selectedAdminId,
-                    institution_id: linkingInst.id
-                });
-            if (linkError) throw linkError;
-
-            // 2. Update users table primary link
-            await supabase
-                .from('users')
-                .update({ institution_id: linkingInst.id })
-                .eq('id', selectedAdminId);
-
-            // 3. Update institutions table metadata
-            await supabase
-                .from('institutions')
-                .update({
-                    admin_name: admin.full_name,
-                    admin_email: admin.email
+            const res = await fetch('/api/mongo/admin/institutions', {
+                method: 'PATCH',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    id: linkingInst.id,
+                    adminId: selectedAdminId
                 })
-                .eq('id', linkingInst.id);
+            });
+
+            if (!res.ok) throw new Error('Failed to link admin');
 
             toast.success('Admin linked successfully');
             setLinkingInst(null);
@@ -178,12 +181,11 @@ function InstitutionsContent() {
         if (!confirm('Are you sure you want to permanently delete this institution? This action cannot be undone and may affect associated users.')) return;
 
         try {
-            const { error } = await supabase
-                .from('institutions')
-                .delete()
-                .eq('id', id);
+            const res = await fetch(`/api/mongo/admin/institutions?id=${id}`, {
+                method: 'DELETE'
+            });
 
-            if (error) throw error;
+            if (!res.ok) throw new Error('Failed to delete institution');
             fetchInstitutions();
         } catch (error: any) {
             alert(`Error deleting institution: ${error.message}`);
@@ -193,18 +195,21 @@ function InstitutionsContent() {
     const handleSave = async (e: React.FormEvent) => {
         e.preventDefault();
         try {
-            const { error } = await supabase.from('institutions').insert([{
-                name: formData.name,
-                institution_type: formData.type,
-                domain: formData.domain,
-                contact_email: formData.email,
-                contact_phone: formData.phone,
-                address: formData.address,
-                is_active: true,
-                status: 'approved'
-            }]);
+            const res = await fetch('/api/mongo/admin/institutions', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    name: formData.name,
+                    institution_type: formData.type,
+                    domain: formData.domain,
+                    contact_email: formData.email,
+                    contact_phone: formData.phone,
+                    address: formData.address,
+                    status: 'approved'
+                })
+            });
 
-            if (error) throw error;
+            if (!res.ok) throw new Error('Failed to create institution');
 
             setIsModalOpen(false);
             setFormData({ name: '', type: 'school', domain: '', email: '', phone: '', address: '' });
@@ -445,6 +450,7 @@ function InstitutionsContent() {
                         )}
                     </div>
                 </main>
+                <Footer />
 
                 {/* Add Modal */}
                 {isModalOpen && (

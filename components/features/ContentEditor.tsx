@@ -8,7 +8,7 @@ import {
     Plus, Search, ChevronRight
 } from 'lucide-react';
 import { AuthService } from '@/lib/services/authService';
-import { supabase } from '@/lib/supabase/client';
+// Removed Supabase import - using MongoDB API routes
 import MarkdownRenderer from '@/components/shared/MarkdownRenderer';
 import { useSearchParams } from 'next/navigation';
 import { useLoading } from '@/lib/context/LoadingContext';
@@ -97,19 +97,22 @@ export default function ContentEditor() {
 
         setGlobalLoading(true, 'Optimizing Media Asset...');
         try {
-            const fileExt = file.name.split('.').pop();
-            const fileName = `${Math.random().toString(36).substring(2)}-${Date.now()}.${fileExt}`;
-            const filePath = `inline/${fileName}`;
+            // Use our MongoDB GridFS upload API
+            const formData = new FormData();
+            formData.append('file', file);
+            formData.append('bucket', 'lessons');
 
-            const { error: uploadError } = await supabase.storage
-                .from('lessons')
-                .upload(filePath, file);
+            const res = await fetch('/api/upload', {
+                method: 'POST',
+                body: formData,
+            });
 
-            if (uploadError) throw uploadError;
+            if (!res.ok) {
+                const err = await res.json();
+                throw new Error(err.error || 'Upload failed');
+            }
 
-            const { data: { publicUrl } } = supabase.storage
-                .from('lessons')
-                .getPublicUrl(filePath);
+            const { publicUrl } = await res.json();
 
             if (textareaRef.current) {
                 const textarea = textareaRef.current;
@@ -154,26 +157,29 @@ export default function ContentEditor() {
 
         if (subtId) {
             const fetchHierarchy = async () => {
-                const { data: st } = await supabase
-                    .from('subtopics')
-                    .select('*, topic:topics(*, subject:subjects(*))')
-                    .eq('id', subtId)
-                    .single();
+                const res = await fetch(`/api/mongo/content?type=subtopics&id=${subtId}`);
+                const data = await res.json();
+                const st = data.subtopics?.[0];
 
                 if (st) {
-                    setSelectedSubject(st.topic.subject_id.toString());
-                    setSelectedTopic(st.topic_id.toString());
-                    setSelectedSubtopic(st.id.toString());
+                    // Get topic to find subject_id
+                    const tRes = await fetch(`/api/mongo/content?type=topics&id=${st.topic_id}`);
+                    const tData = await tRes.json();
+                    const topic = tData.topics?.[0];
+
+                    if (topic) {
+                        setSelectedSubject(topic.subject_id.toString());
+                        setSelectedTopic(st.topic_id.toString());
+                        setSelectedSubtopic(st.id.toString());
+                    }
                 }
             };
             fetchHierarchy();
         } else if (topId) {
             const fetchHierarchy = async () => {
-                const { data: t } = await supabase
-                    .from('topics')
-                    .select('*, subject:subjects(*)')
-                    .eq('id', topId)
-                    .single();
+                const res = await fetch(`/api/mongo/content?type=topics&id=${topId}`);
+                const data = await res.json();
+                const t = data.topics?.[0];
 
                 if (t) {
                     setSelectedSubject(t.subject_id.toString());
@@ -187,8 +193,9 @@ export default function ContentEditor() {
     }, [searchParams]);
 
     const loadSubjects = async () => {
-        const { data } = await supabase.from('subjects').select('id, name').order('name');
-        if (data) setSubjects(data);
+        const res = await fetch('/api/mongo/content?type=subjects');
+        const data = await res.json();
+        if (data.subjects) setSubjects(data.subjects);
     };
 
     React.useEffect(() => {
@@ -203,8 +210,9 @@ export default function ContentEditor() {
     }, [selectedSubject]);
 
     const loadTopics = async (subjectId: number) => {
-        const { data } = await supabase.from('topics').select('id, name').eq('subject_id', subjectId).order('name');
-        if (data) setTopics(data);
+        const res = await fetch(`/api/mongo/content?type=topics&subject_id=${subjectId}`);
+        const data = await res.json();
+        setTopics(data.topics || []);
     };
 
     React.useEffect(() => {
@@ -217,36 +225,34 @@ export default function ContentEditor() {
     }, [selectedTopic]);
 
     const loadSubtopics = async (topicId: number) => {
-        const { data } = await supabase.from('subtopics').select('id, name').eq('topic_id', topicId).order('name');
-        if (data) setSubtopics(data);
-        else setSubtopics([]);
+        const res = await fetch(`/api/mongo/content?type=subtopics&topic_id=${topicId}`);
+        const data = await res.json();
+        setSubtopics(data.subtopics || []);
     };
 
     React.useEffect(() => {
         if (selectedSubtopic) {
             loadContent(selectedSubtopic);
+        } else if (selectedTopic && selectedSubtopic === '') {
+            setContent('');
         } else {
             setContent('');
         }
-    }, [selectedSubtopic]);
+    }, [selectedSubtopic, selectedTopic]);
 
     const loadContent = async (subId: string) => {
         setGlobalLoading(true, 'Retrieving Intellectual Property...');
         try {
             if (subId === 'no_subtopic') {
-                const { data } = await supabase
-                    .from('topics')
-                    .select('content_markdown')
-                    .eq('id', parseInt(selectedTopic))
-                    .single();
-                setContent(data?.content_markdown || '');
+                const res = await fetch(`/api/mongo/content?type=topics&id=${selectedTopic}`);
+                const data = await res.json();
+                const topic = data.topics?.[0];
+                setContent(topic?.content_markdown || '');
             } else {
-                const { data } = await supabase
-                    .from('subtopics')
-                    .select('content_markdown')
-                    .eq('id', parseInt(subId))
-                    .single();
-                setContent(data?.content_markdown || '');
+                const res = await fetch(`/api/mongo/content?type=subtopics&id=${subId}`);
+                const data = await res.json();
+                const subtopic = data.subtopics?.[0];
+                setContent(subtopic?.content_markdown || '');
             }
         } finally {
             setGlobalLoading(false);
@@ -264,13 +270,17 @@ export default function ContentEditor() {
             let targetSubtopicId = selectedSubtopic;
 
             if (selectedSubtopic === 'no_subtopic') {
-                const { error } = await supabase
-                    .from('topics')
-                    .update({ content_markdown: content })
-                    .eq('id', parseInt(selectedTopic));
-
-                if (error) alert('Failed to save topic content: ' + error.message);
-                else alert('Topic content saved successfully!');
+                const res = await fetch('/api/mongo/content/update', {
+                    method: 'PATCH',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        id: parseInt(selectedTopic),
+                        type: 'topic',
+                        content_markdown: content
+                    })
+                });
+                if (!res.ok) throw new Error('Failed to save topic');
+                alert('Topic content saved successfully!');
                 return;
             }
 
@@ -279,13 +289,21 @@ export default function ContentEditor() {
                 return;
             }
 
-            const { error } = await supabase
-                .from('subtopics')
-                .update({ content_markdown: content })
-                .eq('id', parseInt(targetSubtopicId));
+            const res = await fetch('/api/mongo/content/update', {
+                method: 'PATCH',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    id: parseInt(targetSubtopicId),
+                    type: 'subtopic',
+                    content_markdown: content
+                })
+            });
+            if (!res.ok) throw new Error('Failed to save subtopic');
 
-            if (error) alert('Failed to save: ' + error.message);
-            else alert('Content saved successfully!');
+            alert('Content saved successfully!');
+        } catch (err: any) {
+            console.error(err);
+            alert('Save failed: ' + err.message);
         } finally {
             setGlobalLoading(false);
         }

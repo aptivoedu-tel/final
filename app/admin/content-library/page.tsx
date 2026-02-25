@@ -14,7 +14,7 @@ import { useLoading } from '@/lib/context/LoadingContext';
 import Sidebar from '@/components/layout/Sidebar';
 import Header from '@/components/layout/Header';
 import { AuthService } from '@/lib/services/authService';
-import { supabase } from '@/lib/supabase/client';
+// Supabase storage removed — using MongoDB GridFS upload API
 import MarkdownRenderer from '@/components/shared/MarkdownRenderer';
 
 import Link from 'next/link';
@@ -94,19 +94,16 @@ export default function SuperAdminContentLibraryPage() {
 
         setGlobalLoading(true, 'Processing Media Asset...');
         try {
-            const fileExt = file.name.split('.').pop();
-            const fileName = `${Math.random().toString(36).substring(2)}-${Date.now()}.${fileExt}`;
-            const filePath = `inline/${fileName}`;
+            const formData = new FormData();
+            formData.append('file', file);
+            formData.append('bucket', 'lessons');
 
-            const { error: uploadError } = await supabase.storage
-                .from('lessons')
-                .upload(filePath, file);
-
-            if (uploadError) throw uploadError;
-
-            const { data: { publicUrl } } = supabase.storage
-                .from('lessons')
-                .getPublicUrl(filePath);
+            const res = await fetch('/api/upload', { method: 'POST', body: formData });
+            if (!res.ok) {
+                const err = await res.json();
+                throw new Error(err.error || 'Upload failed');
+            }
+            const { publicUrl } = await res.json();
 
             if (textareaRef.current) {
                 const textarea = textareaRef.current;
@@ -135,9 +132,17 @@ export default function SuperAdminContentLibraryPage() {
     const loadHierarchy = async () => {
         setGlobalLoading(true, 'Indexing Academic Curricula...');
         try {
-            const { data: subjects } = await supabase.from('subjects').select('*').order('name');
-            const { data: topics } = await supabase.from('topics').select('*').order('name');
-            const { data: subtopics } = await supabase.from('subtopics').select('*').order('name');
+            const IS_MONGO = process.env.NEXT_PUBLIC_DATABASE_TYPE === 'MONGODB';
+            let subjects: any[] = [];
+            let topics: any[] = [];
+            let subtopics: any[] = [];
+
+            // Always use MongoDB API
+            const res = await fetch('/api/mongo/content');
+            const contentData = await res.json();
+            subjects = contentData.subjects || [];
+            topics = contentData.topics || [];
+            subtopics = contentData.subtopics || [];
 
             if (subjects) {
                 const tree: HierarchyItem[] = subjects.map((s: any) => ({
@@ -198,13 +203,40 @@ export default function SuperAdminContentLibraryPage() {
         if (!selectedItem) return;
         setGlobalLoading(true, 'Committing Intellectual Capital...');
         try {
-            const table = selectedItem.type === 'subtopic' ? 'subtopics' : 'topics';
-            const { error } = await supabase
-                .from(table)
-                .update({ content_markdown: editContent })
-                .eq('id', selectedItem.dbId);
+            const IS_MONGO = process.env.NEXT_PUBLIC_DATABASE_TYPE === 'MONGODB';
 
-            if (error) throw error;
+            if (IS_MONGO) {
+                const res = await fetch('/api/mongo/content/update', {
+                    method: 'PATCH',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        id: selectedItem.dbId,
+                        type: selectedItem.type,
+                        content_markdown: editContent
+                    })
+                });
+
+                if (!res.ok) {
+                    const errData = await res.json();
+                    throw new Error(errData.error || 'Failed to update content');
+                }
+            } else {
+                // MongoDB API handles the update
+                const updateRes = await fetch('/api/mongo/content/update', {
+                    method: 'PATCH',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        id: selectedItem.dbId,
+                        type: selectedItem.type,
+                        content_markdown: editContent
+                    })
+                });
+
+                if (!updateRes.ok) {
+                    const errData = await updateRes.json();
+                    throw new Error(errData.error || 'Failed to update content');
+                }
+            }
 
             toast.success("Content saved successfully");
             setIsEditModalOpen(false);

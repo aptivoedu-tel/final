@@ -1,4 +1,9 @@
-import { supabase } from '@/lib/supabase/client';
+// Profile Service — MongoDB-only implementation
+// All Supabase calls removed. Routes through MongoDB API endpoints or MongoProfileService.
+
+import { MongoProfileService } from './mongoProfileService';
+
+const IS_MONGO = process.env.NEXT_PUBLIC_DATABASE_TYPE === 'MONGODB';
 
 export interface ProfileData {
     id: string;
@@ -28,20 +33,7 @@ export class ProfileService {
      * Get user profile
      */
     static async getProfile(userId: string): Promise<{ profile: ProfileData | null; error?: string }> {
-        try {
-            const { data, error } = await supabase
-                .from('users')
-                .select('*')
-                .eq('id', userId)
-                .single();
-
-            if (error) throw error;
-
-            return { profile: data };
-        } catch (error: any) {
-            console.error('Error fetching profile:', error);
-            return { profile: null, error: error.message };
-        }
+        return MongoProfileService.getProfile(userId);
     }
 
     /**
@@ -51,50 +43,34 @@ export class ProfileService {
         userId: string,
         updates: UpdateProfileData
     ): Promise<{ success: boolean; error?: string }> {
-        try {
-            const { error } = await supabase
-                .from('users')
-                .update(updates)
-                .eq('id', userId);
-
-            if (error) throw error;
-
-            return { success: true };
-        } catch (error: any) {
-            console.error('Error updating profile:', error);
-            return { success: false, error: error.message };
-        }
+        return MongoProfileService.updateProfile(userId, updates);
     }
 
     /**
-     * Upload avatar image
+     * Upload avatar image — uses MongoDB GridFS upload API
      */
     static async uploadAvatar(
         userId: string,
         file: File
     ): Promise<{ avatarUrl: string | null; error?: string }> {
         try {
-            // Create a unique file name
-            const fileExt = file.name.split('.').pop();
-            const fileName = `${userId}-${Date.now()}.${fileExt}`;
-            const filePath = `avatars/${fileName}`;
+            const formData = new FormData();
+            formData.append('file', file);
+            formData.append('bucket', 'avatars');
 
-            // Upload file to Supabase Storage
-            const { error: uploadError } = await supabase.storage
-                .from('avatars')
-                .upload(filePath, file, {
-                    cacheControl: '3600',
-                    upsert: true
-                });
+            const res = await fetch('/api/upload', {
+                method: 'POST',
+                body: formData,
+            });
 
-            if (uploadError) throw uploadError;
+            if (!res.ok) {
+                const data = await res.json();
+                return { avatarUrl: null, error: data.error || 'Upload failed' };
+            }
 
-            // Get public URL
-            const { data: { publicUrl } } = supabase.storage
-                .from('avatars')
-                .getPublicUrl(filePath);
+            const { publicUrl } = await res.json();
 
-            // Update user's avatar_url
+            // Update the user's avatar_url
             await this.updateProfile(userId, { avatar_url: publicUrl });
 
             return { avatarUrl: publicUrl };
@@ -105,76 +81,45 @@ export class ProfileService {
     }
 
     /**
-     * Change password
+     * Change password via MongoDB API
      */
     static async changePassword(
         userId: string,
         data: ChangePasswordData
     ): Promise<{ success: boolean; error?: string }> {
         try {
-            // 1. Get current session user
-            const { data: { user: authUser }, error: userError } = await supabase.auth.getUser();
-
-            if (userError || !authUser) {
-                return { success: false, error: "Authentication session not found. Please log in again." };
-            }
-
-            // 2. Verify current password by attempting to sign in again (silent verify)
-            const { error: signInError } = await supabase.auth.signInWithPassword({
-                email: authUser.email!,
-                password: data.currentPassword
+            const res = await fetch('/api/auth/change-password', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    currentPassword: data.currentPassword,
+                    newPassword: data.newPassword,
+                }),
             });
 
-            if (signInError) {
-                return {
-                    success: false,
-                    error: signInError.message.includes("Invalid login credentials")
-                        ? "The current password you entered is incorrect."
-                        : signInError.message
-                };
+            const result = await res.json();
+
+            if (!res.ok) {
+                return { success: false, error: result.error || 'Failed to change password' };
             }
-
-            // 3. Update to new password
-            const { error: updateError } = await supabase.auth.updateUser({
-                password: data.newPassword
-            });
-
-            if (updateError) throw updateError;
 
             return { success: true };
         } catch (error: any) {
             console.error('Error changing password:', error);
-            return { success: false, error: error.message || "Failed to update password. Please ensure it meets security requirements." };
+            return { success: false, error: error.message || 'Failed to change password' };
         }
     }
 
     /**
-     * Get student's enrolled universities
+     * Get student's enrolled universities (MongoDB)
      */
     static async getStudentUniversities(studentId: string): Promise<{ universities: any[]; error?: string }> {
         try {
-            const { data, error } = await supabase
-                .from('student_university_enrollments')
-                .select(`
-          enrollment_date,
-          is_active,
-          universities:university_id (
-            id,
-            name,
-            domain,
-            country,
-            city,
-            logo_url
-          )
-        `)
-                .eq('student_id', studentId)
-                .eq('is_active', true);
-
-            if (error) throw error;
-
-            return { universities: data || [] };
+            const res = await fetch(`/api/mongo/profile/universities?student_id=${studentId}`);
+            if (!res.ok) return { universities: [] };
+            const data = await res.json();
+            return { universities: data.universities || [] };
         } catch (error: any) {
-            console.error('Error fetching student universities:', error);
             return { universities: [], error: error.message };
         }
     }
@@ -184,27 +129,11 @@ export class ProfileService {
      */
     static async getAdminInstitutions(adminId: string): Promise<{ institutions: any[]; error?: string }> {
         try {
-            const { data, error } = await supabase
-                .from('institution_admins')
-                .select(`
-          assigned_at,
-          institutions:institution_id (
-            id,
-            name,
-            institution_type,
-            contact_email,
-            contact_phone,
-            address,
-            logo_url
-          )
-        `)
-                .eq('user_id', adminId);
-
-            if (error) throw error;
-
-            return { institutions: data || [] };
+            const res = await fetch(`/api/mongo/profile/institutions?admin_id=${adminId}`);
+            if (!res.ok) return { institutions: [] };
+            const data = await res.json();
+            return { institutions: data.institutions || [] };
         } catch (error: any) {
-            console.error('Error fetching admin institutions:', error);
             return { institutions: [], error: error.message };
         }
     }
@@ -214,18 +143,11 @@ export class ProfileService {
      */
     static async getUserActivity(userId: string, limit: number = 10): Promise<{ activities: any[]; error?: string }> {
         try {
-            const { data, error } = await supabase
-                .from('activity_logs')
-                .select('*')
-                .eq('user_id', userId)
-                .order('created_at', { ascending: false })
-                .limit(limit);
-
-            if (error) throw error;
-
-            return { activities: data || [] };
+            const res = await fetch(`/api/mongo/profile/activity?user_id=${userId}&limit=${limit}`);
+            if (!res.ok) return { activities: [] };
+            const data = await res.json();
+            return { activities: data.activities || [] };
         } catch (error: any) {
-            console.error('Error fetching user activity:', error);
             return { activities: [], error: error.message };
         }
     }
@@ -235,91 +157,19 @@ export class ProfileService {
      */
     static async getStudentLearningStats(studentId: string): Promise<{ stats: any; error?: string }> {
         try {
-            // Get total practice sessions
-            const { count: totalSessions } = await supabase
-                .from('practice_sessions')
-                .select('*', { count: 'exact', head: true })
-                .eq('student_id', studentId)
-                .eq('is_completed', true);
-
-            // Get total time spent (in hours)
-            const { data: sessions } = await supabase
-                .from('practice_sessions')
-                .select('time_spent_seconds')
-                .eq('student_id', studentId)
-                .eq('is_completed', true);
-
-            const totalSeconds = sessions?.reduce((sum, s) => sum + (s.time_spent_seconds || 0), 0) || 0;
-            const totalHours = Math.round(totalSeconds / 3600);
-
-            // Get average score
-            const { data: completedSessions } = await supabase
-                .from('practice_sessions')
-                .select('score_percentage')
-                .eq('student_id', studentId)
-                .eq('is_completed', true)
-                .not('score_percentage', 'is', null);
-
-            const avgScore = completedSessions && completedSessions.length > 0
-                ? Math.round(completedSessions.reduce((sum, s) => sum + (s.score_percentage || 0), 0) / completedSessions.length)
-                : 0;
-
-            // Get current streak
-            const { data: streakData } = await supabase
-                .from('learning_streaks')
-                .select('streak_date')
-                .eq('student_id', studentId)
-                .order('streak_date', { ascending: false })
-                .limit(30);
-
-            const currentStreak = this.calculateStreak(streakData || []);
-
-            return {
-                stats: {
-                    totalSessions: totalSessions || 0,
-                    totalHours,
-                    averageScore: avgScore,
-                    currentStreak
-                }
-            };
+            const res = await fetch(`/api/mongo/profile/stats?student_id=${studentId}`);
+            if (!res.ok) {
+                return {
+                    stats: { totalSessions: 0, totalHours: 0, averageScore: 0, currentStreak: 0 }
+                };
+            }
+            const data = await res.json();
+            return { stats: data.stats };
         } catch (error: any) {
-            console.error('Error fetching student learning stats:', error);
             return {
-                stats: {
-                    totalSessions: 0,
-                    totalHours: 0,
-                    averageScore: 0,
-                    currentStreak: 0
-                },
+                stats: { totalSessions: 0, totalHours: 0, averageScore: 0, currentStreak: 0 },
                 error: error.message
             };
         }
-    }
-
-    /**
-     * Calculate current streak
-     */
-    private static calculateStreak(streakData: { streak_date: string }[]): number {
-        if (!streakData || streakData.length === 0) return 0;
-
-        let streak = 0;
-        const today = new Date();
-        today.setHours(0, 0, 0, 0);
-
-        for (let i = 0; i < streakData.length; i++) {
-            const streakDate = new Date(streakData[i].streak_date);
-            streakDate.setHours(0, 0, 0, 0);
-
-            const expectedDate = new Date(today);
-            expectedDate.setDate(expectedDate.getDate() - i);
-
-            if (streakDate.getTime() === expectedDate.getTime()) {
-                streak++;
-            } else {
-                break;
-            }
-        }
-
-        return streak;
     }
 }

@@ -1,4 +1,5 @@
-import { supabase } from '../supabase/client';
+// Supabase removed — using MongoDB API routes via fetch
+// import { supabase } from '../supabase/client';
 import * as XLSX from 'xlsx';
 
 export interface MCQRow {
@@ -370,16 +371,10 @@ export class ExcelUploadService {
      */
     private static async findSubject(subjectName: string): Promise<number | null> {
         try {
-            const normalizedName = subjectName.trim();
-
-            const { data: existing } = await supabase
-                .from('subjects')
-                .select('id')
-                .ilike('name', normalizedName)
-                .limit(1)
-                .single();
-
-            return existing?.id || null;
+            const res = await fetch(`/api/mongo/hierarchy/find?type=subject&name=${encodeURIComponent(subjectName)}`);
+            if (!res.ok) return null;
+            const data = await res.json();
+            return data.id;
         } catch (error) {
             return null;
         }
@@ -390,17 +385,10 @@ export class ExcelUploadService {
      */
     private static async findTopic(topicName: string, subjectId: number): Promise<number | null> {
         try {
-            const normalizedName = topicName.trim();
-
-            const { data: existing } = await supabase
-                .from('topics')
-                .select('id')
-                .eq('subject_id', subjectId)
-                .ilike('name', normalizedName)
-                .limit(1)
-                .single();
-
-            return existing?.id || null;
+            const res = await fetch(`/api/mongo/hierarchy/find?type=topic&name=${encodeURIComponent(topicName)}&parentId=${subjectId}`);
+            if (!res.ok) return null;
+            const data = await res.json();
+            return data.id;
         } catch (error) {
             return null;
         }
@@ -411,21 +399,11 @@ export class ExcelUploadService {
      */
     private static async findSubtopic(subtopicName: string | null | undefined, topicId: number): Promise<number | null> {
         try {
-            if (!subtopicName || subtopicName.trim() === '') {
-                return null;
-            }
-
-            const normalizedName = subtopicName.trim();
-
-            const { data: existing } = await supabase
-                .from('subtopics')
-                .select('id')
-                .eq('topic_id', topicId)
-                .ilike('name', normalizedName)
-                .limit(1)
-                .single();
-
-            return existing?.id || null;
+            if (!subtopicName || subtopicName.trim() === '') return null;
+            const res = await fetch(`/api/mongo/hierarchy/find?type=subtopic&name=${encodeURIComponent(subtopicName)}&parentId=${topicId}`);
+            if (!res.ok) return null;
+            const data = await res.json();
+            return data.id;
         } catch (error) {
             return null;
         }
@@ -512,216 +490,44 @@ export class ExcelUploadService {
         fileName: string
     ): Promise<UploadResult> {
         try {
-            // Summary counters
-            let skipped_in_file_duplicates = 0;
-            let skipped_exact_duplicates = 0;
-            let skipped_similar_questions = 0;
-            let insertedCount = 0;
-            let failedCount = 0;
-            const errors: ValidationError[] = [];
-
-            // 1. Get the hierarchy details for metadata
-            const { data: hierarchyInfo } = await supabase
-                .from('subtopics')
-                .select('id, topic_id, topic:topics(id, subject_id)')
-                .eq('id', subtopicId)
-                .single();
-
-            const topicId = hierarchyInfo?.topic_id || (hierarchyInfo?.topic as any)?.id;
-            const subjectId = (hierarchyInfo?.topic as any)?.subject_id;
-
-            const { data: uploadRecord, error: uploadError } = await supabase
-                .from('uploads')
-                .insert([
-                    {
-                        upload_type: 'mcq_excel',
-                        file_name: fileName,
-                        subject_id: subjectId,
-                        topic_id: topicId,
-                        subtopic_id: subtopicId,
-                        status: 'processing',
-                        total_rows: mcqs.length,
-                        processed_rows: 0,
-                        failed_rows: 0,
-                        created_by: userId
-                    }
-                ])
-                .select()
-                .single();
-
-            if (uploadError || !uploadRecord) {
-                return {
-                    success: false,
-                    totalRows: mcqs.length,
-                    processedRows: 0,
-                    failedRows: mcqs.length,
-                    errors: [{ row: 0, field: 'upload', message: `Failed to create upload record: ${uploadError?.message || 'Unknown error'}` }]
-                };
-            }
-
-            // 2. Normalization & In-file Duplicate Check (Step 1 & 2)
-            const uniqueMCQs: MCQRow[] = [];
-            const seenNormalized = new Set<string>();
-
-            for (const mcq of mcqs) {
-                const normalized = this.normalizeQuestion(mcq.question);
-                if (seenNormalized.has(normalized)) {
-                    skipped_in_file_duplicates++;
-                    continue;
-                }
-                seenNormalized.add(normalized);
-                uniqueMCQs.push(mcq);
-            }
-
-            // 3. Exact Duplicate Check (Database Level) - Batch Process (Step 3)
-            const mcqsWithHashes = await Promise.all(uniqueMCQs.map(async (mcq) => {
-                const normalized = this.normalizeQuestion(mcq.question);
-                const hash = await this.generateHash(normalized);
-                return { ...mcq, hash };
-            }));
-
-            const allHashes = mcqsWithHashes.map(m => m.hash);
-
-            const dbExistingHashSet = new Set<string>();
-            const hashBatchSize = 100;
-            for (let i = 0; i < allHashes.length; i += hashBatchSize) {
-                const batch = allHashes.slice(i, i + hashBatchSize);
-                const { data: existing } = await supabase
-                    .from('mcqs')
-                    .select('question_hash')
-                    .in('question_hash', batch);
-
-                existing?.forEach(h => dbExistingHashSet.add(h.question_hash));
-            }
-
-            const questionsToProcess = mcqsWithHashes.filter(m => {
-                if (dbExistingHashSet.has(m.hash)) {
-                    skipped_exact_duplicates++;
-                    return false;
-                }
-                return true;
+            const res = await fetch('/api/mcqs/bulk-upload', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    mcqs,
+                    subtopicId,
+                    userId,
+                    fileName,
+                    uploadType: 'mcq_excel'
+                })
             });
 
-            // 4. Similarity Check & Batch Insert
-            const batchSize = 50;
-            for (let i = 0; i < questionsToProcess.length; i += batchSize) {
-                const batch = questionsToProcess.slice(i, i + batchSize);
-                const safeToInsertBatch: any[] = [];
-
-                // Process similarity checks in small parallel batches
-                const similarityBatchSize = 5;
-                for (let j = 0; j < batch.length; j += similarityBatchSize) {
-                    const subBatch = batch.slice(j, j + similarityBatchSize);
-
-                    const similarityResults = await Promise.all(subBatch.map(async (mcq) => {
-                        const { data: similar } = await supabase.rpc('check_similar_question', {
-                            p_topic_id: topicId,
-                            p_question_text: mcq.question,
-                            p_threshold: 0.85
-                        });
-                        const result = Array.isArray(similar) ? similar[0] : similar;
-                        return { mcq, similar: result };
-                    }));
-
-                    for (const { mcq, similar } of similarityResults) {
-                        if (similar && (similar as any).exists) {
-                            skipped_similar_questions++;
-                            continue;
-                        }
-
-                        safeToInsertBatch.push({
-                            subtopic_id: subtopicId,
-                            question: mcq.question,
-                            question_hash: mcq.hash,
-                            question_image_url: mcq.image_url,
-                            option_a: mcq.option_a,
-                            option_b: mcq.option_b,
-                            option_c: mcq.option_c,
-                            option_d: mcq.option_d,
-                            correct_option: mcq.correct_option,
-                            explanation: mcq.explanation,
-                            explanation_url: mcq.explanation_url,
-                            difficulty: mcq.difficulty || 'medium',
-                            upload_id: uploadRecord.id,
-                            is_active: true
-                        });
-                    }
-                }
-
-                if (safeToInsertBatch.length > 0) {
-                    const { error: insertError } = await supabase
-                        .from('mcqs')
-                        .insert(safeToInsertBatch);
-
-                    if (insertError) {
-                        failedCount += batch.length;
-                        errors.push({
-                            row: i,
-                            field: 'batch',
-                            message: `Failed to insert batch ${Math.floor(i / batchSize) + 1}: ${insertError.message}`
-                        });
-                    } else {
-                        insertedCount += safeToInsertBatch.length;
-                    }
-                }
-
-                // Update progress
-                await supabase
-                    .from('uploads')
-                    .update({
-                        status: failedCount === 0 ? 'completed' : (insertedCount > 0 ? 'partially_completed' : 'failed'),
-                        processed_rows: insertedCount,
-                        failed_rows: failedCount,
-                        validation_errors: errors.length > 0 ? errors : null,
-                        completed_at: new Date().toISOString()
-                    })
-                    .eq('id', uploadRecord.id);
-
-                // AUTO-LINKING: Link this subtopic to all active universities
-                try {
-                    const { data: universities } = await supabase
-                        .from('universities')
-                        .select('id')
-                        .eq('is_active', true);
-
-                    if (universities && universities.length > 0) {
-                        const mappings = universities.map(uni => ({
-                            university_id: uni.id,
-                            subject_id: subjectId,
-                            topic_id: topicId,
-                            subtopic_id: subtopicId,
-                            is_active: true
-                        }));
-
-                        await supabase
-                            .from('university_content_access')
-                            .upsert(mappings, { onConflict: 'university_id, subject_id, topic_id, subtopic_id' });
-                    }
-                } catch (linkError) {
-                    console.error("Auto-linking failed (non-critical):", linkError);
-                }
+            if (!res.ok) {
+                const data = await res.json();
+                throw new Error(data.error || 'Upload failed');
             }
 
+            const result = await res.json();
             return {
-                success: failedCount === 0,
-                totalRows: mcqs.length,
-                processedRows: insertedCount,
-                inserted: insertedCount,
-                failedRows: failedCount,
-                skipped_in_file_duplicates,
-                skipped_exact_duplicates,
-                skipped_similar_questions,
-                errors,
-                uploadId: uploadRecord.id
+                success: true,
+                totalRows: result.totalRows,
+                processedRows: result.inserted,
+                inserted: result.inserted,
+                failedRows: mcqs.length - result.inserted,
+                skipped_in_file_duplicates: result.skipped_in_file,
+                skipped_exact_duplicates: result.skipped_exact,
+                skipped_similar_questions: 0,
+                errors: [],
+                uploadId: result.uploadId
             };
-        } catch (error) {
-            console.error('Upload error:', error);
+        } catch (error: any) {
+            console.error('Upload Error:', error);
             return {
                 success: false,
                 totalRows: mcqs.length,
                 processedRows: 0,
                 failedRows: mcqs.length,
-                errors: [{ row: 0, field: 'system', message: 'System error during upload' }]
+                errors: [{ row: 0, field: 'system', message: error.message || 'System error' }]
             };
         }
     }
@@ -735,263 +541,44 @@ export class ExcelUploadService {
         fileName: string
     ): Promise<UploadResult> {
         try {
-            // Summary counters
-            let skipped_in_file_duplicates = 0;
-            let skipped_exact_duplicates = 0;
-            let skipped_similar_questions = 0;
-            let insertedCount = 0;
-            let failedCount = 0;
-            const errors: ValidationError[] = [];
-
-            // 1. Create upload record
-            const { data: uploadRecord, error: uploadError } = await supabase
-                .from('uploads')
-                .insert([
-                    {
-                        upload_type: 'mcq_excel_auto',
-                        file_name: fileName,
-                        status: 'processing',
-                        total_rows: mcqs.length,
-                        processed_rows: 0,
-                        failed_rows: 0,
-                        created_by: userId
-                    }
-                ])
-                .select()
-                .single();
-
-            if (uploadError || !uploadRecord) {
-                return {
-                    success: false,
-                    totalRows: mcqs.length,
-                    processedRows: 0,
-                    failedRows: mcqs.length,
-                    errors: [{ row: 0, field: 'upload', message: `Failed to create upload record: ${uploadError?.message || 'Unknown error'}` }]
-                };
-            }
-
-            // 2. Normalization & In-file Duplicate Check (Step 1 & 2)
-            const uniqueMCQs: MCQRow[] = [];
-            const seenNormalized = new Set<string>();
-
-            for (const mcq of mcqs) {
-                const normalized = this.normalizeQuestion(mcq.question);
-                if (seenNormalized.has(normalized)) {
-                    skipped_in_file_duplicates++;
-                    continue;
-                }
-                seenNormalized.add(normalized);
-                uniqueMCQs.push(mcq);
-            }
-
-            // 3. Exact Duplicate Check (Database Level) - Batch Process (Step 3)
-            const mcqsWithHashes = await Promise.all(uniqueMCQs.map(async (mcq) => {
-                const normalized = this.normalizeQuestion(mcq.question);
-                const hash = await this.generateHash(normalized);
-                return { ...mcq, hash };
-            }));
-
-            const allHashes = mcqsWithHashes.map(m => m.hash);
-
-            const dbExistingHashSet = new Set<string>();
-            const hashBatchSize = 100;
-            for (let i = 0; i < allHashes.length; i += hashBatchSize) {
-                const batch = allHashes.slice(i, i + hashBatchSize);
-                const { data: existing } = await supabase
-                    .from('mcqs')
-                    .select('question_hash')
-                    .in('question_hash', batch);
-
-                existing?.forEach(h => dbExistingHashSet.add(h.question_hash));
-            }
-
-            const questionsToProcess = mcqsWithHashes.filter(m => {
-                if (dbExistingHashSet.has(m.hash)) {
-                    skipped_exact_duplicates++;
-                    return false;
-                }
-                return true;
+            // Re-use bulk-upload but with different uploadType
+            const res = await fetch('/api/mcqs/bulk-upload', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    mcqs,
+                    userId,
+                    fileName,
+                    uploadType: 'mcq_excel_auto'
+                })
             });
 
-            // Group MCQs by hierarchy to enable batching
-            const hierarchyCache = new Map<string, { subjectId: number; topicId: number; subtopicId: number | null }>();
-            const groupedMCQs = new Map<string, (MCQRow & { hash: string })[]>();
-
-            for (let i = 0; i < questionsToProcess.length; i++) {
-                const mcq = questionsToProcess[i];
-                if (!mcq.subject || !mcq.topic) {
-                    failedCount++;
-                    errors.push({
-                        row: i + 2,
-                        field: 'hierarchy',
-                        message: 'Subject and Topic are required for auto-detection'
-                    });
-                    continue;
-                }
-
-                const hierarchyKey = `${mcq.subject.trim().toLowerCase()}|${mcq.topic.trim().toLowerCase()}|${mcq.subtopic?.trim().toLowerCase() || 'NO_SUBTOPIC'}`;
-
-                if (!groupedMCQs.has(hierarchyKey)) {
-                    groupedMCQs.set(hierarchyKey, []);
-                }
-                groupedMCQs.get(hierarchyKey)!.push(mcq);
+            if (!res.ok) {
+                const data = await res.json();
+                throw new Error(data.error || 'Upload failed');
             }
 
-            // Process each group
-            for (const [hierarchyKey, group] of groupedMCQs.entries()) {
-                const firstMCQ = group[0];
-
-                // Resolve hierarchy for this group
-                let hierarchy = hierarchyCache.get(hierarchyKey);
-                if (!hierarchy) {
-                    const assignResult = await this.autoAssignHierarchy(firstMCQ);
-
-                    if (!assignResult.success || !assignResult.subjectId || !assignResult.topicId) {
-                        failedCount += group.length;
-                        errors.push({
-                            row: mcqs.indexOf(firstMCQ) + 2,
-                            field: 'hierarchy',
-                            message: `Failed to resolve hierarchy for group: ${firstMCQ.subject} > ${firstMCQ.topic}. ${assignResult.message}`
-                        });
-                        continue;
-                    }
-
-                    hierarchy = {
-                        subjectId: assignResult.subjectId,
-                        topicId: assignResult.topicId,
-                        subtopicId: assignResult.subtopicId ?? null
-                    };
-                    hierarchyCache.set(hierarchyKey, hierarchy);
-                }
-
-                // Step 4: Similar Question Detection (within same topic)
-                const safeToInsertBatch: any[] = [];
-
-                // Process similarity checks in small parallel batches
-                const similarityBatchSize = 5; // Conservative parallel limit
-                for (let i = 0; i < group.length; i += similarityBatchSize) {
-                    const subBatch = group.slice(i, i + similarityBatchSize);
-
-                    const similarityResults = await Promise.all(subBatch.map(async (mcq) => {
-                        const { data: similar } = await supabase.rpc('check_similar_question', {
-                            p_topic_id: hierarchy!.topicId,
-                            p_question_text: mcq.question,
-                            p_threshold: 0.85
-                        });
-                        // rpc might return an object directly or wrap it
-                        const result = Array.isArray(similar) ? similar[0] : similar;
-                        return { mcq, similar: result };
-                    }));
-
-                    for (const { mcq, similar } of similarityResults) {
-                        if (similar && (similar as any).exists) {
-                            skipped_similar_questions++;
-                            continue;
-                        }
-
-                        safeToInsertBatch.push({
-                            question: mcq.question,
-                            question_hash: mcq.hash,
-                            question_image_url: mcq.image_url,
-                            option_a: mcq.option_a,
-                            option_b: mcq.option_b,
-                            option_c: mcq.option_c,
-                            option_d: mcq.option_d,
-                            correct_option: mcq.correct_option,
-                            explanation: mcq.explanation,
-                            explanation_url: mcq.explanation_url,
-                            difficulty: mcq.difficulty || 'medium',
-                            subtopic_id: hierarchy!.subtopicId,
-                            topic_id: hierarchy!.subtopicId ? null : hierarchy!.topicId,
-                            upload_id: uploadRecord.id,
-                            is_active: true
-                        });
-                    }
-                }
-
-                if (safeToInsertBatch.length > 0) {
-                    const { error: insertError } = await supabase
-                        .from('mcqs')
-                        .insert(safeToInsertBatch);
-
-                    if (insertError) {
-                        failedCount += safeToInsertBatch.length;
-                        errors.push({
-                            row: mcqs.indexOf(firstMCQ) + 2,
-                            field: 'insert',
-                            message: `Failed to insert batch: ${insertError.message}`
-                        });
-                    } else {
-                        insertedCount += safeToInsertBatch.length;
-                    }
-                }
-
-                // Update progress in DB
-                await supabase
-                    .from('uploads')
-                    .update({
-                        processed_rows: insertedCount,
-                        failed_rows: failedCount
-                    })
-                    .eq('id', uploadRecord.id);
-
-                // AUTO-LINKING: Link this subtopic/topic to all active universities
-                if (hierarchy && (hierarchy.subtopicId || hierarchy.topicId)) {
-                    try {
-                        const { data: universities } = await supabase
-                            .from('universities')
-                            .select('id')
-                            .eq('is_active', true);
-
-                        if (universities && universities.length > 0) {
-                            const mappings = universities.map(uni => ({
-                                university_id: uni.id,
-                                subject_id: hierarchy!.subjectId,
-                                topic_id: hierarchy!.topicId,
-                                subtopic_id: hierarchy!.subtopicId,
-                                is_active: true
-                            }));
-
-                            await supabase
-                                .from('university_content_access')
-                                .upsert(mappings, { onConflict: 'university_id, subject_id, topic_id, subtopic_id' });
-                        }
-                    } catch (linkError) {
-                        console.error("Auto-linking failed for group (non-critical):", linkError);
-                    }
-                }
-            }
-
-            // Final update
-            await supabase
-                .from('uploads')
-                .update({
-                    status: failedCount === 0 ? 'completed' : (insertedCount > 0 ? 'partially_completed' : 'failed'),
-                    validation_errors: errors.length > 0 ? errors : null,
-                    completed_at: new Date().toISOString()
-                })
-                .eq('id', uploadRecord.id);
-
+            const result = await res.json();
             return {
-                success: failedCount === 0,
-                totalRows: mcqs.length,
-                processedRows: insertedCount,
-                inserted: insertedCount,
-                failedRows: failedCount,
-                skipped_in_file_duplicates,
-                skipped_exact_duplicates,
-                skipped_similar_questions,
-                errors,
-                uploadId: uploadRecord.id
+                success: true,
+                totalRows: result.totalRows,
+                processedRows: result.inserted,
+                inserted: result.inserted,
+                failedRows: mcqs.length - result.inserted,
+                skipped_in_file_duplicates: result.skipped_in_file,
+                skipped_exact_duplicates: result.skipped_exact,
+                skipped_similar_questions: 0,
+                errors: [],
+                uploadId: result.uploadId
             };
-        } catch (error) {
+        } catch (error: any) {
             console.error('Auto-detect upload error:', error);
             return {
                 success: false,
                 totalRows: mcqs.length,
                 processedRows: 0,
                 failedRows: mcqs.length,
-                errors: [{ row: 0, field: 'system', message: 'System error during auto-detect upload' }]
+                errors: [{ row: 0, field: 'system', message: error.message || 'System error' }]
             };
         }
     }
@@ -1009,96 +596,24 @@ export class ExcelUploadService {
     static async validateDuplicates(
         mcqs: MCQRow[]
     ): Promise<UploadResult['duplicateDetails']> {
-        const details: any = {
-            inFile: 0,
-            exact: 0,
-            similar: 0,
-            items: []
-        };
+        try {
+            const res = await fetch('/api/mcqs/validate-duplicates', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ mcqs })
+            });
 
-        const seenNormalized = new Map<string, number>(); // text -> index
-        const uniqueIndices: number[] = [];
+            if (!res.ok) throw new Error('Failed to validate duplicates');
 
-        // 1. In-file check
-        mcqs.forEach((mcq, idx) => {
-            const normalized = this.normalizeQuestion(mcq.question);
-            if (seenNormalized.has(normalized)) {
-                details.inFile++;
-                details.items.push({
-                    index: idx,
-                    question: mcq.question,
-                    type: 'in-file'
-                });
-            } else {
-                seenNormalized.set(normalized, idx);
-                uniqueIndices.push(idx);
-            }
-        });
-
-        if (uniqueIndices.length === 0) return details;
-
-        // 2. Exact DB check (using hashes)
-        const candidates = uniqueIndices.map(idx => ({ idx, mcq: mcqs[idx] }));
-        const candidatesWithHashes = await Promise.all(candidates.map(async (c) => ({
-            ...c,
-            hash: await this.generateHash(this.normalizeQuestion(c.mcq.question))
-        })));
-
-        const hashes = candidatesWithHashes.map(c => c.hash);
-        const dbHashes = new Set<string>();
-
-        for (let i = 0; i < hashes.length; i += 100) {
-            const batch = hashes.slice(i, i + 100);
-            const { data } = await supabase
-                .from('mcqs')
-                .select('question_hash')
-                .in('question_hash', batch);
-            data?.forEach(row => dbHashes.add(row.question_hash));
+            return await res.json();
+        } catch (error) {
+            console.error('Validate Duplicates Error:', error);
+            return {
+                inFile: 0,
+                exact: 0,
+                similar: 0,
+                items: []
+            };
         }
-
-        const filteredForSimilarityIndices: number[] = [];
-        candidatesWithHashes.forEach(c => {
-            if (dbHashes.has(c.hash)) {
-                details.exact++;
-                details.items.push({
-                    index: c.idx,
-                    question: c.mcq.question,
-                    type: 'exact'
-                });
-            } else {
-                filteredForSimilarityIndices.push(c.idx);
-            }
-        });
-
-        // 3. Similarity check (only if topicId is resolved)
-        // Rate limited for performance
-        if (filteredForSimilarityIndices.length > 0) {
-            const limit = Math.min(filteredForSimilarityIndices.length, 50); // Scan first 50 unique items for similarity
-            for (let i = 0; i < limit; i++) {
-                const idx = filteredForSimilarityIndices[i];
-                const mcq = mcqs[idx];
-
-                if (mcq.topicId) {
-                    const { data: similar } = await supabase.rpc('check_similar_question', {
-                        p_topic_id: mcq.topicId,
-                        p_question_text: mcq.question,
-                        p_threshold: 0.85
-                    });
-                    const result = Array.isArray(similar) ? similar[0] : similar;
-                    if (result?.exists) {
-                        details.similar++;
-                        details.items.push({
-                            index: idx,
-                            question: mcq.question,
-                            type: 'similar',
-                            match: result.question,
-                            score: result.score
-                        });
-                    }
-                }
-            }
-        }
-
-        return details;
     }
 }

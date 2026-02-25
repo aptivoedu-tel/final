@@ -11,7 +11,8 @@ import {
 import Sidebar from '@/components/layout/Sidebar';
 import Header from '@/components/layout/Header';
 import { AuthService } from '@/lib/services/authService';
-import { supabase } from '@/lib/supabase/client';
+// Supabase removed — using MongoDB API via fetch
+// import { supabase } from '@/lib/supabase/client';
 import { toast } from 'sonner';
 import { X, Save, Trash2 } from 'lucide-react';
 import { useUI } from '@/lib/context/UIContext';
@@ -81,64 +82,75 @@ export default function SuperAdminQuestionBankPage() {
     const loadHierarchy = async () => {
         setGlobalLoading(true, 'Syncing Master Tree...');
         try {
-            // Fetch ALL subjects, topics, subtopics
-            const { data: subjects } = await supabase.from('subjects').select('*').order('name');
-            const { data: topics } = await supabase.from('topics').select('*').order('name');
-            const { data: subtopics } = await supabase.from('subtopics').select('*').order('name');
+            const res = await fetch('/api/mongo/mcqs?counts_only=true');
+            if (res.ok) {
+                const countsData = await res.json();
+                const subjects = countsData.subjects || [];
+                const topics = countsData.topics || [];
+                const subtopics = countsData.subtopics || [];
+                const allMcqs = countsData.allMcqs || [];
 
-            // Get MCQ counts for both subtopics and direct topics
-            const { data: allMcqs } = await supabase.from('mcqs').select('id, subtopic_id, topic_id');
+                if (subjects) {
+                    const tree: HierarchyItem[] = subjects.map((s: any) => {
+                        const subjectTopics = topics?.filter((t: any) => t.subject_id === s.id) || [];
+                        const processedTopics = subjectTopics.map((t: any): HierarchyItem => {
+                            const topicSubtopics = subtopics?.filter((st: any) => st.topic_id === t.id) || [];
+                            const processedSubtopics: HierarchyItem[] = topicSubtopics.map((st: any): HierarchyItem => {
+                                const count = allMcqs?.filter(m => m.subtopic_id === st.id).length || 0;
+                                return {
+                                    id: `st-${st.id}`,
+                                    dbId: st.id,
+                                    type: 'subtopic',
+                                    title: st.name,
+                                    mcqCount: count
+                                };
+                            });
 
-            if (subjects) {
-                const tree: HierarchyItem[] = subjects.map((s: any) => {
-                    const subjectTopics = topics?.filter((t: any) => t.subject_id === s.id) || [];
-                    const processedTopics = subjectTopics.map((t: any): HierarchyItem => {
-                        const topicSubtopics = subtopics?.filter((st: any) => st.topic_id === t.id) || [];
-                        const processedSubtopics: HierarchyItem[] = topicSubtopics.map((st: any): HierarchyItem => {
-                            const count = allMcqs?.filter(m => m.subtopic_id === st.id).length || 0;
+                            const directTopicCount = allMcqs?.filter(m => m.topic_id === t.id).length || 0;
+                            const totalTopicCount = processedSubtopics.reduce((sum, st) => sum + (st.mcqCount || 0), 0) + directTopicCount;
+
                             return {
-                                id: `st-${st.id}`,
-                                dbId: st.id,
-                                type: 'subtopic',
-                                title: st.name,
-                                mcqCount: count
+                                id: `t-${t.id}`,
+                                dbId: t.id,
+                                type: 'topic',
+                                title: t.name,
+                                expanded: false,
+                                mcqCount: totalTopicCount,
+                                children: processedSubtopics
                             };
                         });
-
-                        const directTopicCount = allMcqs?.filter(m => m.topic_id === t.id).length || 0;
-                        const totalTopicCount = processedSubtopics.reduce((sum, st) => sum + (st.mcqCount || 0), 0) + directTopicCount;
-
+                        const subjectCount = processedTopics.reduce((sum, t) => sum + (t.mcqCount || 0), 0);
                         return {
-                            id: `t-${t.id}`,
-                            dbId: t.id,
-                            type: 'topic',
-                            title: t.name,
+                            id: `s-${s.id}`,
+                            dbId: s.id,
+                            type: 'subject',
+                            title: s.name,
                             expanded: false,
-                            mcqCount: totalTopicCount,
-                            children: processedSubtopics
+                            mcqCount: subjectCount,
+                            children: processedTopics
                         };
                     });
-                    const subjectCount = processedTopics.reduce((sum, t) => sum + (t.mcqCount || 0), 0);
-                    return {
-                        id: `s-${s.id}`,
-                        dbId: s.id,
-                        type: 'subject',
-                        title: s.name,
-                        expanded: false,
-                        mcqCount: subjectCount,
-                        children: processedTopics
-                    };
-                });
-                setData(tree);
+                    setData(tree);
+                }
             }
+        } catch (error) {
+            console.error("Error loading hierarchy:", error);
+            toast.error("Failed to load hierarchy data");
         } finally {
             setGlobalLoading(false);
         }
     };
 
     const fetchPassages = async () => {
-        const { data } = await supabase.from('passages').select('*').order('created_at', { ascending: false });
-        if (data) setPassages(data);
+        try {
+            const res = await fetch('/api/mongo/passages');
+            if (res.ok) {
+                const data = await res.json();
+                if (data.passages) setPassages(data.passages);
+            }
+        } catch (error) {
+            console.error('Error fetching passages:', error);
+        }
     };
 
     const handleSavePassage = async () => {
@@ -148,16 +160,17 @@ export default function SuperAdminQuestionBankPage() {
         }
 
         try {
-            const { data, error } = await supabase
-                .from('passages')
-                .insert([passageForm])
-                .select()
-                .single();
+            const res = await fetch('/api/mongo/passages', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(passageForm)
+            });
 
-            if (error) throw error;
+            if (!res.ok) throw new Error('Failed to create passage');
+            const data = await res.json();
 
             toast.success("Passage created successfully");
-            setPassages([data, ...passages]);
+            setPassages([data.passage, ...passages]);
             setIsPassageModalOpen(false);
             setPassageForm({ title: '', content: '' });
         } catch (error: any) {
@@ -176,20 +189,21 @@ export default function SuperAdminQuestionBankPage() {
         setGlobalLoading(true, 'Accessing Encrypted Archives...');
         setSelectedQuestionIds([]);
         try {
-            let query = supabase.from('mcqs').select('*');
-
+            let url = `/api/mongo/mcqs?`;
             if (item.type === 'subtopic') {
-                query = query.eq('subtopic_id', item.dbId);
+                url += `subtopic_id=${item.dbId}`;
             } else if (item.type === 'topic') {
-                query = query.eq('topic_id', item.dbId);
+                url += `topic_id=${item.dbId}`;
             } else {
                 setQuestions([]);
                 return;
             }
 
-            const { data, error } = await query.order('created_at', { ascending: false });
-
-            if (data) setQuestions(data);
+            const res = await fetch(url);
+            if (res.ok) {
+                const data = await res.json();
+                setQuestions(data.mcqs || []);
+            }
         } catch (error) {
             console.error("Error loading questions:", error);
         } finally {
@@ -269,25 +283,22 @@ export default function SuperAdminQuestionBankPage() {
                 is_active: true
             };
 
-            let error;
-            if (editingMcq) {
-                const { error: err } = await supabase
-                    .from('mcqs')
-                    .update(payload)
-                    .eq('id', editingMcq.id);
-                error = err;
-            } else {
-                const { error: err } = await supabase
-                    .from('mcqs')
-                    .insert([payload]);
-                error = err;
-            }
+            const method = editingMcq ? 'PATCH' : 'POST';
+            const res = await fetch('/api/mongo/mcqs', {
+                method,
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(editingMcq ? { id: editingMcq.id, ...payload } : payload)
+            });
 
-            if (error) throw error;
+            if (!res.ok) {
+                const errData = await res.json();
+                throw new Error(errData.error || 'Failed to save question');
+            }
 
             toast.success(editingMcq ? "Question updated successfully" : "Question added successfully");
             setIsMcqModalOpen(false);
             if (selectedItem) loadQuestions(selectedItem);
+            loadHierarchy(); // Refresh counts
         } catch (err: any) {
             console.error("Save MCQ error:", err);
             toast.error(err.message || "Failed to save MCQ");
@@ -298,15 +309,15 @@ export default function SuperAdminQuestionBankPage() {
         if (!confirm("Are you sure you want to permanently delete this question? This action cannot be undone.")) return;
 
         try {
-            const { error } = await supabase
-                .from('mcqs')
-                .delete()
-                .eq('id', id);
-
-            if (error) throw error;
+            const res = await fetch(`/api/mongo/mcqs?id=${id}`, { method: 'DELETE' });
+            if (!res.ok) {
+                const errData = await res.json();
+                throw new Error(errData.error || 'Delete failed');
+            }
 
             toast.success("Question deleted successfully");
             if (selectedItem) loadQuestions(selectedItem);
+            loadHierarchy(); // Refresh counts
         } catch (err: any) {
             console.error("Delete MCQ error:", err);
             toast.error(err.message || "Failed to delete question");
@@ -333,16 +344,16 @@ export default function SuperAdminQuestionBankPage() {
 
         setGlobalLoading(true, 'Initiating Mass Deletion...');
         try {
-            const { error } = await supabase
-                .from('mcqs')
-                .delete()
-                .in('id', selectedQuestionIds);
-
-            if (error) throw error;
+            const res = await fetch(`/api/mongo/mcqs?ids=${selectedQuestionIds.join(',')}`, { method: 'DELETE' });
+            if (!res.ok) {
+                const errData = await res.json();
+                throw new Error(errData.error || 'Bulk delete failed');
+            }
 
             toast.success(`${selectedQuestionIds.length} questions deleted successfully`);
             setSelectedQuestionIds([]);
             if (selectedItem) loadQuestions(selectedItem);
+            loadHierarchy(); // Refresh counts
         } catch (err: any) {
             console.error("Bulk Delete MCQ error:", err);
             toast.error(err.message || "Failed to delete questions");

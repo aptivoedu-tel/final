@@ -14,6 +14,7 @@ export const metadata: Metadata = {
 
 import { LoadingProvider } from "@/lib/context/LoadingContext";
 import { UIProvider } from "@/lib/context/UIContext";
+import { AuthProvider } from "@/components/providers/AuthProvider";
 import AIAssistant from "@/components/features/AIAssistant";
 import "./ai-assistant.css";
 
@@ -25,12 +26,14 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body className={`${inter.variable} ${outfit.variable} font-sans antialiased bg-gray-50`}>
-        <LoadingProvider>
-          <UIProvider>
-            {children}
-            <AIAssistant />
-          </UIProvider>
-        </LoadingProvider>
+        <AuthProvider>
+          <LoadingProvider>
+            <UIProvider>
+              {children}
+              <AIAssistant />
+            </UIProvider>
+          </LoadingProvider>
+        </AuthProvider>
       </body>
     </html>
   );

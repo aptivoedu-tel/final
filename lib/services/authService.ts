@@ -1,5 +1,8 @@
 import { supabase } from '../supabase/client';
 import { Database } from '../supabase/client';
+import { MongoAuthService } from './mongoAuthService';
+
+const IS_MONGO = process.env.NEXT_PUBLIC_DATABASE_TYPE === 'MONGODB';
 
 // Determine the base URL for redirects (Verification, Password Reset, OAuth)
 // Prioritizes NEXT_PUBLIC_SITE_URL or NEXT_PUBLIC_APP_URL (Production) over window.location.origin (Localhost)
@@ -27,6 +30,7 @@ export interface RegisterData {
 
 export class AuthService {
     static async login(credentials: LoginCredentials): Promise<{ user: User | null; error: string | null }> {
+        if (IS_MONGO) return MongoAuthService.login(credentials);
         try {
             // 0. Proactive Session Cleanup: Clear any existing (potentially broken) session
             // This prevents "Refresh Token Not Found" errors when logging in over a stale session
@@ -170,6 +174,7 @@ export class AuthService {
      * User registration
      */
     static async register(data: RegisterData): Promise<{ user: User | null; error: string | null }> {
+        if (IS_MONGO) return MongoAuthService.register(data);
         try {
             // Create auth user in Supabase Auth
             const { data: authUser, error: authError } = await supabase.auth.signUp({
@@ -271,6 +276,26 @@ export class AuthService {
     }
 
     static async getInstitutionId(userId: string): Promise<number | null> {
+        if (IS_MONGO) {
+            try {
+                // In Mongo mode, we typically have the institution_id on the user object
+                // which is already in local storage or fetched via /api/auth/me
+                const stored = this.getCurrentUser();
+                if (stored?.id === userId && stored.institution_id) return stored.institution_id;
+
+                // If not in local storage, fetch from our MongoDB profile API
+                const res = await fetch(`/api/mongo/profile?user_id=${userId}`);
+                if (res.ok) {
+                    const { data } = await res.json();
+                    return data?.institution_id || null;
+                }
+            } catch (e) {
+                console.error("Failed to fetch institution_id from MongoDB:", e);
+            }
+            return null;
+        }
+
+        // --- Supabase Fallback ---
         // 1. Try primary profile
         const { data: profile } = await supabase
             .from('users')
@@ -289,7 +314,7 @@ export class AuthService {
 
         if (adminLink?.institution_id) {
             const instId = adminLink.institution_id;
-            // Proactive sync (might fail if RLS is tight, but that's okay)
+            // Proactive sync
             await supabase.from('users').update({ institution_id: instId }).eq('id', userId);
             return instId;
         }
@@ -298,6 +323,10 @@ export class AuthService {
     }
 
     static async getSession() {
+        if (IS_MONGO) {
+            const session = await MongoAuthService.getSession();
+            return { data: { session } };
+        }
         return await supabase.auth.getSession();
     }
 
@@ -313,6 +342,7 @@ export class AuthService {
     }
 
     static async logout(): Promise<void> {
+        if (IS_MONGO) return MongoAuthService.logout();
         await supabase.auth.signOut();
         if (typeof window !== 'undefined') {
             localStorage.removeItem('aptivo_user');
@@ -343,6 +373,7 @@ export class AuthService {
      * Login with OAuth Provider
      */
     static async loginWithProvider(provider: 'google' | 'azure' | 'apple'): Promise<{ error: string | null }> {
+        if (IS_MONGO && provider === 'google') return MongoAuthService.loginWithProvider(provider);
         // Dynamically get the current origin to ensure we redirect back to the correct domain
         // This solves issues where SITE_URL might be misconfigured (e.g., pointing to localhost in prod)
         const redirectBase = typeof window !== 'undefined' ? window.location.origin : SITE_URL;
@@ -360,6 +391,7 @@ export class AuthService {
      * Sync session from Supabase to LocalStorage (for OAuth flows or page reloads)
      */
     static async syncSession(): Promise<User | null> {
+        if (IS_MONGO) return MongoAuthService.syncSession();
         try {
             // ✅ Use getUser() for the most reliable auth state check
             const { data: { user: authUser }, error: authError } = await supabase.auth.getUser();

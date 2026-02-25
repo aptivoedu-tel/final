@@ -5,8 +5,10 @@ import { Users, Search, MoreVertical, Shield, UserCheck, UserX, Mail, Trash2, Bu
 import Link from 'next/link';
 import Sidebar from '@/components/layout/Sidebar';
 import Header from '@/components/layout/Header';
+import Footer from '@/components/shared/Footer';
 import { AuthService } from '@/lib/services/authService';
-import { supabase } from '@/lib/supabase/client';
+// Supabase removed — using MongoDB API via fetch
+// import { supabase } from '@/lib/supabase/client';
 import { useUI } from '@/lib/context/UIContext';
 import { useLoading } from '@/lib/context/LoadingContext';
 
@@ -32,17 +34,21 @@ export default function UserManagementPage() {
 
     const handleUpdateUser = async () => {
         if (!editingUser) return;
-
         try {
-            const { error } = await supabase
-                .from('users')
-                .update({
+            const response = await fetch('/api/mongo/admin/users', {
+                method: 'PATCH',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    userId: editingUser.id,
                     full_name: editFormData.full_name,
                     role: editFormData.role
                 })
-                .eq('id', editingUser.id);
+            });
 
-            if (error) throw error;
+            if (!response.ok) {
+                const err = await response.json();
+                throw new Error(err.error || 'Failed to update user');
+            }
 
             loadUsers();
             setEditingUser(null);
@@ -64,40 +70,20 @@ export default function UserManagementPage() {
     const loadUsers = async () => {
         setGlobalLoading(true, 'Acquiring User Database...');
         try {
-            const { data, error } = await supabase
-                .from('users')
-                .select(`
-                    *,
-                    institution_admins(
-                        institutions(id, name)
-                    ),
-                    student_university_enrollments(
-                        institutions(id, name)
-                    )
-                `)
-                .order('created_at', { ascending: false });
+            const res = await fetch('/api/mongo/admin/users');
+            if (!res.ok) throw new Error('Failed to fetch users');
 
-            if (error) throw error;
-
-            // Post-process to flatten institution info
-            const usersWithInst = (data || []).map(u => {
-                const adminInst = u.institution_admins?.[0]?.institutions;
-                const studentInst = u.student_university_enrollments?.[0]?.institutions;
-                return {
-                    ...u,
-                    institution: adminInst || studentInst || null
-                };
-            });
-
-            setUsers(usersWithInst);
+            const data = await res.json();
+            setUsers(data.users || []);
         } catch (error) {
             console.error('Error loading users:', error);
-            // Fallback for demo if RLS blocks listing
+            // Fallback for demo if API fails
             setUsers([
                 { id: '1', full_name: 'Alex Chen', email: 'alex@demo.com', role: 'student', status: 'active', created_at: new Date().toISOString() },
                 { id: '2', full_name: 'Sarah Jones', email: 'sarah@demo.com', role: 'student', status: 'active', created_at: new Date().toISOString() },
                 { id: '3', full_name: 'Admin User', email: 'admin@aptivo.com', role: 'super_admin', status: 'active', created_at: new Date().toISOString() },
             ]);
+        } finally {
             setGlobalLoading(false);
         }
     };
@@ -115,12 +101,19 @@ export default function UserManagementPage() {
     const handleStatusToggle = async (userId: string, currentStatus: string) => {
         const newStatus = currentStatus === 'active' ? 'suspended' : 'active';
         try {
-            const { error } = await supabase
-                .from('users')
-                .update({ status: newStatus })
-                .eq('id', userId);
+            const response = await fetch('/api/mongo/admin/users', {
+                method: 'PATCH',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    userId,
+                    status: newStatus
+                })
+            });
 
-            if (error) throw error;
+            if (!response.ok) {
+                const err = await response.json();
+                throw new Error(err.error || 'Failed to update status');
+            }
             loadUsers();
         } catch (error: any) {
             alert(`Error updating status: ${error.message}`);
@@ -133,8 +126,11 @@ export default function UserManagementPage() {
     const [selectedInstId, setSelectedInstId] = useState<string>('');
 
     const fetchInstitutions = async () => {
-        const { data } = await supabase.from('institutions').select('id, name');
-        if (data) setInstitutions(data);
+        const res = await fetch('/api/mongo/admin/institutions');
+        if (res.ok) {
+            const data = await res.json();
+            setInstitutions(data.institutions || []);
+        }
     };
 
     // Create User State
@@ -199,21 +195,19 @@ export default function UserManagementPage() {
     const handleLinkToInstitution = async () => {
         if (!linkingUser || !selectedInstId) return;
         try {
-            // 1. Update institution_admins for admins or just the users table for students/admins
-            if (linkingUser.role === 'institution_admin') {
-                await supabase.from('institution_admins').upsert({
-                    user_id: linkingUser.id,
+            const response = await fetch('/api/mongo/admin/users', {
+                method: 'PATCH',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    userId: linkingUser.id,
                     institution_id: parseInt(selectedInstId)
-                });
+                })
+            });
+
+            if (!response.ok) {
+                const err = await response.json();
+                throw new Error(err.error || 'Failed to link user');
             }
-
-            // 2. Primary link in users table
-            const { error } = await supabase
-                .from('users')
-                .update({ institution_id: parseInt(selectedInstId) })
-                .eq('id', linkingUser.id);
-
-            if (error) throw error;
 
             alert('User successfully linked to institution');
             setLinkingUser(null);
@@ -445,6 +439,7 @@ export default function UserManagementPage() {
                         </div>
                     </div>
                 </main>
+                <Footer />
             </div>
 
             {/* LINK MODAL */}

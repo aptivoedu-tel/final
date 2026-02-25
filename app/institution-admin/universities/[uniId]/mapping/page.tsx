@@ -2,7 +2,6 @@
 
 import React, { useState, useEffect, useCallback } from 'react';
 import { useParams, useRouter } from 'next/navigation';
-import { supabase } from '@/lib/supabase/client';
 import { ChevronLeft, Save, CheckSquare, Square, ChevronRight, ChevronDown, BookOpen, Layers, Lightbulb, RefreshCw, AlertCircle, CheckCircle } from 'lucide-react';
 import { toast } from 'sonner';
 import { useLoading } from '@/lib/context/LoadingContext';
@@ -64,35 +63,41 @@ export default function UniversityContentMapper() {
             }
             setUser(currentUser);
 
-            const { data: profile } = await supabase
-                .from('users')
-                .select('institution_id')
-                .eq('id', currentUser.id)
-                .single();
+            const profileRes = await fetch('/api/mongo/profile');
+            const profileData = await profileRes.json();
 
-            const instId = profile?.institution_id;
+            if (!profileRes.ok) throw new Error("Failed to fetch profile");
+
+            const instId = profileData.data?.institution_id;
             if (!instId) {
                 toast.error("Institution link missing. Please contact Super Admin.");
                 return;
             }
             setInstitutionId(instId);
 
-            const { data: uni } = await supabase.from('universities').select('*').eq('id', uniId).single();
-            setUniversity(uni);
+            // Fetch University Details
+            const uniRes = await fetch(`/api/mongo/universities?id=${uniId}`);
+            const uniData = await uniRes.json();
+            const currentUni = uniData.universities?.find((u: any) => u.id === parseInt(uniId as string)) || uniData.universities?.[0];
+            setUniversity(currentUni);
 
-            const { data: subjectsData } = await supabase
-                .from('subjects')
-                .select(`id, name, topics:topics(id, name, subtopics:subtopics(id, name))`)
-                .order('name');
+            // Fetch Hierarchy
+            const hierarchyRes = await fetch('/api/mongo/content?type=all');
+            const hData = await hierarchyRes.json();
 
-            if (subjectsData) {
-                const tree = (subjectsData as any[]).map(s => ({
-                    ...s,
-                    topics: s.topics.map((t: any) => ({
-                        ...t,
-                        subtopics: t.subtopics || []
-                    }))
-                }));
+            if (hData.subjects) {
+                // Build Nested Tree from flat lists
+                const tree = (hData.subjects as any[]).map(s => {
+                    const subjectTopics = (hData.topics as any[]).filter(t => t.subject_id === s.id);
+                    return {
+                        ...s,
+                        topics: subjectTopics.map(t => ({
+                            ...t,
+                            subtopics: (hData.subtopics as any[]).filter(st => st.topic_id === t.id) || []
+                        }))
+                    };
+                });
+
                 setBaseTree(tree);
                 // Load actual mappings after base tree is set
                 await fetchMappings(instId, tree);

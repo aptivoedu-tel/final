@@ -17,7 +17,7 @@ import {
     RotateCcw,
     Layout
 } from 'lucide-react';
-import { supabase } from '@/lib/supabase/client';
+import { AuthService } from '@/lib/services/authService';
 import { PracticeService, MCQ } from '@/lib/services/practiceService';
 import { toast } from 'sonner';
 import { useLoading } from '@/lib/context/LoadingContext';
@@ -52,19 +52,17 @@ export default function PracticeSessionPage() {
             setGlobalLoading(true, 'Initializing Practice Session...');
             try {
 
-                const { data: { user } } = await supabase.auth.getUser();
+                const user = AuthService.getCurrentUser() || await AuthService.syncSession();
                 if (!user) {
                     router.push('/login');
                     return;
                 }
                 setUser(user);
 
-                // Fetch subtopic info
-                const { data: subtopic } = await supabase
-                    .from('subtopics')
-                    .select('name')
-                    .eq('id', subtopicId)
-                    .single();
+                // Fetch subtopic info from MongoDB
+                const stRes = await fetch(`/api/mongo/content?type=subtopics&id=${subtopicId}`);
+                const stData = await stRes.json();
+                const subtopic = stData.subtopics?.[0];
                 setSubtopicName(subtopic?.name || 'Subtopic');
 
                 // 1. Generate Questions

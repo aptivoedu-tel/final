@@ -24,6 +24,7 @@ export type Database = {
           avatar_url: string | null;
           email_verified: boolean;
           is_solo: boolean;
+          institution_id: number | null;
           created_at: string;
           updated_at: string;
         };

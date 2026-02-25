@@ -6,6 +6,19 @@ export function cn(...inputs: ClassValue[]) {
 }
 
 // Format date utilities
+export function getTimeGreeting(): string {
+    const hour = new Date().getHours();
+    if (hour >= 5 && hour < 12) {
+        return "Good Morning";
+    } else if (hour >= 12 && hour < 16) {
+        return "Good Afternoon";
+    } else if (hour >= 16 && hour < 19) {
+        return "Good Evening";
+    } else {
+        return "Good Night";
+    }
+}
+
 export function formatDate(date: string | Date): string {
     const d = new Date(date);
     return d.toLocaleDateString('en-US', {

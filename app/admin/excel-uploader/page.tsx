@@ -6,9 +6,11 @@ import { useLoading } from '@/lib/context/LoadingContext';
 
 import Sidebar from '@/components/layout/Sidebar';
 import Header from '@/components/layout/Header';
+import Footer from '@/components/shared/Footer';
 import { AuthService } from '@/lib/services/authService';
 import { useUI } from '@/lib/context/UIContext';
-import { supabase } from '@/lib/supabase/client';
+// Supabase removed — using MongoDB API via fetch
+// import { supabase } from '@/lib/supabase/client';
 import * as XLSX from 'xlsx';
 import MarkdownRenderer from '@/components/shared/MarkdownRenderer';
 import { ExcelUploadService } from '@/lib/services/excelUploadService';
@@ -68,23 +70,25 @@ export default function ExcelUploaderPage() {
     }, []);
 
     const loadInitialData = async () => {
-        const { data: s } = await supabase.from('subjects').select('*').eq('is_active', true);
-        const { data: t } = await supabase.from('topics').select('*, subject:subjects(name)').eq('is_active', true);
-
-        if (s) {
-            setSubjectsList(s);
-            setAllHierarchy(prev => ({ ...prev, subjects: s, topics: t || [] }));
+        try {
+            const res = await fetch('/api/mongo/admin/hierarchy?type=all');
+            if (res.ok) {
+                const data = await res.json();
+                setSubjectsList(data.subjects || []);
+                setAllHierarchy({
+                    subjects: data.subjects || [],
+                    topics: data.topics || [],
+                    subtopics: data.subtopics || []
+                });
+            }
+        } catch (error) {
+            console.error('Error loading initial hierarchy:', error);
         }
     };
 
     const loadMissingHierarchy = async () => {
-        const { data: topics } = await supabase.from('topics').select('*, subject:subjects(name)').eq('is_active', true);
-        const { data: subtopics } = await supabase.from('subtopics').select('*, topic:topics(name, subject_id)').eq('is_active', true);
-        setAllHierarchy(prev => ({
-            ...prev,
-            topics: topics || [],
-            subtopics: subtopics || []
-        }));
+        // Already loaded in loadInitialData, but keeping for compatibility
+        await loadInitialData();
     };
 
     // Manual Form Selectors logic
@@ -750,6 +754,7 @@ export default function ExcelUploaderPage() {
                         </div>
                     </div>
                 </main>
+                <Footer />
             </div>
         </div>
     );

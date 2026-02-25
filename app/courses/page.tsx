@@ -4,6 +4,7 @@ import React, { useEffect, useState } from 'react';
 import { BookOpen, Clock, Target, CheckCircle, Plus, Search } from 'lucide-react';
 import Sidebar from '@/components/layout/Sidebar';
 import Header from '@/components/layout/Header';
+import Footer from '@/components/shared/Footer';
 import { AuthService } from '@/lib/services/authService';
 import { ContentService } from '@/lib/services/contentService';
 
@@ -104,8 +105,8 @@ export default function CoursesPage() {
                                         key={subject.id}
                                         onClick={() => handleSubjectChange(subject.id)}
                                         className={`w-full text-left px-4 py-3 rounded-lg transition-all ${selectedSubject === subject.id
-                                                ? 'bg-primary text-white'
-                                                : 'hover:bg-gray-100 text-gray-700'
+                                            ? 'bg-primary text-white'
+                                            : 'hover:bg-gray-100 text-gray-700'
                                             }`}
                                     >
                                         <div className="flex items-center gap-3">
@@ -161,10 +162,10 @@ export default function CoursesPage() {
                                             {topic.difficulty_level && (
                                                 <span
                                                     className={`px-2 py-1 rounded-full text-xs font-medium ${topic.difficulty_level === 'beginner'
-                                                            ? 'bg-emerald-100 text-emerald-700'
-                                                            : topic.difficulty_level === 'advanced'
-                                                                ? 'bg-red-100 text-red-700'
-                                                                : 'bg-yellow-100 text-yellow-700'
+                                                        ? 'bg-emerald-100 text-emerald-700'
+                                                        : topic.difficulty_level === 'advanced'
+                                                            ? 'bg-red-100 text-red-700'
+                                                            : 'bg-yellow-100 text-yellow-700'
                                                         }`}
                                                 >
                                                     {topic.difficulty_level}
@@ -200,6 +201,7 @@ export default function CoursesPage() {
                         )}
                     </div>
                 </div>
+                <Footer />
             </main>
         </div>
     );

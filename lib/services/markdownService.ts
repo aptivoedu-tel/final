@@ -1,4 +1,4 @@
-import { supabase } from '../supabase/client';
+import { MongoContentService } from './mongoContentService';
 
 export interface MarkdownUploadResult {
     success: boolean;
@@ -109,26 +109,20 @@ export class MarkdownService {
         try {
             const { processedContent, metadata } = this.processMarkdown(markdownContent);
 
-            const { data, error } = await supabase
-                .from('subtopics')
-                .insert([
-                    {
-                        topic_id: topicId,
-                        name: subtopicName,
-                        content_markdown: processedContent,
-                        estimated_minutes: metadata.estimatedReadingMinutes,
-                        sequence_order: sequenceOrder,
-                        is_active: true
-                    }
-                ])
-                .select()
-                .single();
+            const result = await MongoContentService.createSubtopic({
+                topic_id: topicId,
+                name: subtopicName,
+                content_markdown: processedContent,
+                estimated_minutes: metadata.estimatedReadingMinutes,
+                sequence_order: sequenceOrder,
+                is_active: true
+            });
 
-            if (error) {
-                return { success: false, error: error.message };
+            if (!result.success) {
+                return { success: false, error: result.error };
             }
 
-            return { success: true, subtopicId: data.id };
+            return { success: true, subtopicId: result.data?.id };
         } catch (error) {
             console.error('Error uploading markdown:', error);
             return { success: false, error: 'Failed to upload markdown content' };
@@ -145,16 +139,13 @@ export class MarkdownService {
         try {
             const { processedContent, metadata } = this.processMarkdown(markdownContent);
 
-            const { error } = await supabase
-                .from('subtopics')
-                .update({
-                    content_markdown: processedContent,
-                    estimated_minutes: metadata.estimatedReadingMinutes
-                })
-                .eq('id', subtopicId);
+            const result = await MongoContentService.updateSubtopic(subtopicId, {
+                content_markdown: processedContent,
+                estimated_minutes: metadata.estimatedReadingMinutes
+            });
 
-            if (error) {
-                return { success: false, error: error.message };
+            if (!result.success) {
+                return { success: false, error: result.error };
             }
 
             return { success: true };

@@ -1,8 +1,5 @@
-'use client';
-
 import React, { useState, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
-import { supabase } from '@/lib/supabase/client';
 import Sidebar from '@/components/layout/Sidebar';
 import Header from '@/components/layout/Header';
 import { AuthService } from '@/lib/services/authService';
@@ -11,6 +8,7 @@ import MarkdownRenderer from '@/components/shared/MarkdownRenderer';
 
 import Link from 'next/link';
 import { useUI } from '@/lib/context/UIContext';
+import { toast } from 'sonner';
 
 export default function TopicLessonReaderPage() {
     const { isSidebarCollapsed } = useUI();
@@ -28,54 +26,45 @@ export default function TopicLessonReaderPage() {
     const [mcqCount, setMcqCount] = useState(0);
 
     useEffect(() => {
-        const currentUser = AuthService.getCurrentUser();
-        const storedUser = typeof window !== 'undefined' ? localStorage.getItem('aptivo_user') : null;
-        const userData = currentUser || (storedUser ? JSON.parse(storedUser) : null);
-
-        if (userData) {
-            setUser(userData);
-            setUserRole(userData.role || 'student');
-        }
-
-        if (topicId) {
-            loadLessonData();
-        }
+        const init = async () => {
+            const userData = AuthService.getCurrentUser() || await AuthService.syncSession();
+            if (userData) {
+                setUser(userData);
+                setUserRole(userData.role || 'student');
+                if (topicId) {
+                    await loadLessonData();
+                    await markAsRead(userData.id, parseInt(topicId));
+                }
+            } else {
+                router.push('/login');
+            }
+        };
+        init();
     }, [topicId]);
 
     const loadLessonData = async () => {
         try {
             // 1. Fetch topic
-            const { data: t, error: tError } = await supabase
-                .from('topics')
-                .select('*, subject:subjects(*)')
-                .eq('id', topicId)
-                .single();
+            const res = await fetch(`/api/mongo/content?type=topics&id=${topicId}`);
+            const data = await res.json();
+            const t = data.topics?.[0];
 
-            if (tError) throw tError;
+            if (!t) throw new Error('Topic not found');
             setTopic(t);
-            setSubject(t.subject);
 
-            // 2. Fetch MCQ count (including subtopics)
-            const { data: subtopics } = await supabase
-                .from('subtopics')
-                .select('id')
-                .eq('topic_id', topicId);
-
-            const subtopicIds = subtopics?.map(st => st.id) || [];
-
-            let query = supabase
-                .from('mcqs')
-                .select('*', { count: 'exact', head: true })
-                .eq('is_active', true);
-
-            if (subtopicIds.length > 0) {
-                query = query.or(`topic_id.eq.${topicId},subtopic_id.in.(${subtopicIds.join(',')})`);
-            } else {
-                query = query.eq('topic_id', topicId);
+            // Fetch subject
+            if (t.subject_id) {
+                const subRes = await fetch(`/api/mongo/content?type=subjects&id=${t.subject_id}`);
+                const subData = await subRes.json();
+                setSubject(subData.subjects?.[0]);
             }
 
-            const { count } = await query;
-            setMcqCount(count || 0);
+            // 2. Fetch MCQ count (including subtopics)
+            // The MCQ API and model handles topic_id and subtopic_id
+            const mcqRes = await fetch(`/api/mongo/mcqs?topic_id=${topicId}&limit=1`);
+            const mcqData = await mcqRes.json();
+            setMcqCount(mcqData.count || 0);
+
         } catch (e: any) {
             console.error('Error loading lesson:', e);
             setError(e.message);
@@ -86,19 +75,19 @@ export default function TopicLessonReaderPage() {
 
     const markAsRead = async (userId: string, tId: number) => {
         try {
-            // Note: We might want a topic_progress table too, but for now we can skip or add it.
-            // Since user specifically asked for "topics to serve as final hierarchy", we should probably track it.
-            // But let's skip for now unless requested.
+            await fetch('/api/mongo/progress', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    student_id: userId,
+                    topic_id: tId,
+                    is_completed: true
+                })
+            });
         } catch (e) {
             console.error('Error marking progress:', e);
         }
     };
-
-    useEffect(() => {
-        if (user && topicId) {
-            markAsRead(user.id, parseInt(topicId));
-        }
-    }, [user, topicId]);
 
 
     if (loading) return (

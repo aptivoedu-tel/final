@@ -1,7 +1,8 @@
 'use client';
 
 import React from 'react';
-import { supabase } from '@/lib/supabase/client';
+// Supabase removed — using MongoDB API via fetch
+// import { supabase } from '@/lib/supabase/client';
 import Sidebar from '@/components/layout/Sidebar';
 import Header from '@/components/layout/Header';
 import { useUI } from '@/lib/context/UIContext';
@@ -51,14 +52,17 @@ export default function UniversitiesPage() {
 
     const fetchUniversities = async () => {
         setGlobalLoading(true, 'Consulting University Directory...');
-        const { data, error } = await supabase
-            .from('universities')
-            .select('*')
-            .order('name');
-
-        if (data) setUniversities(data);
-        if (error) console.error(error);
-        setGlobalLoading(false);
+        try {
+            const response = await fetch('/api/mongo/universities?limit=200');
+            if (response.ok) {
+                const data = await response.json();
+                if (data.universities) setUniversities(data.universities);
+            }
+        } catch (error) {
+            console.error('Error fetching universities:', error);
+        } finally {
+            setGlobalLoading(false);
+        }
     };
 
     const handleSave = async (e: React.FormEvent) => {
@@ -68,51 +72,49 @@ export default function UniversitiesPage() {
             let logo_url = formData.logo_url;
 
             if (logoFile) {
-                const fileExt = logoFile.name.split('.').pop();
-                const fileName = `${Math.random()}.${fileExt}`;
-                const filePath = `logos/${fileName}`;
+                const uploadFormData = new FormData();
+                uploadFormData.append('file', logoFile);
+                uploadFormData.append('bucket', 'university-logos');
 
-                const { error: uploadError, data } = await supabase.storage
-                    .from('university-logos')
-                    .upload(filePath, logoFile);
+                const uploadRes = await fetch('/api/upload', {
+                    method: 'POST',
+                    body: uploadFormData
+                });
 
-                if (uploadError) throw uploadError;
-
-                const { data: { publicUrl } } = supabase.storage
-                    .from('university-logos')
-                    .getPublicUrl(filePath);
-
-                logo_url = publicUrl;
+                if (!uploadRes.ok) throw new Error('Logo upload failed');
+                const uploadData = await uploadRes.json();
+                logo_url = uploadData.publicUrl;
             }
 
-            if (editingUniversity) {
-                const { error } = await supabase.from('universities').update({
-                    name: formData.name,
-                    domain: formData.domain,
-                    city: formData.city,
-                    country: formData.country,
-                    logo_url: logo_url,
-                    is_public: formData.is_public
-                }).eq('id', editingUniversity.id);
-                if (error) throw error;
-            } else {
-                const { error } = await supabase.from('universities').insert([{
-                    name: formData.name,
-                    domain: formData.domain,
-                    city: formData.city,
-                    country: formData.country,
-                    logo_url: logo_url,
-                    is_public: formData.is_public,
-                    is_active: true
-                }]);
-                if (error) throw error;
-            }
+            const body = {
+                name: formData.name,
+                domain: formData.domain,
+                city: formData.city,
+                country: formData.country,
+                logo_url: logo_url,
+                is_public: formData.is_public
+            };
+
+            const endpoint = '/api/mongo/universities';
+            const method = editingUniversity ? 'PATCH' : 'POST';
+            const res = await fetch(endpoint, {
+                method,
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    ...(editingUniversity && { id: editingUniversity.id }),
+                    ...body,
+                    ...(method === 'POST' && { is_active: true })
+                })
+            });
+
+            if (!res.ok) throw new Error('Failed to save university');
 
             setIsModalOpen(false);
             setEditingUniversity(null);
             setFormData({ name: '', domain: '', city: '', country: '', logo_url: '', is_public: true });
             setLogoFile(null);
             fetchUniversities();
+            toast.success('University saved successfully');
         } catch (error: any) {
             alert(`Error saving university: ${error.message}`);
         } finally {
@@ -123,24 +125,32 @@ export default function UniversitiesPage() {
     const handleDelete = async (id: number) => {
         if (!confirm('Are you sure? This will delete all associated data.')) return;
 
-        const { error } = await supabase.from('universities').delete().eq('id', id);
-        if (error) {
-            toast.error(error.message);
-        } else {
+        try {
+            const res = await fetch(`/api/mongo/universities?id=${id}`, {
+                method: 'DELETE'
+            });
+
+            if (!res.ok) throw new Error('Delete failed');
             toast.success('University deleted successfully');
             fetchUniversities();
+        } catch (error: any) {
+            toast.error(error.message);
         }
     };
 
     const handleSaveTestPattern = async () => {
         setGlobalLoading(true, 'Codifying Pedagogical Patterns...');
         try {
-            const { error } = await supabase
-                .from('universities')
-                .update({ test_pattern_markdown: testPatternData.markdown })
-                .eq('id', testPatternData.id);
+            const res = await fetch('/api/mongo/universities', {
+                method: 'PATCH',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    id: testPatternData.id,
+                    test_pattern_markdown: testPatternData.markdown
+                })
+            });
 
-            if (error) throw error;
+            if (!res.ok) throw new Error('Failed to update pattern');
             toast.success('Test pattern updated successfully');
             setIsTestPatternModalOpen(false);
             fetchUniversities();
