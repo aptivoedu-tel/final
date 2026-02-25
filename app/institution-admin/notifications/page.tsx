@@ -4,7 +4,6 @@ import React, { useEffect, useState } from 'react';
 import {
     Bell, Check, Trash2, Filter, AlertTriangle, Info, CheckCircle, Clock, Send, Users, User, Image as ImageIcon, XCircle, Bold, ChevronRight
 } from 'lucide-react';
-import { supabase } from '@/lib/supabase/client';
 import Sidebar from '@/components/layout/Sidebar';
 import Header from '@/components/layout/Header';
 import { AuthService } from '@/lib/services/authService';
@@ -39,7 +38,7 @@ export default function InstitutionNotificationsPage() {
     const [statusMsg, setStatusMsg] = useState<{ type: 'success' | 'error', text: string } | null>(null);
 
     useEffect(() => {
-        loadNotifications();
+        loadData();
     }, []);
 
     useEffect(() => {
@@ -68,62 +67,29 @@ export default function InstitutionNotificationsPage() {
     };
 
 
-    const loadNotifications = async () => {
+    const loadData = async () => {
         setGlobalLoading(true, 'Accessing Institutional Communications...');
         const currentUser = AuthService.getCurrentUser();
 
-        const storedUser = typeof window !== 'undefined' ? localStorage.getItem('aptivo_user') : null;
-        const activeUser = currentUser || (storedUser ? JSON.parse(storedUser) : null);
-
-        if (!activeUser) {
+        if (!currentUser) {
             window.location.href = '/login';
             return;
         }
 
-        setUser(activeUser);
+        setUser(currentUser);
 
         try {
-            const { data: { user: authUser } } = await supabase.auth.getUser();
-            if (!authUser) return;
-
-            const { data: profile } = await supabase
-                .from('users')
-                .select('institution_id')
-                .eq('id', authUser.id)
-                .single();
-
-            let instId = profile?.institution_id;
-
-            if (!instId) {
-                // FALLBACK: Try checking institution_admins table
-                const { data: adminLink } = await supabase
-                    .from('institution_admins')
-                    .select('institution_id')
-                    .eq('user_id', authUser.id)
-                    .maybeSingle();
-
-                if (adminLink?.institution_id) {
-                    console.log("Rescued institution link from institution_admins");
-                    instId = adminLink.institution_id;
-                    // Update user state so handleSend works
-                    setUser((prev: any) => prev ? { ...prev, institution_id: instId } : prev);
-                    // Proactively update the users table for next time
-                    await supabase.from('users').update({ institution_id: instId }).eq('id', authUser.id);
-                }
-            }
-
-            const { notifications } = await NotificationService.getUserNotifications(activeUser.id);
+            // Load user-specific notifications
+            const { notifications } = await NotificationService.getUserNotifications(currentUser.id);
             if (notifications) setNotifications(notifications);
 
-            // Fetch students for compose
-            if (instId) {
-                const { data: stds } = await supabase
-                    .from('users')
-                    .select('id, full_name, email')
-                    .eq('institution_id', instId)
-                    .eq('role', 'student')
-                    .eq('status', 'active');
-                if (stds) setStudents(stds);
+            // Fetch students for compose if instId exists
+            if (currentUser.institution_id) {
+                const response = await fetch(`/api/institution-admin/students?institution_id=${currentUser.institution_id}`);
+                if (response.ok) {
+                    const data = await response.json();
+                    if (data.students) setStudents(data.students);
+                }
             }
         } catch (error) {
             console.error("Error loading data:", error);
@@ -239,26 +205,28 @@ export default function InstitutionNotificationsPage() {
                 institutionId: currentUser.institution_id
             };
 
-            if (targetType === 'all') {
-                res = await NotificationService.sendToInstitutionStudents(currentUser.institution_id, notificationData);
-            } else if (targetType === 'individual' && selectedStudent) {
-                res = await NotificationService.sendToSpecificUsers([selectedStudent], notificationData);
-            } else {
-                throw new Error("Invalid target selection");
+            // In MongoDB we use the send-bulk API which handles these types
+            const response = await fetch('/api/mongo/admin/notifications/send-bulk', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    ...notificationData,
+                    recipientType: targetType === 'all' ? 'institution' : 'individual',
+                    userIds: targetType === 'individual' ? [selectedStudent] : undefined
+                })
+            });
+
+            if (!response.ok) {
+                const errData = await response.json();
+                throw new Error(errData.error || "Failed to send notification");
             }
 
-            const { success, error } = res;
-
-            if (success) {
-                setStatusMsg({ type: 'success', text: 'Broadcast dispatched successfully!' });
-                setTitle('');
-                setMessage('');
-                setImageFile(null);
-                setImagePreview(null);
-                loadHistory();
-            } else {
-                throw new Error(error || "Failed to send notification");
-            }
+            setStatusMsg({ type: 'success', text: 'Broadcast dispatched successfully!' });
+            setTitle('');
+            setMessage('');
+            setImageFile(null);
+            setImagePreview(null);
+            loadHistory();
         } catch (err: any) {
             console.error(err);
             setStatusMsg({ type: 'error', text: err.message });
@@ -471,7 +439,7 @@ export default function InstitutionNotificationsPage() {
                                             {[
                                                 { id: 'info', icon: Info, color: 'blue' },
                                                 { id: 'alert', icon: AlertTriangle, color: 'rose' },
-                                                { id: 'success', icon: CheckCircle, color: 'blue' }
+                                                { id: 'success', icon: CheckCircle, color: 'emerald' }
                                             ].map(cat => (
                                                 <button
                                                     key={cat.id}
