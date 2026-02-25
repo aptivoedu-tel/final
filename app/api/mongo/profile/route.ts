@@ -56,7 +56,7 @@ export async function GET(req: NextRequest) {
                 enrollment_date: e.enrollment_date,
                 is_active: e.is_active,
                 universities: universities.find((u: any) => u.id === e.university_id)
-            })).filter(item => item.universities);
+            })).filter((item: any) => item.universities);
 
             return NextResponse.json({ universities: formatted });
         }
@@ -72,7 +72,7 @@ export async function GET(req: NextRequest) {
             const formatted = adminAccess.map((a: any) => ({
                 assigned_at: a.assigned_at,
                 institutions: institutions.find((i: any) => i.id === a.institution_id)
-            })).filter(item => item.institutions);
+            })).filter((item: any) => item.institutions);
 
             return NextResponse.json({ institutions: formatted });
         }
