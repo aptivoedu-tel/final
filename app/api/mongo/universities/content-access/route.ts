@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import connectToDatabase from '@/lib/mongodb/connection';
-import { UniversityContentAccess, Subject, Topic, Subtopic } from '@/lib/mongodb/models';
+import { InstitutionUniversityAccess, Subject, Topic, Subtopic } from '@/lib/mongodb/models';
 
 export async function GET(req: NextRequest) {
     try {
@@ -18,7 +18,7 @@ export async function GET(req: NextRequest) {
             is_active: true
         };
 
-        // If institutionId is provided, we use the or condition like in Supabase
+        // If institutionId is provided, filter by institution or null (public access)
         if (institutionId && institutionId !== 'null') {
             filter.$or = [
                 { institution_id: parseInt(institutionId) },
@@ -28,12 +28,12 @@ export async function GET(req: NextRequest) {
             filter.institution_id = null;
         }
 
-        const mappings = await UniversityContentAccess.find(filter).lean();
+        const mappings = await InstitutionUniversityAccess.find(filter).lean();
 
-        // Fetch related entities to match the Supabase select pattern
-        const subjectIds = mappings.map(m => m.subject_id).filter(Boolean);
-        const topicIds = mappings.map(m => m.topic_id).filter(Boolean);
-        const subtopicIds = mappings.map(m => m.subtopic_id).filter(Boolean);
+        // Fetch related entities
+        const subjectIds = mappings.map((m: any) => m.subject_id).filter(Boolean);
+        const topicIds = mappings.map((m: any) => m.topic_id).filter(Boolean);
+        const subtopicIds = mappings.map((m: any) => m.subtopic_id).filter(Boolean);
 
         const [subjects, topics, subtopics] = await Promise.all([
             Subject.find({ id: { $in: subjectIds } }).lean(),
@@ -41,11 +41,11 @@ export async function GET(req: NextRequest) {
             Subtopic.find({ id: { $in: subtopicIds } }).lean()
         ]);
 
-        const result = mappings.map(m => ({
+        const result = mappings.map((m: any) => ({
             ...m,
-            subject: subjects.find(s => s.id === m.subject_id),
-            topic: topics.find(t => t.id === m.topic_id),
-            subtopic: subtopics.find(st => st.id === m.subtopic_id)
+            subject: subjects.find((s: any) => s.id === m.subject_id),
+            topic: topics.find((t: any) => t.id === m.topic_id),
+            subtopic: subtopics.find((st: any) => st.id === m.subtopic_id)
         }));
 
         return NextResponse.json({ mappings: result });
