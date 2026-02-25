@@ -14,9 +14,9 @@ async function getMongoClient(): Promise<MongoClient> {
     return cachedClient;
 }
 
-export async function GET(req: NextRequest, { params }: { params: { id: string } }) {
+export async function GET(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
     try {
-        const { id } = params;
+        const { id } = await params;
 
         if (!ObjectId.isValid(id)) {
             return NextResponse.json({ error: 'Invalid file ID' }, { status: 400 });
