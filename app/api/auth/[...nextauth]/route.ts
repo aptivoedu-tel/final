@@ -1,7 +1,8 @@
 import NextAuth, { AuthOptions } from "next-auth";
 import CredentialsProvider from "next-auth/providers/credentials";
+import GoogleProvider from "next-auth/providers/google";
 import connectToDatabase from "@/lib/mongodb/connection";
-import User from "@/lib/mongodb/models/User";
+import { User } from "@/lib/mongodb/models";
 import bcrypt from "bcryptjs";
 
 // Extremely robust setup for Vercel
@@ -20,6 +21,10 @@ export const authOptions: AuthOptions = {
 
     // 3. Authentication Providers
     providers: [
+        GoogleProvider({
+            clientId: process.env.GOOGLE_CLIENT_ID || "",
+            clientSecret: process.env.GOOGLE_CLIENT_SECRET || "",
+        }),
         CredentialsProvider({
             name: "Credentials",
             credentials: {
@@ -78,6 +83,40 @@ export const authOptions: AuthOptions = {
 
     // 4. Callbacks to inject roles into the JWT/Session
     callbacks: {
+        async signIn({ user, account, profile }: any) {
+            if (account.provider === "google") {
+                try {
+                    await connectToDatabase();
+                    let dbUser = await User.findOne({ email: user.email });
+
+                    if (!dbUser) {
+                        // Create user for first-time Google sign-in
+                        console.log("[AUTH] Creating new user for Google sign-in:", user.email);
+                        dbUser = await User.create({
+                            id: `google_${profile.sub || Date.now()}`,
+                            email: user.email,
+                            full_name: user.name,
+                            role: 'student', // Default role for Google registration
+                            status: 'active',
+                            email_verified: true,
+                            is_solo: true,
+                            avatar_url: profile.picture || user.image,
+                            created_at: new Date(),
+                            updated_at: new Date()
+                        });
+                    }
+
+                    // Attach database fields to the user object so they are passed to JWT
+                    user.role = dbUser.role;
+                    user.id = dbUser.id || dbUser._id.toString();
+                    return true;
+                } catch (error) {
+                    console.error("[AUTH] Error during Google sign-in sync:", error);
+                    return true; // Still allow sign in even if DB sync fails
+                }
+            }
+            return true;
+        },
         async jwt({ token, user }: any) {
             if (user) {
                 token.role = user.role;
@@ -94,7 +133,6 @@ export const authOptions: AuthOptions = {
         }
     },
 
-    // 5. Custom UI paths
     // 5. Custom UI paths
     pages: {
         signIn: '/login',
