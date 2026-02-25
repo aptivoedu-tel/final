@@ -30,11 +30,14 @@ export class MongoAuthService {
             });
 
             if (result?.error) {
-                console.error('[MongoAuthService] signIn error:', result.error);
-                return {
-                    user: null,
-                    error: result.error === 'CredentialsSignin' ? 'Invalid email or password' : 'Authentication failed'
-                };
+                console.error('[MongoAuthService] signIn error type:', result.error);
+                let userFriendlyError = 'Authentication failed';
+
+                if (result.error === 'CredentialsSignin') userFriendlyError = 'Invalid email or password';
+                else if (result.error === 'Configuration') userFriendlyError = 'Server Configuration Error (Secret missing in Vercel)';
+                else userFriendlyError = `Login Error: ${result.error}`;
+
+                return { user: null, error: userFriendlyError };
             }
 
             // Wait for session to be established (retry up to 3 times)
