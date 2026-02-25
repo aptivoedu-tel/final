@@ -1,7 +1,26 @@
 // MongoDB-only implementation of AdminDashboardService
 // Removes all Supabase dependencies.
 
-import { AdminStats, RecentActivity } from './adminDashboardService';
+export interface AdminStats {
+    totalQuestions: number;
+    activeStudents: number;
+    subjects: number;
+    topics: number;
+    changePercentages: {
+        questions: string;
+        students: string;
+        subjects: string;
+        topics: string;
+    };
+}
+
+export interface RecentActivity {
+    action: string;
+    subject: string;
+    time: string;
+    icon: string;
+    color: string;
+}
 
 export class AdminDashboardService {
     /**
