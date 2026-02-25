@@ -25,7 +25,7 @@ export async function middleware(request: NextRequest) {
     }
 
     // Verify JWT token via NextAuth
-    const secret = process.env.NEXTAUTH_SECRET || "fallback_secret_for_dev_only_123";
+    const secret = process.env.NEXTAUTH_SECRET || "aptivo_fallback_secret_2026";
 
     const token = await getToken({
         req: request,
