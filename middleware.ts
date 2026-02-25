@@ -44,7 +44,7 @@ export async function middleware(request: NextRequest) {
     const role = token.role as string | undefined;
 
     if (pathname !== '/login') {
-        process.stdout.write(`[MIDDLEWARE] Access: ${pathname} | Role: ${role}\n`);
+        console.log(`[MIDDLEWARE] Access: ${pathname} | Role: ${role}`);
     }
 
     // Protect admin routes — only super_admin and institution_admin can access
