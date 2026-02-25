@@ -28,7 +28,7 @@ export async function GET(req: NextRequest) {
             .lean();
 
         // Add recipient counts for history view
-        const history = await Promise.all(notifications.map(async (n) => {
+        const history = await Promise.all(notifications.map(async (n: any) => {
             const recipientCount = await NotificationRecipient.countDocuments({ notification_id: n.id });
             const readCount = await NotificationRecipient.countDocuments({ notification_id: n.id, is_read: true });
 

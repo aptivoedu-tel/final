@@ -33,14 +33,14 @@ export async function GET(req: NextRequest) {
                 }
             }
 
-            const performance = subjects.map(s => {
+            const performance: any[] = subjects.map((s: any) => {
                 const scores = subjectScores[s.id] || [];
                 return {
                     subject: s.name,
                     score: scores.length > 0 ? Math.round(scores.reduce((a: number, b: number) => a + b, 0) / scores.length) : 0,
                     fullMark: 100
                 };
-            }).filter(p => p.score > 0 || performance.length < 5); // Keep at least some or those with scores
+            }).filter((p: any) => p.score > 0 || subjects.length < 5); // Keep at least some or those with scores
 
             return NextResponse.json({ performance });
         }
@@ -67,14 +67,14 @@ export async function GET(req: NextRequest) {
                 labels.push(dateStr);
             }
 
-            sessions.forEach(s => {
+            sessions.forEach((s: any) => {
                 const dateStr = timeframeLabel(new Date(s.started_at), days <= 7 ? 'week' : 'month');
                 if (activityMap[dateStr] !== undefined) {
                     activityMap[dateStr] += (s.time_spent_seconds || 0) / 3600;
                 }
             });
 
-            const activity = labels.map(label => ({
+            const activity = labels.map((label: string) => ({
                 name: label,
                 hours: parseFloat(activityMap[label].toFixed(2))
             }));
@@ -91,11 +91,11 @@ export async function GET(req: NextRequest) {
 
         const totalSessions = sessions.length;
         const totalAttempts = attempts.length;
-        const totalCorrect = attempts.filter(a => a.is_correct).length;
+        const totalCorrect = attempts.filter((a: any) => a.is_correct).length;
         const overallAccuracy = totalAttempts > 0 ? Math.round((totalCorrect / totalAttempts) * 100) : 0;
 
         let currentStreak = 0;
-        const streakDates = streaks.map(s => s.streak_date).sort().reverse();
+        const streakDates = streaks.map((s: any) => s.streak_date).sort().reverse();
         const today = new Date().toISOString().split('T')[0];
 
         for (let i = 0; i < streakDates.length; i++) {

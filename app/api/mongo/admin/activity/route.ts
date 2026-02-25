@@ -20,11 +20,11 @@ export async function GET(req: NextRequest) {
             .lean();
 
         // Populate user info manually since we might not have refs set up perfectly
-        const userIds = logs.map(l => l.user_id);
+        const userIds = logs.map((l: any) => l.user_id);
         const users = await User.find({ id: { $in: userIds } }).select('id full_name role').lean();
-        const userMap = new Map(users.map(u => [u.id, u]));
+        const userMap = new Map(users.map((u: any) => [u.id, u]));
 
-        const activities = logs.map(log => {
+        const activities = logs.map((log: any) => {
             const user = userMap.get(log.user_id);
             return {
                 ...log,

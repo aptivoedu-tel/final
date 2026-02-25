@@ -49,7 +49,7 @@ export async function POST(req: NextRequest) {
         }
 
         const users = await User.find(recipientsFilter).select('id');
-        const recipientsData = users.map(user => ({
+        const recipientsData = users.map((user: any) => ({
             id: Math.floor(Math.random() * 1000000000), // Random ID for the recipient record
             notification_id: notificationId,
             user_id: user.id,

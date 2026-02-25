@@ -24,7 +24,7 @@ export async function GET(req: NextRequest) {
                 institution_id: parseInt(institutionId),
                 is_active: true
             }).select('student_id');
-            const studentIds = enrollments.map(e => e.student_id);
+            const studentIds = enrollments.map((e: any) => e.student_id);
             studentFilter.id = { $in: studentIds };
         }
         const studentCount = await User.countDocuments(studentFilter);

@@ -124,7 +124,7 @@ export async function DELETE(req: NextRequest) {
             // Delete questions for those sections
             (async () => {
                 const sections = await ExamSection.find({ exam_id: examId }).select('id');
-                const sectionIds = sections.map(s => s.id);
+                const sectionIds = sections.map((s: any) => s.id);
                 await ExamQuestion.deleteMany({ section_id: { $in: sectionIds } });
             })()
         ]);
