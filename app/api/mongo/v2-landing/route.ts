@@ -12,15 +12,26 @@ export async function GET() {
             Subject.find({ is_active: true }).limit(6).lean(),
             User.countDocuments({ role: 'student' }),
             Feedback.find({ is_published: true })
-                .populate('user_id', 'full_name avatar_url role')
                 .sort({ created_at: -1 })
                 .limit(6)
                 .lean()
         ]);
 
-        // Mock avatars if not enough
-        const avatars = (feedbacks || [])
-            .map((f: any) => f.user_id?.avatar_url)
+        // Manual join: look up users by their custom 'id' field (UUID string), not _id
+        const userIds = [...new Set((feedbacks || []).map((f: any) => f.user_id).filter(Boolean))];
+        const users = userIds.length > 0
+            ? await User.find({ id: { $in: userIds } }).select('id full_name avatar_url role').lean()
+            : [];
+        const userMap = Object.fromEntries((users as any[]).map((u: any) => [u.id, u]));
+
+        const enrichedFeedbacks = (feedbacks || []).map((f: any) => ({
+            ...f,
+            users: userMap[f.user_id] || null,
+        }));
+
+        // Avatars from matched users
+        const avatars = enrichedFeedbacks
+            .map((f: any) => f.users?.avatar_url)
             .filter(Boolean)
             .slice(0, 4);
 
@@ -29,7 +40,7 @@ export async function GET() {
             universities,
             subjects,
             studentCount,
-            feedbacks,
+            feedbacks: enrichedFeedbacks,
             avatars,
             averageRating: 4.8
         });

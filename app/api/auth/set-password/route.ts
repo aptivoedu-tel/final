@@ -30,11 +30,12 @@ export async function POST(req: NextRequest) {
         }
 
         user.password = await bcrypt.hash(password, 12);
+        user.status = 'active'; // Activate user after setting password
         user.set_password_token = undefined;
         user.set_password_token_expiry = undefined;
         await user.save();
 
-        return NextResponse.json({ success: true, message: 'Password set! You can now log in with email and password.' });
+        return NextResponse.json({ success: true, message: 'Password set! Your account is now active and you can log in.' });
 
     } catch (error: any) {
         console.error('[SET PASSWORD] Error:', error);

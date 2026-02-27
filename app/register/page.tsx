@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { Mail, Lock, User, GraduationCap, Building2, Eye, EyeOff, AlertCircle, CheckCircle, Globe, ArrowLeft, Shield, Check, Info } from 'lucide-react';
 import { AuthService } from '@/lib/services/authService';
+import { signIn } from 'next-auth/react';
 import Link from 'next/link';
 import { useLoading } from '@/lib/context/LoadingContext';
 
@@ -124,15 +125,29 @@ export default function RegisterPage() {
                 institutionType: formData.isNewInstitution ? formData.institutionType : undefined
             });
 
+            setGlobalLoading(false);
+
             if (registerError) {
                 setError(registerError);
-                setGlobalLoading(false);
                 return;
             }
 
-            if (user) setSuccess(true);
+            // Show success screen regardless — user object confirms creation
+            setSuccess(true);
         } catch (err) {
             setError('An unexpected error occurred during registration');
+            setGlobalLoading(false);
+        }
+    };
+
+    const handleGoogleSignup = async () => {
+        setError('');
+        setGlobalLoading(true, 'Connecting to Google...');
+        try {
+            // Call signIn directly — avoids service abstraction issues
+            await signIn('google', { callbackUrl: '/dashboard' });
+        } catch (err) {
+            setError('Google sign-up failed. Please try again.');
             setGlobalLoading(false);
         }
     };
@@ -386,7 +401,7 @@ export default function RegisterPage() {
                                 </div>
                                 <button
                                     type="button"
-                                    onClick={() => AuthService.loginWithProvider('google')}
+                                    onClick={handleGoogleSignup}
                                     className="w-full py-3.5 bg-white border-2 border-slate-200 rounded-2xl flex items-center justify-center gap-3 hover:bg-slate-50 hover:border-[#4CAF50] transition-all active:scale-[0.98] shadow-sm group"
                                 >
                                     <svg className="w-5 h-5" viewBox="0 0 24 24">
@@ -397,6 +412,9 @@ export default function RegisterPage() {
                                     </svg>
                                     <span className="text-xs font-bold text-slate-600 group-hover:text-slate-900">Sign up with Google</span>
                                 </button>
+                                <p className="text-center text-[10px] text-slate-400 font-medium -mt-2">
+                                    Google sign-up will create your account and log you in automatically.
+                                </p>
                             </>
                         )}
 

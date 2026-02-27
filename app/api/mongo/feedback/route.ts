@@ -50,15 +50,20 @@ export async function GET(req: NextRequest) {
         if (!User) { /* trigger register if needed */ }
 
         const feedbacks = await Feedback.find()
-            .populate('user_id', 'full_name email role')
             .sort({ created_at: -1 })
             .limit(100)
             .lean();
 
-        // Map user_id to user to match the frontend expects 'user'
+        // Manual join using custom 'id' field (UUID string), not MongoDB _id
+        const userIds = [...new Set(feedbacks.map((f: any) => f.user_id).filter(Boolean))];
+        const users = userIds.length > 0
+            ? await User.find({ id: { $in: userIds } }).select('id full_name email role').lean()
+            : [];
+        const userMap = Object.fromEntries((users as any[]).map((u: any) => [u.id, u]));
+
         const mappedFeedbacks = feedbacks.map((f: any) => ({
             ...f,
-            user: f.user_id
+            user: userMap[f.user_id] || null,
         }));
 
         return NextResponse.json({ feedbacks: mappedFeedbacks });

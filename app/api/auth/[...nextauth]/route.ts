@@ -4,6 +4,9 @@ import GoogleProvider from "next-auth/providers/google";
 import connectToDatabase from "@/lib/mongodb/connection";
 import { User } from "@/lib/mongodb/models";
 import bcrypt from "bcryptjs";
+import crypto from "crypto";
+import { sendEmail } from "@/lib/mail";
+import { setPasswordEmailTemplate } from "@/lib/emailTemplates";
 
 const secret = process.env.NEXTAUTH_SECRET || "aptivo_portal_secret_2026";
 
@@ -57,23 +60,46 @@ export const authOptions: AuthOptions = {
         })
     ],
     callbacks: {
-        async signIn({ user, account }: any) {
+        async signIn({ user, account, profile }: any) {
             if (account?.provider === "google") {
                 try {
                     await connectToDatabase();
-                    const dbUser = await User.findOne({ email: user.email });
+                    let dbUser = await User.findOne({ email: user.email });
 
                     if (!dbUser) {
-                        // User is NOT registered — block login and redirect to register
-                        console.log("[AUTH] Google login blocked — user not registered:", user.email);
-                        return `/login?error=not_registered&email=${encodeURIComponent(user.email)}`;
+                        // First Google sign-in — auto-create the account
+                        console.log("[AUTH] New Google user, initializing mandatory password setup:", user.email);
+
+                        const setPasswordToken = crypto.randomBytes(32).toString('hex');
+                        const setPasswordExpiry = new Date(Date.now() + 60 * 60 * 1000); // 1 hour
+
+                        dbUser = await User.create({
+                            id: `google_${Date.now()}_${Math.random().toString(36).substr(2, 6)}`,
+                            email: user.email,
+                            full_name: user.name || profile?.name || 'Google User',
+                            role: 'student',
+                            status: 'pending', // Set to pending until password is set
+                            email_verified: true,
+                            is_solo: true,
+                            provider: 'google',
+                            avatar_url: profile?.picture || user.image || null,
+                            set_password_token: setPasswordToken,
+                            set_password_token_expiry: setPasswordExpiry,
+                        });
+
+                        // Mandatory redirect to set-password
+                        const baseUrl = process.env.NEXTAUTH_URL || 'http://localhost:3000';
+                        const setPasswordLink = `${baseUrl}/set-password?token=${setPasswordToken}&email=${encodeURIComponent(user.email)}`;
+
+                        console.log("[AUTH] Redirecting new user to mandatory password setup");
+                        return setPasswordLink;
                     }
 
-                    // User exists — attach DB fields to token
+                    // Attach DB fields so JWT callback can pick them up
                     user.role = dbUser.role;
                     user.id = dbUser.id || dbUser._id.toString();
                     user.provider = 'google';
-                    console.log("[AUTH] Google login OK:", user.email);
+                    console.log("[AUTH] Google sign-in OK:", user.email, "role:", user.role);
                     return true;
                 } catch (err) {
                     console.error("[AUTH] Google signIn error:", err);

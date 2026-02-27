@@ -88,7 +88,6 @@ function SetPasswordForm() {
             <button type="submit" disabled={loading} className="w-full py-4 bg-[#1B3A3A] text-white font-black rounded-2xl text-sm hover:bg-black transition-all flex items-center justify-center gap-2">
                 {loading ? <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" /> : 'Set Password'}
             </button>
-            <Link href="/login" className="block text-center text-slate-400 text-xs font-bold hover:text-[#1B3A3A] mt-2">Skip for now</Link>
         </form>
     );
 }
@@ -101,8 +100,8 @@ export default function SetPasswordPage() {
                     <div className="w-16 h-16 bg-[#1B3A3A] rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-lg">
                         <GraduationCap className="w-8 h-8 text-white" />
                     </div>
-                    <h1 className="text-2xl font-black text-[#1B3A3A]">Set Your Password</h1>
-                    <p className="text-slate-400 text-xs font-medium mt-2">Add email login to your Google account.</p>
+                    <h1 className="text-2xl font-black text-[#1B3A3A]">Final Step</h1>
+                    <p className="text-slate-400 text-xs font-medium mt-2">To complete your registration, please set a password.</p>
                 </div>
                 <Suspense fallback={<div className="text-center text-slate-400 text-sm">Loading...</div>}>
                     <SetPasswordForm />
