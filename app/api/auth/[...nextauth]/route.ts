@@ -1,12 +1,9 @@
 import NextAuth, { AuthOptions } from "next-auth";
 import CredentialsProvider from "next-auth/providers/credentials";
 import GoogleProvider from "next-auth/providers/google";
-import crypto from "crypto";
 import connectToDatabase from "@/lib/mongodb/connection";
 import { User } from "@/lib/mongodb/models";
 import bcrypt from "bcryptjs";
-import { sendEmail } from "@/lib/mail";
-import { setPasswordEmailTemplate } from "@/lib/emailTemplates";
 
 const secret = process.env.NEXTAUTH_SECRET || "aptivo_portal_secret_2026";
 
@@ -60,54 +57,27 @@ export const authOptions: AuthOptions = {
         })
     ],
     callbacks: {
-        async signIn({ user, account, profile }: any) {
+        async signIn({ user, account }: any) {
             if (account?.provider === "google") {
                 try {
                     await connectToDatabase();
-                    let dbUser = await User.findOne({ email: user.email });
+                    const dbUser = await User.findOne({ email: user.email });
 
                     if (!dbUser) {
-                        // First-time Google registration — create account
-                        console.log("[AUTH] New Google user:", user.email);
-                        dbUser = await User.create({
-                            id: `google_${Date.now()}_${Math.random().toString(36).substr(2, 6)}`,
-                            email: user.email,
-                            full_name: user.name,
-                            role: 'student',
-                            status: 'active',
-                            email_verified: true,
-                            is_solo: true,
-                            provider: 'google',
-                            avatar_url: profile?.picture || user.image,
-                        });
-
-                        // Send "set password" email so they can optionally add email login
-                        try {
-                            const setPassToken = crypto.randomBytes(32).toString('hex');
-                            dbUser.set_password_token = setPassToken;
-                            dbUser.set_password_token_expiry = new Date(Date.now() + 30 * 60 * 1000);
-                            await dbUser.save();
-
-                            const baseUrl = process.env.NEXTAUTH_URL || 'https://aptivoedu.vercel.app';
-                            const setPassLink = `${baseUrl}/set-password?token=${setPassToken}`;
-                            await sendEmail({
-                                to: user.email,
-                                subject: 'Welcome to APTIVO – Set Your Password',
-                                html: setPasswordEmailTemplate(user.name, setPassLink),
-                            });
-                        } catch (emailErr) {
-                            console.error("[AUTH] Set-password email failed:", emailErr);
-                        }
+                        // User is NOT registered — block login and redirect to register
+                        console.log("[AUTH] Google login blocked — user not registered:", user.email);
+                        return `/login?error=not_registered&email=${encodeURIComponent(user.email)}`;
                     }
 
-                    // Attach DB fields to token
+                    // User exists — attach DB fields to token
                     user.role = dbUser.role;
                     user.id = dbUser.id || dbUser._id.toString();
                     user.provider = 'google';
+                    console.log("[AUTH] Google login OK:", user.email);
                     return true;
                 } catch (err) {
                     console.error("[AUTH] Google signIn error:", err);
-                    return true; // Still allow sign-in even if DB sync fails
+                    return '/login?error=server_error';
                 }
             }
             return true;

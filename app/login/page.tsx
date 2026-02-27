@@ -90,6 +90,12 @@ export default function LoginPage() {
         const errorType = searchParams.get('error');
         if (errorType === 'suspended' || errorType === 'blocked') {
             setError('ACCESS DENIED: Your account has been restricted by your institution.');
+        } else if (errorType === 'not_registered') {
+            const emailParam = searchParams.get('email') || '';
+            setError(`No account found${emailParam ? ` for "${emailParam}"` : ''}. Please register first, then log in with Google.`);
+            setMode('register');
+        } else if (errorType === 'expired_token') {
+            setError('Your verification link has expired. Please register again to get a new one.');
         }
 
         const timer = setInterval(() => {
