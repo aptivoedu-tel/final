@@ -7,6 +7,8 @@ const PUBLIC_PATHS = [
     '/register',
     '/',
     '/set-password',
+    '/forgot-password',
+    '/reset-password',
 ];
 
 export async function middleware(request: NextRequest) {
