@@ -41,7 +41,8 @@ export default function ExcelUploaderPage() {
     const [unresolvedMappings, setUnresolvedMappings] = useState<{
         subjects: { [key: string]: number | null };
         topics: { [key: string]: number | null };
-    }>({ subjects: {}, topics: {} });
+        subtopics: { [key: string]: number | null };
+    }>({ subjects: {}, topics: {}, subtopics: {} });
 
     // Track which indexes were unidentified during the last scan
     const [unidentifiedIndices, setUnidentifiedIndices] = useState<Set<number>>(new Set());
@@ -50,6 +51,7 @@ export default function ExcelUploaderPage() {
     const [manualResolutions, setManualResolutions] = useState<Record<number, {
         subjId?: number;
         topicId?: number;
+        subtopicId?: number;
     }>>({});
 
     const [duplicateAnalysis, setDuplicateAnalysis] = useState<any>(null);
@@ -168,6 +170,7 @@ export default function ExcelUploaderPage() {
 
         const fileSubjects = new Set<string>();
         const fileTopics = new Set<string>();
+        const fileSubtopics = new Set<string>();
 
         const mcqRows = data.map((row: any) => {
             const getVal = (patterns: string[]) => {
@@ -178,12 +181,15 @@ export default function ExcelUploaderPage() {
 
             const s = getVal(['subject']);
             const t = getVal(['topic']);
+            const st = getVal(['subtopic']);
             if (s) fileSubjects.add(s);
             if (t) fileTopics.add(t);
+            if (st) fileSubtopics.add(st);
 
             return {
                 subject: s,
                 topic: t,
+                subtopic: st,
                 question: getVal(['question', 'text', 'statement']) || '',
                 option_a: getVal(['option a', 'a']) || '',
                 option_b: getVal(['option b', 'b']) || '',
@@ -194,7 +200,7 @@ export default function ExcelUploaderPage() {
         });
 
         // Map to DB IDs
-        const newMap = { subjects: {} as any, topics: {} as any };
+        const newMap = { subjects: {} as any, topics: {} as any, subtopics: {} as any };
         fileSubjects.forEach(s => {
             const match = allHierarchy.subjects.find(db => db.name.toLowerCase() === s.toLowerCase());
             newMap.subjects[s] = match ? match.id : null;
@@ -203,13 +209,18 @@ export default function ExcelUploaderPage() {
             const match = allHierarchy.topics.find(db => db.name.toLowerCase() === t.toLowerCase());
             newMap.topics[t] = match ? match.id : null;
         });
+        fileSubtopics.forEach(st => {
+            const match = allHierarchy.subtopics.find(db => db.name.toLowerCase() === st.toLowerCase());
+            newMap.subtopics[st] = match ? match.id : null;
+        });
         setUnresolvedMappings(newMap);
 
         // Prepare rows for duplicate validation with resolved IDs
         const rowsForValidation = mcqRows.map(row => ({
             ...row,
             subjectId: row.subject ? newMap.subjects[row.subject] : null,
-            topicId: row.topic ? newMap.topics[row.topic] : null
+            topicId: row.topic ? newMap.topics[row.topic] : null,
+            subtopicId: row.subtopic ? newMap.subtopics[row.subtopic] : null
         }));
 
         // Run Pre-validation Duplicate Scan
@@ -253,12 +264,16 @@ export default function ExcelUploaderPage() {
             .map((row: any, idx: number) => {
                 const excelSubj = getRowValue(row, ['subject'])?.toString() || '';
                 const excelTopic = getRowValue(row, ['topic'])?.toString() || '';
+                const excelSubtopic = getRowValue(row, ['subtopic'])?.toString() || '';
 
                 const override = manualResolutions[idx] || {};
                 const resolvedSubjId = override.subjId || (excelSubj ? unresolvedMappings.subjects[excelSubj] : null);
                 const resolvedTopicId = override.topicId || (excelTopic ? unresolvedMappings.topics[excelTopic] : null);
+                const resolvedSubtopicId = override.subtopicId || (excelSubtopic ? unresolvedMappings.subtopics[excelSubtopic] : null);
 
                 const validation = ExcelUploadService.validateMCQRow(row);
+                // Subtopic being unresolved is NOT a hierarchy invalidation. 
+                // "If the subtopic does not exist, keep the question under the main topic."
                 const hierarchyValid = !autoDetectMode || (resolvedSubjId !== null && resolvedTopicId !== null);
 
                 // Check duplicate status
@@ -269,8 +284,10 @@ export default function ExcelUploaderPage() {
                     index: idx,
                     excelSubj,
                     excelTopic,
+                    excelSubtopic,
                     resolvedSubjId,
                     resolvedTopicId,
+                    resolvedSubtopicId,
                     isValid: validation.isValid && hierarchyValid && !dupInfo,
                     hierarchyValid,
                     isOriginallyUnidentified: unidentifiedIndices.has(idx),
@@ -293,18 +310,18 @@ export default function ExcelUploaderPage() {
         return { total: processedTableData.length, unidentified: unid, duplicates: dups };
     }, [processedTableData]);
 
-    const updateManualResolution = (idx: number, field: 'subjId' | 'topicId', val: number | null) => {
+    const updateManualResolution = (idx: number, field: 'subjId' | 'topicId' | 'subtopicId', val: number | null) => {
         setManualResolutions(prev => ({
             ...prev,
             [idx]: { ...prev[idx], [field]: val }
         }));
     };
 
-    const bulkApplyResolution = (excelLabel: string, type: 'subject' | 'topic', dbId: number) => {
+    const bulkApplyResolution = (excelLabel: string, type: 'subject' | 'topic' | 'subtopic', dbId: number) => {
         setUnresolvedMappings(prev => ({
             ...prev,
-            [type === 'subject' ? 'subjects' : 'topics']: {
-                ...prev[type === 'subject' ? 'subjects' : 'topics'],
+            [type === 'subject' ? 'subjects' : type === 'topic' ? 'topics' : 'subtopics']: {
+                ...prev[type === 'subject' ? 'subjects' : type === 'topic' ? 'topics' : 'subtopics'],
                 [excelLabel]: dbId
             }
         }));
@@ -312,9 +329,9 @@ export default function ExcelUploaderPage() {
         // Clear manual overrides if they match this label
         const updated = { ...manualResolutions };
         processedTableData.forEach(d => {
-            const currentLabel = type === 'subject' ? d.excelSubj : d.excelTopic;
+            const currentLabel = type === 'subject' ? d.excelSubj : type === 'topic' ? d.excelTopic : d.excelSubtopic;
             if (currentLabel === excelLabel && updated[d.index]) {
-                delete updated[d.index][type === 'subject' ? 'subjId' : 'topicId'];
+                delete updated[d.index][type === 'subject' ? 'subjId' : type === 'topic' ? 'topicId' : 'subtopicId'];
             }
         });
         setManualResolutions(updated);
@@ -370,6 +387,7 @@ export default function ExcelUploaderPage() {
                 return {
                     subject: d.excelSubj,
                     topic: d.excelTopic,
+                    subtopic: d.excelSubtopic,
                     question: getRowValue(row, ['question', 'text']) || '',
                     option_a: getRowValue(row, ['option a', 'a']) || '',
                     option_b: getRowValue(row, ['option b', 'b']) || '',
@@ -380,6 +398,7 @@ export default function ExcelUploaderPage() {
                     difficulty: (getRowValue(row, ['difficulty']) || 'medium').toString().toLowerCase() as any,
                     subjectId: autoDetectMode ? d.resolvedSubjId : parseInt(subject),
                     topicId: autoDetectMode ? d.resolvedTopicId : parseInt(topic),
+                    subtopicId: autoDetectMode ? d.resolvedSubtopicId : parseInt(subtopic),
                 };
             });
 
@@ -406,7 +425,7 @@ export default function ExcelUploaderPage() {
         setDuplicateAnalysis(null);
         setRejectedIndices(new Set());
         setSelectedRows(new Set());
-        setUnresolvedMappings({ subjects: {}, topics: {} });
+        setUnresolvedMappings({ subjects: {}, topics: {}, subtopics: {} });
     };
 
     const handleDownloadTemplate = () => {
@@ -536,6 +555,10 @@ export default function ExcelUploaderPage() {
                                             <select disabled={!subject} className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-[10px] font-bold disabled:opacity-50" value={topic} onChange={(e) => setTopic(e.target.value)}>
                                                 <option value="">Select Topic</option>
                                                 {topicsList.map(t => <option key={t.id} value={t.id}>{t.name}</option>)}
+                                            </select>
+                                            <select disabled={!topic} className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-[10px] font-bold disabled:opacity-50" value={subtopic} onChange={(e) => setSubtopic(e.target.value)}>
+                                                <option value="">Select Subtopic (Optional)</option>
+                                                {subtopicsList.map(st => <option key={st.id} value={st.id}>{st.name}</option>)}
                                             </select>
                                         </div>
                                     )}
@@ -715,6 +738,33 @@ export default function ExcelUploaderPage() {
                                                                             )}
                                                                         </div>
                                                                     </div>
+
+                                                                    {/* Subtopic Resolution */}
+                                                                    {(d.excelSubtopic || d.resolvedSubtopicId) && (
+                                                                        <div>
+                                                                            <p className="text-[9px] font-black text-slate-400 uppercase tracking-tighter mb-2">Excel: {d.excelSubtopic}</p>
+                                                                            <div className="flex gap-2 items-center">
+                                                                                <select
+                                                                                    disabled={!d.resolvedTopicId}
+                                                                                    className={`flex-1 bg-white border border-slate-200 text-[10px] font-bold rounded-xl px-4 py-2.5 outline-none focus:ring-1 focus:ring-indigo-500 disabled:opacity-40 transition-all`}
+                                                                                    value={d.resolvedSubtopicId || ''}
+                                                                                    onChange={(e) => updateManualResolution(d.index, 'subtopicId', parseInt(e.target.value) || null)}
+                                                                                >
+                                                                                    <option value="">Map Subtopic (Optional)...</option>
+                                                                                    {allHierarchy.subtopics.filter(st => st.topic_id === d.resolvedTopicId).map(st => <option key={st.id} value={st.id}>{st.name}</option>)}
+                                                                                </select>
+                                                                                {manualResolutions[d.index]?.subtopicId && (
+                                                                                    <button
+                                                                                        title="Apply to all items with same label"
+                                                                                        onClick={() => bulkApplyResolution(d.excelSubtopic, 'subtopic', manualResolutions[d.index]!.subtopicId!)}
+                                                                                        className="p-2 bg-amber-50 text-amber-600 rounded-xl hover:bg-amber-500 hover:text-white transition-all shadow-sm border border-amber-100"
+                                                                                    >
+                                                                                        <Layers className="w-3.5 h-3.5" />
+                                                                                    </button>
+                                                                                )}
+                                                                            </div>
+                                                                        </div>
+                                                                    )}
                                                                 </div>
                                                             </td>
                                                             <td className="px-8 py-8 align-top text-right">
