@@ -19,6 +19,11 @@ export async function GET() {
             return NextResponse.json({ error: 'User not found' }, { status: 404 });
         }
 
+        // Enforce email verification for student role
+        if (user.role === 'student' && !user.email_verified) {
+            return NextResponse.json({ error: 'Email not verified' }, { status: 403 });
+        }
+
         return NextResponse.json({ user });
     } catch (error: any) {
         console.error('API /auth/me Error:', error);

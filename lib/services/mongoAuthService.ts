@@ -145,6 +145,11 @@ export class MongoAuthService {
                         localStorage.setItem('aptivo_user', JSON.stringify(data.user));
                         return data.user;
                     }
+                } else if (response.status === 403) {
+                    // Forbidden = Unverified
+                    console.log("[MongoAuthService] Sync blocked: User unverified. Logging out.");
+                    await this.logout();
+                    return null;
                 }
             } catch (err) {
                 console.warn('[MongoAuthService] Sync fetch failed, using local fallback', err);

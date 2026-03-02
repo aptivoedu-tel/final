@@ -54,6 +54,14 @@ export default function LoginPage() {
                         const data = await res.json();
                         const profile = data.user;
                         if (profile) {
+                            // Enforce email verification for students
+                            if (profile.role === 'student' && !profile.email_verified) {
+                                console.log("Unverified student auto-login blocked");
+                                localStorage.removeItem('aptivo_user');
+                                setAuthChecking(false);
+                                return;
+                            }
+
                             localStorage.setItem('aptivo_user', JSON.stringify(profile));
                             if (profile.status === 'suspended' || profile.status === 'blocked') {
                                 setAuthChecking(false);
@@ -290,7 +298,10 @@ export default function LoginPage() {
                                             <div className="w-full border-t border-slate-100"></div>
                                             <span className="absolute bg-white px-4 text-[9px] font-black text-slate-300 uppercase tracking-widest">Connect With</span>
                                         </div>
-                                        <button onClick={() => AuthService.loginWithProvider('google')} className="w-full py-4 border-2 border-slate-100 rounded-2xl flex items-center justify-center gap-3 hover:bg-slate-50 transition-all font-bold text-xs text-slate-600">
+                                        <button onClick={() => {
+                                            document.cookie = "auth_intent=login; path=/; max-age=600";
+                                            AuthService.loginWithProvider('google');
+                                        }} className="w-full py-4 border-2 border-slate-100 rounded-2xl flex items-center justify-center gap-3 hover:bg-slate-50 transition-all font-bold text-xs text-slate-600">
                                             <Chrome className="w-5 h-5" />
                                             Continue with Google
                                         </button>

@@ -1,4 +1,5 @@
 import NextAuth, { AuthOptions } from "next-auth";
+import { cookies } from "next/headers";
 import CredentialsProvider from "next-auth/providers/credentials";
 import GoogleProvider from "next-auth/providers/google";
 import connectToDatabase from "@/lib/mongodb/connection";
@@ -40,6 +41,13 @@ export const authOptions: AuthOptions = {
                     }).lean() as any;
 
                     if (!user) { console.log("[AUTH] Not found:", email); return null; }
+
+                    // Check email verification status
+                    if (!user.email_verified) {
+                        console.log("[AUTH] Email not verified:", email);
+                        throw new Error("Email not verified. Please check your inbox for the verification link.");
+                    }
+
                     if (!user.password) { console.log("[AUTH] No password (Google-only):", email); return null; }
 
                     const isValid = await bcrypt.compare(credentials.password, user.password);
@@ -66,9 +74,18 @@ export const authOptions: AuthOptions = {
                     await connectToDatabase();
                     let dbUser = await User.findOne({ email: user.email });
 
+                    const cookieStore = await cookies();
+                    const intent = cookieStore.get('auth_intent')?.value;
+                    cookieStore.delete('auth_intent');
+
                     if (!dbUser) {
-                        // First Google sign-in — auto-create the account
-                        console.log("[AUTH] New Google user, initializing mandatory password setup:", user.email);
+                        if (intent !== 'register') {
+                            console.log("[AUTH] Google login attempted for non-existent user:", user.email);
+                            return `/login?error=not_registered&email=${encodeURIComponent(user.email)}`;
+                        }
+
+                        // First Google sign-in — auto-create the account (Registration Mode)
+                        console.log("[AUTH] New Google user registration:", user.email);
 
                         const setPasswordToken = crypto.randomBytes(32).toString('hex');
                         const setPasswordExpiry = new Date(Date.now() + 60 * 60 * 1000); // 1 hour
@@ -78,7 +95,7 @@ export const authOptions: AuthOptions = {
                             email: user.email,
                             full_name: user.name || profile?.name || 'Google User',
                             role: 'student',
-                            status: 'pending', // Set to pending until password is set
+                            status: 'active', // Set to active for Google registration
                             email_verified: true,
                             is_solo: true,
                             provider: 'google',
@@ -87,12 +104,12 @@ export const authOptions: AuthOptions = {
                             set_password_token_expiry: setPasswordExpiry,
                         });
 
-                        // Mandatory redirect to set-password
-                        const baseUrl = process.env.NEXTAUTH_URL || 'http://localhost:3000';
-                        const setPasswordLink = `${baseUrl}/set-password?token=${setPasswordToken}&email=${encodeURIComponent(user.email)}`;
+                        // Attach fields for the session
+                        user.role = dbUser.role;
+                        user.id = dbUser.id;
+                        user.provider = 'google';
 
-                        console.log("[AUTH] Redirecting new user to mandatory password setup");
-                        return setPasswordLink;
+                        return true;
                     }
 
                     // Attach DB fields so JWT callback can pick them up

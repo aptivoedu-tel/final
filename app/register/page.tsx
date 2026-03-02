@@ -144,6 +144,8 @@ export default function RegisterPage() {
         setError('');
         setGlobalLoading(true, 'Connecting to Google...');
         try {
+            // Set intent so NextAuth knows we allow registration
+            document.cookie = "auth_intent=register; path=/; max-age=600";
             // Call signIn directly — avoids service abstraction issues
             await signIn('google', { callbackUrl: '/dashboard' });
         } catch (err) {
