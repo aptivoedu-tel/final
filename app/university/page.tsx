@@ -270,8 +270,8 @@ function UniversityPortalContent() {
                                     {enrollments.length > 0 ? (
                                         enrollments.map((en) => (
                                             <div
-                                                key={en.id}
-                                                onClick={() => router.push(`/university/${en.university_id}`)}
+                                                key={en.id || en.university?.id}
+                                                onClick={() => router.push(`/university/${en.university_id || en.university?.id}`)}
                                                 className="group relative bg-white p-8 rounded-[3rem] border-2 border-gray-100 hover:border-teal-600 transition-all cursor-pointer hover:shadow-2xl hover:shadow-teal-100/50"
                                             >
                                                 <div className="flex justify-between items-start mb-10">
@@ -301,7 +301,7 @@ function UniversityPortalContent() {
                                                         <button
                                                             onClick={(e) => {
                                                                 e.stopPropagation();
-                                                                handleUnenroll(en.university_id);
+                                                                handleUnenroll(en.university_id || en.university?.id);
                                                             }}
                                                             className="p-3 bg-slate-50 text-slate-300 hover:text-rose-600 hover:bg-rose-50 rounded-2xl transition-all"
                                                             title="Unenroll"

@@ -16,16 +16,18 @@ export async function GET(req: NextRequest) {
         await connectToDatabase();
 
         const enrollments = await StudentUniversityEnrollment.find({
-            student_id: studentId,
-            is_active: true
+            user_id: studentId,
+            status: 'approved'
         }).lean();
 
         const universityIds = enrollments.map((e: any) => e.university_id);
         const universities = await University.find({ id: { $in: universityIds } }).lean();
 
         const formatted = enrollments.map((e: any) => ({
-            enrollment_date: e.enrollment_date,
-            is_active: e.is_active,
+            id: e.id || e._id,
+            university_id: e.university_id,
+            enrollment_date: e.created_at,
+            is_active: true,
             universities: universities.find((u: any) => u.id === e.university_id)
         })).filter(item => item.universities);
 
@@ -52,7 +54,7 @@ export async function DELETE(req: NextRequest) {
         await connectToDatabase();
 
         await StudentUniversityEnrollment.deleteOne({
-            student_id: studentId,
+            user_id: studentId,
             university_id: parseInt(universityId)
         });
 
@@ -69,7 +71,7 @@ export async function POST(req: NextRequest) {
         if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
         const body = await req.json();
-        const { student_id, university_id, institution_id, status } = body;
+        const { student_id, university_id, status } = body;
 
         if (!student_id || !university_id) {
             return NextResponse.json({ error: 'Missing student_id or university_id' }, { status: 400 });
@@ -77,18 +79,24 @@ export async function POST(req: NextRequest) {
 
         await connectToDatabase();
 
-        const enrollment = await StudentUniversityEnrollment.findOneAndUpdate(
-            { student_id, university_id: parseInt(university_id) },
-            {
-                $set: {
-                    institution_id: institution_id ? parseInt(institution_id) : null,
-                    status: status || (institution_id ? 'approved' : 'pending'),
-                    is_active: true,
-                    enrollment_date: new Date()
-                }
-            },
-            { upsert: true, new: true }
-        );
+        let enrollment = await StudentUniversityEnrollment.findOne({
+            user_id: student_id,
+            university_id: parseInt(university_id)
+        });
+
+        if (enrollment) {
+            enrollment.status = 'approved';
+            await enrollment.save();
+        } else {
+            const lastEnrollment = await StudentUniversityEnrollment.findOne().sort({ id: -1 });
+            const newId = (lastEnrollment?.id || 0) + 1;
+            enrollment = await StudentUniversityEnrollment.create({
+                id: newId,
+                user_id: student_id,
+                university_id: parseInt(university_id),
+                status: 'approved'
+            });
+        }
 
         return NextResponse.json({ enrollment });
 

@@ -123,7 +123,9 @@ export default function UniversityDetailPage() {
         // 2. Check Enrollment from MongoDB
         const enrollRes = await fetch(`/api/mongo/profile/universities?student_id=${userId}`);
         const enrollData = await enrollRes.json();
-        const enroll = enrollData.universities?.find((e: any) => e.universities.id === uniId);
+        const enroll = (enrollData.universities || []).find(
+            (e: any) => e.university_id === uniId || e.universities?.id === uniId
+        );
 
         if (!enroll) {
             toast.error("You are not enrolled in this university or access is pending.");
@@ -132,12 +134,16 @@ export default function UniversityDetailPage() {
         }
         setEnrollment(enroll);
 
+        // Get institutionId from the current user session (not from stale state)
+        const currentUser = AuthService.getCurrentUser();
+        const institutionId = currentUser?.institution_id || null;
+
         // 3. Load Content & Progress
         await Promise.all([
-            loadContent(uniId, user?.institution_id),
+            loadContent(uniId, institutionId),
             loadStudentProgress(userId),
             loadUniversityStats(userId, uniId),
-            loadExams(userId, uniId)
+            loadExams(userId, uniId, institutionId)
         ]);
     }
 
@@ -152,13 +158,14 @@ export default function UniversityDetailPage() {
         const mcqSubtopicMap: Record<number, number> = {};
         const mcqTopicMap: Record<number, number> = {};
 
-        // Fetch mcqs to get counts (this might be slow, but following existing logic)
-        const mcqRes = await fetch(`/api/mongo/mcqs?limit=1000`);
+        // Fetch mcqs to get counts (removed limit to ensure all subjects get their counts)
+        const mcqRes = await fetch(`/api/mongo/mcqs`);
         const mcqData = await mcqRes.json();
         mcqData.mcqs?.forEach((m: any) => {
             if (m.subtopic_id) {
                 mcqSubtopicMap[m.subtopic_id] = (mcqSubtopicMap[m.subtopic_id] || 0) + 1;
-            } else if (m.topic_id) {
+            }
+            if (m.topic_id) {
                 mcqTopicMap[m.topic_id] = (mcqTopicMap[m.topic_id] || 0) + 1;
             }
         });
@@ -170,6 +177,7 @@ export default function UniversityDetailPage() {
                 subjectMap.set(row.subject.id, { subject: row.subject, topics: [] });
             }
             const currentSubject = subjectMap.get(row.subject.id)!;
+
             if (row.topic) {
                 let topic = (currentSubject.topics as any[]).find((t: any) => t.id === row.topic.id);
                 if (!topic) {
@@ -181,11 +189,14 @@ export default function UniversityDetailPage() {
                     currentSubject.topics.push(newTopic);
                     topic = newTopic;
                 }
-                if (row.subtopic && row.subtopic.topic_id === row.topic.id && topic) {
-                    if (topic.subtopics && !(topic.subtopics as any[]).find((st: any) => st.id === row.subtopic.id)) {
-                        const subtopicWithCount = { ...row.subtopic, mcqCount: mcqSubtopicMap[row.subtopic.id] || 0 };
+
+                if (row.subtopic && topic) {
+                    if (!(topic.subtopics as any[]).find((st: any) => st.id === row.subtopic.id)) {
+                        const subtopicWithCount = {
+                            ...row.subtopic,
+                            mcqCount: mcqSubtopicMap[row.subtopic.id] || 0
+                        };
                         topic.subtopics.push(subtopicWithCount);
-                        topic.mcqCount = (topic.mcqCount || 0) + subtopicWithCount.mcqCount;
                     }
                 }
             }
@@ -243,8 +254,19 @@ export default function UniversityDetailPage() {
         });
     }
 
-    async function loadExams(userId: string, uniId: number) {
-        const res = await fetch(`/api/mongo/exams?university_id=${uniId}`);
+    async function loadExams(userId: string, uniId: number, institutionId?: number | null) {
+        // Only show: 
+        //   - Public exams (institution_id = null) for all students
+        //   - Institution-specific exams if the student belongs to that institution
+        const params = new URLSearchParams({ university_id: String(uniId), active: 'true' });
+        if (institutionId) {
+            // Student has an institution: show public + their institution's exams
+            params.set('institution_id', String(institutionId));
+        } else {
+            // No institution: only public exams
+            params.set('institution_id', 'null');
+        }
+        const res = await fetch(`/api/mongo/exams?${params.toString()}`);
         const data = await res.json();
         setExams(data.exams || []);
     }

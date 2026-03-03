@@ -44,8 +44,8 @@ export async function GET(req: NextRequest) {
             if (!studentId) return NextResponse.json({ error: 'Missing student_id' }, { status: 400 });
 
             const enrollments = await StudentUniversityEnrollment.find({
-                student_id: studentId,
-                is_active: true
+                user_id: studentId,
+                status: 'approved'
             }).lean();
 
             const universityIds = enrollments.map((e: any) => e.university_id);
@@ -53,8 +53,10 @@ export async function GET(req: NextRequest) {
 
             // Format to match the expected structure in ProfilePage
             const formatted = enrollments.map((e: any) => ({
-                enrollment_date: e.enrollment_date,
-                is_active: e.is_active,
+                id: e.id || e._id,
+                university_id: e.university_id,
+                enrollment_date: e.created_at,
+                is_active: true,
                 universities: universities.find((u: any) => u.id === e.university_id)
             })).filter((item: any) => item.universities);
 

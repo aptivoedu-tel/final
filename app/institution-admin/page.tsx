@@ -94,37 +94,7 @@ export default function InstitutionAdminDashboard() {
             </h1>
             <p className="text-slate-500 text-lg mb-10">Welcome back. Manage your institution's learning environment.</p>
 
-            {/* DIAGNOSTIC BANNER */}
-            {!loading && !instId && (
-                <div className="mb-10 p-6 bg-amber-50 border-2 border-amber-200 rounded-3xl animate-in fade-in slide-in-from-top-4 duration-500">
-                    <div className="flex flex-col md:flex-row items-center gap-6">
-                        <div className="w-16 h-16 bg-amber-100 rounded-2xl flex items-center justify-center shrink-0">
-                            <Building2 className="w-8 h-8 text-amber-600" />
-                        </div>
-                        <div className="flex-1 text-center md:text-left">
-                            <h3 className="text-xl font-bold text-amber-900 mb-1">Institution Link Broken</h3>
-                            <p className="text-amber-700 leading-relaxed font-medium">
-                                Your account is not currently linked to any institution in the primary database.
-                                This prevents you from managing students and university access.
-                            </p>
-                        </div>
-                        <div className="flex flex-col sm:flex-row gap-3 w-full md:w-auto">
-                            <button
-                                onClick={loadStats}
-                                className="px-6 py-3 bg-white text-amber-700 font-bold rounded-xl border border-amber-200 hover:bg-amber-100 transition-all flex items-center justify-center gap-2"
-                            >
-                                <RefreshCw className="w-4 h-4" /> Retry Sync
-                            </button>
-                            <Link
-                                href="/profile"
-                                className="px-6 py-3 bg-amber-600 text-white font-bold rounded-xl hover:bg-amber-700 transition-all shadow-lg shadow-amber-200 flex items-center justify-center"
-                            >
-                                Check Profile
-                            </Link>
-                        </div>
-                    </div>
-                </div>
-            )}
+
 
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                 {cards.map((card) => (

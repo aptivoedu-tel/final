@@ -3,20 +3,12 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import {
-    ChevronLeft,
-    ChevronRight,
-    Send,
-    Timer,
-    Trophy,
-    XCircle,
-    CheckCircle2,
-    HelpCircle,
-    AlertCircle,
-    ArrowRight,
-    Play,
-    RotateCcw,
-    Layout
+    ChevronLeft, RotateCcw, ArrowRight,
+    Trophy, Clock, Target, CheckCircle2, XCircle, HelpingHand,
+    Sparkles, BookOpen, Brain, BookOpenText,
+    Timer, ChevronRight, HelpCircle, Send, Play, Layout, AlertCircle
 } from 'lucide-react';
+import MarkdownRenderer from '@/components/shared/MarkdownRenderer';
 import { AuthService } from '@/lib/services/authService';
 import { PracticeService, MCQ } from '@/lib/services/practiceService';
 import { toast } from 'sonner';
@@ -44,10 +36,14 @@ export default function PracticeSessionPage() {
     const [isCorrect, setIsCorrect] = useState<Record<number, boolean>>({});
 
     const timerRef = useRef<NodeJS.Timeout | null>(null);
+    const initialized = useRef(false);
 
     const [lastInteractionTime, setLastInteractionTime] = useState(Date.now());
 
     useEffect(() => {
+        if (initialized.current) return;
+        initialized.current = true;
+
         const initSession = async () => {
             setGlobalLoading(true, 'Initializing Practice Session...');
             try {
@@ -75,7 +71,7 @@ export default function PracticeSessionPage() {
 
                 if (!mcqs || mcqs.length === 0) {
                     toast.error('No practice questions available for this subtopic yet.');
-                    router.back();
+                    router.push(`/university/${uniId}`);
                     return;
                 }
 
@@ -98,11 +94,11 @@ export default function PracticeSessionPage() {
                     setTimeElapsed(prev => prev + 1);
                 }, 1000);
 
-                setGlobalLoading(false);
             } catch (error: any) {
-                toast.error(error.message);
+                toast.error(error.message || 'Failed to start practice session.');
+                router.push(`/university/${uniId}`);
+            } finally {
                 setGlobalLoading(false);
-                router.back();
             }
 
         };
@@ -114,7 +110,7 @@ export default function PracticeSessionPage() {
         return () => {
             if (timerRef.current) clearInterval(timerRef.current);
         };
-    }, [subtopicId, uniId, router]);
+    }, [subtopicId, uniId]);
 
     const handleSelectOption = (option: string) => {
         if (isCompleted) return;
@@ -185,7 +181,11 @@ export default function PracticeSessionPage() {
     };
 
 
-    if (!isCompleted && questions.length === 0) return null;
+    if (!isCompleted && questions.length === 0) return (
+        <div className="min-h-screen bg-[#F8FAFC] flex items-center justify-center">
+            <div className="w-10 h-10 border-4 border-teal-600 border-t-transparent rounded-full animate-spin" />
+        </div>
+    );
 
     if (isCompleted && results) {
 
@@ -294,9 +294,9 @@ export default function PracticeSessionPage() {
                             {/* Question */}
                             <div className="mb-12">
                                 <span className="text-[10px] font-black text-teal-500 uppercase tracking-[0.2em] mb-4 block">Question</span>
-                                <h3 className="text-xl sm:text-2xl font-bold text-slate-900 leading-relaxed">
-                                    {currentMCQ.question}
-                                </h3>
+                                <div className="text-xl sm:text-2xl font-bold text-slate-900 leading-relaxed">
+                                    <MarkdownRenderer content={currentMCQ.question} />
+                                </div>
                                 {currentMCQ.question_image_url && (
                                     <div className="mt-8 rounded-2xl overflow-hidden border border-slate-100 shadow-sm max-w-lg">
                                         <img src={currentMCQ.question_image_url} alt="Question" className="w-full h-auto" />
@@ -326,10 +326,10 @@ export default function PracticeSessionPage() {
                                             }`}>
                                             {option.key}
                                         </div>
-                                        <span className={`ml-6 text-sm font-bold ${answers[currentIndex] === option.key ? 'text-teal-900' : 'text-slate-600'
+                                        <div className={`ml-6 text-sm font-bold ${answers[currentIndex] === option.key ? 'text-teal-900' : 'text-slate-600'
                                             }`}>
-                                            {option.text}
-                                        </span>
+                                            <MarkdownRenderer content={option.text} />
+                                        </div>
                                     </button>
                                 ))}
                             </div>

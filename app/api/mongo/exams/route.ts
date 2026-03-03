@@ -29,12 +29,14 @@ export async function GET(req: NextRequest) {
         if (institutionId === 'null') {
             filter.institution_id = null;
         } else if (institutionId === 'mine' || (institutionId && !isNaN(parseInt(institutionId)))) {
-            // If it's a numeric ID, we might want to allow null OR the numeric ID
             const instId = parseInt(institutionId);
             filter.$or = [
                 { institution_id: null },
                 { institution_id: instId }
             ];
+        } else {
+            // Default: ONLY public exams to prevent leakage
+            filter.institution_id = null;
         }
 
         const exams = await UniversityExam.find(filter).sort({ created_at: -1 }).lean();

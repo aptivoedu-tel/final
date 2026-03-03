@@ -15,8 +15,17 @@ import {
     ArrowRight,
     Play,
     RotateCcw,
-    Layout
+    Layout,
+    Clock,
+    Target,
+    HelpingHand,
+    Sparkles,
+    BookOpen,
+    Brain,
+    BookOpenText
 } from 'lucide-react';
+import MarkdownRenderer from '@/components/shared/MarkdownRenderer';
+import Sidebar from '@/components/layout/Sidebar';
 import { AuthService } from '@/lib/services/authService';
 import { PracticeService, MCQ } from '@/lib/services/practiceService';
 import { toast } from 'sonner';
@@ -43,8 +52,12 @@ export default function TopicPracticeSessionPage() {
 
     const [lastInteractionTime, setLastInteractionTime] = useState(Date.now());
     const timerRef = useRef<any>(null);
+    const initialized = useRef(false);
 
     useEffect(() => {
+        if (initialized.current) return;
+        initialized.current = true;
+
         const initSession = async () => {
             setGlobalLoading(true, 'Initialising Topic Practice...');
             try {
@@ -72,7 +85,7 @@ export default function TopicPracticeSessionPage() {
 
                 if (!mcqs || mcqs.length === 0) {
                     toast.error('No practice questions available for this topic yet.');
-                    router.back();
+                    router.push(`/university/${uniId}`);
                     return;
                 }
 
@@ -91,7 +104,6 @@ export default function TopicPracticeSessionPage() {
                 setSession(sess);
 
                 setLastInteractionTime(Date.now());
-                setGlobalLoading(false);
 
                 // 3. Start Timer
                 timerRef.current = setInterval(() => {
@@ -100,8 +112,10 @@ export default function TopicPracticeSessionPage() {
 
             } catch (error: any) {
                 console.error('Practice Init Error:', error);
-                toast.error(error.message);
-                router.back();
+                toast.error(error.message || 'Failed to start practice.');
+                router.push(`/university/${uniId}`);
+            } finally {
+                setGlobalLoading(false);
             }
         };
 
@@ -112,7 +126,7 @@ export default function TopicPracticeSessionPage() {
         return () => {
             if (timerRef.current) clearInterval(timerRef.current);
         };
-    }, [topicId, uniId, router, setGlobalLoading]);
+    }, [topicId, uniId]);
 
     const handleSelectOption = (option: string) => {
         if (isCompleted || submittedAnswers[currentIndex]) return;
@@ -208,7 +222,11 @@ export default function TopicPracticeSessionPage() {
         return `${mins}:${secs.toString().padStart(2, '0')}`;
     };
 
-    if (loading || (!isCompleted && questions.length === 0)) return null;
+    if (loading || (!isCompleted && questions.length === 0)) return (
+        <div className="min-h-screen bg-[#F8FAFC] flex items-center justify-center">
+            <div className="w-10 h-10 border-4 border-teal-600 border-t-transparent rounded-full animate-spin" />
+        </div>
+    );
 
     if (isCompleted && results) {
         return (
@@ -316,9 +334,9 @@ export default function TopicPracticeSessionPage() {
                             {/* Question */}
                             <div className="mb-12">
                                 <span className="text-[10px] font-black text-teal-500 uppercase tracking-[0.2em] mb-4 block">Question</span>
-                                <h3 className="text-xl sm:text-2xl font-bold text-slate-900 leading-relaxed">
-                                    {currentMCQ.question}
-                                </h3>
+                                <div className="text-xl sm:text-2xl font-bold text-slate-900 leading-relaxed">
+                                    <MarkdownRenderer content={currentMCQ.question} />
+                                </div>
                                 {currentMCQ.question_image_url && (
                                     <div className="mt-8 rounded-2xl overflow-hidden border border-slate-100 shadow-sm max-w-lg">
                                         <img src={currentMCQ.question_image_url} alt="Question" className="w-full h-auto" />
@@ -370,16 +388,10 @@ export default function TopicPracticeSessionPage() {
                                                     option.key
                                                 )}
                                             </div>
-                                            <span className={`ml-6 text-sm font-bold ${showCorrect
-                                                ? 'text-emerald-900'
-                                                : showWrong
-                                                    ? 'text-rose-900'
-                                                    : isSelected
-                                                        ? 'text-teal-900'
-                                                        : 'text-slate-600'
+                                            <div className={`ml-6 text-sm font-bold ${isSelected ? 'text-teal-900' : 'text-slate-600'
                                                 }`}>
-                                                {option.text}
-                                            </span>
+                                                <MarkdownRenderer content={option.text} />
+                                            </div>
                                         </button>
                                     );
                                 })}
