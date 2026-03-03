@@ -1,4 +1,8 @@
 import mongoose from 'mongoose';
+import dns from 'dns';
+
+// Force IPv4 DNS resolution to fix SRV lookup issues on some networks
+dns.setDefaultResultOrder('ipv4first');
 
 /**
  * Global is used here to maintain a cached connection across hot reloads
@@ -25,6 +29,9 @@ async function connectToDatabase() {
     if (!cached.promise) {
         const opts = {
             bufferCommands: false,
+            family: 4, // Force IPv4
+            serverSelectionTimeoutMS: 10000, // 10 second timeout
+            connectTimeoutMS: 10000,
         };
 
         cached.promise = mongoose.connect(MONGODB_URI, opts).then((mongoose) => {

@@ -33,9 +33,16 @@ export class MongoAuthService {
                 console.error('[MongoAuthService] signIn error type:', result.error);
                 let userFriendlyError = 'Authentication failed';
 
-                if (result.error === 'CredentialsSignin') userFriendlyError = 'Invalid email or password';
-                else if (result.error === 'Configuration') userFriendlyError = 'Server Configuration Error (Secret missing in Vercel)';
-                else userFriendlyError = `Login Error: ${result.error}`;
+                // Map specific error messages passed from NextAuth authorize
+                if (result.error.includes("EMAIL_NOT_VERIFIED")) {
+                    userFriendlyError = 'Please verify your email before logging in. Check your inbox for the link.';
+                } else if (result.error === 'CredentialsSignin' || result.error === 'Invalid email or password') {
+                    userFriendlyError = 'Invalid email or password';
+                } else if (result.error === 'Configuration') {
+                    userFriendlyError = 'Server Configuration Error (Secret missing in Vercel)';
+                } else {
+                    userFriendlyError = result.error;
+                }
 
                 return { user: null, error: userFriendlyError };
             }

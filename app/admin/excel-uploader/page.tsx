@@ -246,14 +246,31 @@ export default function ExcelUploaderPage() {
     };
 
     const getRowValue = (row: any, patterns: string[]) => {
-        const rowKeys = Object.keys(row);
-        let key = rowKeys.find(k => patterns.some(p => k.toLowerCase().trim() === p.toLowerCase().trim()));
+        const rowKeys = Object.keys(row).filter(k => k !== 'undefined' && k !== 'null');
+
+        // First pass: Exact match (case-insensitive, trimmed)
+        let key = rowKeys.find(k => {
+            const kl = k.toLowerCase().trim();
+            return patterns.some(p => kl === p.toLowerCase().trim());
+        });
+
         if (!key) {
-            key = rowKeys.find(k => patterns.some(p => {
+            // Second pass: Word boundary match
+            // This allows matching "Option B" for pattern "b" 
+            // but prevents matching "Subtopic" for pattern "b".
+            key = rowKeys.find(k => {
                 const kl = k.toLowerCase().trim();
-                const pl = p.toLowerCase().trim();
-                return kl.includes(pl);
-            }));
+                return patterns.some(p => {
+                    const pl = p.toLowerCase().trim();
+                    if (!pl) return false;
+
+                    // Use regex with word boundaries
+                    // Escaping pl for safety (though here it's usually alpha chars)
+                    const escapedP = pl.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+                    const regex = new RegExp(`(?:^|\\b|_)${escapedP}(?:$|\\b|_)`, 'i');
+                    return regex.test(kl);
+                });
+            });
         }
         return key ? row[key] : null;
     };

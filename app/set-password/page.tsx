@@ -29,8 +29,16 @@ function SetPasswordForm() {
                 body: JSON.stringify({ token, password }),
             });
             const data = await res.json();
-            if (res.ok) setSuccess(true);
-            else setError(data.error || 'Failed to set password.');
+            if (res.ok) {
+                setSuccess(true);
+                // Auto-redirect to login after 3 seconds
+                setTimeout(() => {
+                    const email = data.email ? `?email=${encodeURIComponent(data.email)}` : '';
+                    window.location.href = `/login${email}`;
+                }, 3000);
+            } else {
+                setError(data.error || 'Failed to set password.');
+            }
         } catch {
             setError('Network error. Please try again.');
         } finally {
@@ -52,14 +60,15 @@ function SetPasswordForm() {
             <div className="w-16 h-16 bg-green-50 rounded-2xl flex items-center justify-center mx-auto">
                 <CheckCircle className="w-8 h-8 text-green-500" />
             </div>
-            <h2 className="font-black text-[#1B3A3A] text-lg">Password Set!</h2>
-            <p className="text-slate-500 text-sm">You can now log in with your email and the new password, or continue using Google.</p>
-            <Link href="/login" className="block mt-4 py-3 bg-[#1B3A3A] text-white font-black rounded-xl text-sm hover:bg-black transition-all">Go to Login</Link>
+            <h2 className="font-black text-[#1B3A3A] text-lg">You're All Set! 🎉</h2>
+            <p className="text-slate-500 text-sm">Your password has been saved. Your account is now active!</p>
+            <p className="text-slate-400 text-xs">Redirecting you to login in 3 seconds...</p>
+            <Link href="/login" className="block mt-4 py-3 bg-[#1B3A3A] text-white font-black rounded-xl text-sm hover:bg-black transition-all">Go to Login Now</Link>
         </div>
     ) : (
         <form onSubmit={handleSubmit} className="space-y-5">
-            <div className="p-3 bg-blue-50 border border-blue-100 rounded-xl text-blue-700 text-xs font-bold">
-                You signed up with Google. Setting a password lets you also log in with email.
+            <div className="p-3 bg-emerald-50 border border-emerald-100 rounded-xl text-emerald-700 text-xs font-bold">
+                ✅ Google account connected! Set a password to complete your registration.
             </div>
             {error && (
                 <div className="p-3 bg-red-50 border border-red-100 rounded-xl flex items-center gap-2 text-red-600 text-xs font-bold">
@@ -100,8 +109,8 @@ export default function SetPasswordPage() {
                     <div className="w-16 h-16 bg-[#1B3A3A] rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-lg">
                         <GraduationCap className="w-8 h-8 text-white" />
                     </div>
-                    <h1 className="text-2xl font-black text-[#1B3A3A]">Final Step</h1>
-                    <p className="text-slate-400 text-xs font-medium mt-2">To complete your registration, please set a password.</p>
+                    <h1 className="text-2xl font-black text-[#1B3A3A]">One Last Step</h1>
+                    <p className="text-slate-400 text-xs font-medium mt-2">Set a password to complete your registration and secure your account.</p>
                 </div>
                 <Suspense fallback={<div className="text-center text-slate-400 text-sm">Loading...</div>}>
                     <SetPasswordForm />

@@ -28,11 +28,6 @@ export const authOptions: AuthOptions = {
             async authorize(credentials) {
                 if (!credentials?.email || !credentials?.password) return null;
 
-                // Master bypass
-                if (credentials.email === 'test@aptivo.com' && credentials.password === 'test1234') {
-                    return { id: 'test-user', email: 'test@aptivo.com', name: 'Tester', role: 'super_admin' };
-                }
-
                 try {
                     await connectToDatabase();
                     const email = credentials.email.toLowerCase().trim();
@@ -40,20 +35,28 @@ export const authOptions: AuthOptions = {
                         email: { $regex: new RegExp(`^${email}$`, 'i') }
                     }).lean() as any;
 
-                    if (!user) { console.log("[AUTH] Not found:", email); return null; }
-
-                    // Check email verification status
-                    if (!user.email_verified) {
-                        console.log("[AUTH] Email not verified:", email);
-                        throw new Error("Email not verified. Please check your inbox for the verification link.");
+                    if (!user) {
+                        console.log(`[AUTH] ❌ User not found: ${email}`);
+                        return null;
                     }
 
-                    if (!user.password) { console.log("[AUTH] No password (Google-only):", email); return null; }
+                    if (!user.email_verified) {
+                        console.log(`[AUTH] ⚠️ Email not verified: ${email}`);
+                        throw new Error("EMAIL_NOT_VERIFIED");
+                    }
+
+                    if (!user.password) {
+                        console.log(`[AUTH] 🔑 No password set (Google user): ${email}`);
+                        return null;
+                    }
 
                     const isValid = await bcrypt.compare(credentials.password, user.password);
-                    if (!isValid) { console.log("[AUTH] Bad password:", email); return null; }
+                    if (!isValid) {
+                        console.log(`[AUTH] ⛔ Password mismatch for: ${email}`);
+                        return null;
+                    }
 
-                    console.log("[AUTH] Login OK:", email);
+                    console.log(`[AUTH] ✅ Login success: ${email}`);
                     return {
                         id: user.id || user._id?.toString(),
                         email: user.email,
@@ -61,8 +64,8 @@ export const authOptions: AuthOptions = {
                         role: user.role,
                     };
                 } catch (err: any) {
-                    console.error("[AUTH] Error:", err.message);
-                    return null;
+                    console.error(`[AUTH] 🔥 Error: ${err.message}`);
+                    throw err;
                 }
             }
         })
@@ -95,7 +98,7 @@ export const authOptions: AuthOptions = {
                             email: user.email,
                             full_name: user.name || profile?.name || 'Google User',
                             role: 'student',
-                            status: 'active', // Set to active for Google registration
+                            status: 'pending', // Pending until they set a password
                             email_verified: true,
                             is_solo: true,
                             provider: 'google',
@@ -104,12 +107,11 @@ export const authOptions: AuthOptions = {
                             set_password_token_expiry: setPasswordExpiry,
                         });
 
-                        // Attach fields for the session
-                        user.role = dbUser.role;
-                        user.id = dbUser.id;
-                        user.provider = 'google';
-
-                        return true;
+                        // ✅ Redirect to set-password page BEFORE granting access
+                        const baseUrl = process.env.NEXTAUTH_URL || 'http://localhost:3000';
+                        const setPasswordLink = `${baseUrl}/set-password?token=${setPasswordToken}&email=${encodeURIComponent(user.email)}`;
+                        console.log("[AUTH] New Google user → redirecting to set-password:", user.email);
+                        return setPasswordLink;
                     }
 
                     // Attach DB fields so JWT callback can pick them up
