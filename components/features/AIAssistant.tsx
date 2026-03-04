@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import { usePathname } from 'next/navigation';
+import { useSession } from 'next-auth/react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Send, X, Bot, User, Sparkles, Maximize2, MoveDiagonal } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
@@ -51,6 +52,7 @@ const generateSearchLinks = (question: string) => {
 
 export const AIAssistant: React.FC = () => {
     const pathname = usePathname();
+    const { status } = useSession();
     const [isOpen, setIsOpen] = useState(false);
     const [input, setInput] = useState('');
     const [messages, setMessages] = useState<Message[]>([
@@ -68,7 +70,7 @@ export const AIAssistant: React.FC = () => {
     const assistantRef = useRef<HTMLDivElement>(null);
 
     // Hide AI Assistant during exams or specific restricted pages
-    const isRestrictedPage = pathname === '/' || pathname === '/login' || pathname?.includes('/exam/');
+    const isRestrictedPage = pathname === '/' || pathname === '/login' || pathname === '/register' || pathname === '/forgot-password' || pathname === '/get-started' || pathname?.includes('/exam/');
 
     // Log warning if token is missing (for debugging)
     useEffect(() => {
@@ -152,7 +154,7 @@ export const AIAssistant: React.FC = () => {
         };
     }, [isResizing]);
 
-    if (isRestrictedPage) return null;
+    if (status !== 'authenticated' || isRestrictedPage) return null;
 
     const handleSend = async (text: string = input) => {
         if (!text.trim() || isTyping) return;

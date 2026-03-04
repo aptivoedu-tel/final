@@ -184,7 +184,7 @@ export default function LandingPage() {
                 <span className="text-transparent bg-clip-text bg-gradient-to-r from-teal-600 to-emerald-600">Outperform the Competition.</span>
               </h1>
               <p className="text-xl text-slate-600 leading-relaxed max-w-xl">
-                The intelligent aptitude platform helping <span className="text-slate-900 font-bold">50,000+ students</span> ace exams with data-driven practice and deep analytics.
+                The intelligent aptitude platform helping <span className="text-slate-900 font-bold">students</span> ace exams with data-driven practice and deep analytics.
               </p>
               <div className="flex flex-col sm:flex-row items-center gap-4 pt-4">
                 <Link

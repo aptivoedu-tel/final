@@ -8,7 +8,7 @@ export async function GET() {
         await connectToDatabase();
 
         const [universities, subjects, studentCount, feedbacks] = await Promise.all([
-            University.find({}).sort({ name: 1 }).lean(),
+            University.find({ show_on_landing: { $ne: false } }).sort({ name: 1 }).lean(),
             Subject.find({ is_active: true }).limit(6).lean(),
             User.countDocuments({ role: 'student' }),
             Feedback.find({ is_published: true })

@@ -27,6 +27,7 @@ const UniversitySchema: Schema = new Schema({
     logo_url: { type: String },
     is_active: { type: Boolean, default: true },
     is_public: { type: Boolean, default: true },
+    show_on_landing: { type: Boolean, default: true },
     test_pattern_markdown: { type: String },
 }, {
     timestamps: { createdAt: 'created_at', updatedAt: 'updated_at' }

@@ -24,7 +24,8 @@ import {
     Moon,
     MessageSquare,
     Settings,
-    Brain
+    Brain,
+    LayoutTemplate
 } from 'lucide-react';
 import { useUI } from '@/lib/context/UIContext';
 import { AuthService } from '@/lib/services/authService';
@@ -101,6 +102,7 @@ const Sidebar: React.FC<SidebarProps> = ({ userRole }) => {
             { icon: TrendingUp, label: 'Analytics', href: '/admin/analytics', section: 'Main' },
 
             { header: 'ECOSYSTEM' },
+            { icon: LayoutTemplate, label: 'Landing Page', href: '/admin/landing-settings', section: 'Ecosystem' },
             { icon: University, label: 'Universities', href: '/admin/universities', section: 'Ecosystem' },
             { icon: Building2, label: 'Institutions', href: '/admin/institutions', section: 'Ecosystem' },
             { icon: UploadCloud, label: 'Excel Uploader', href: '/admin/excel-uploader', section: 'Ecosystem' },
