@@ -136,7 +136,7 @@ export default function StudentManagerPage() {
         const file = e.target.files?.[0];
         if (!file) return;
 
-        setGlobalLoading(true, 'Consulting Pedagogical Records...');
+        setGlobalLoading(true, 'Analyzing Academic Records...');
         const reader = new FileReader();
 
         reader.onload = async (evt) => {
@@ -145,9 +145,9 @@ export default function StudentManagerPage() {
                 const wb = XLSX.read(bstr, { type: 'binary' });
                 const wsname = wb.SheetNames[0];
                 const ws = wb.Sheets[wsname];
-                const data = XLSX.utils.sheet_to_json(ws) as any[];
+                const rawData = XLSX.utils.sheet_to_json(ws) as any[];
 
-                if (data.length === 0) {
+                if (rawData.length === 0) {
                     toast.error("Excel file is empty");
                     setGlobalLoading(false);
                     return;
@@ -158,37 +158,72 @@ export default function StudentManagerPage() {
                     const profileRes = await fetch('/api/mongo/profile');
                     const profileData = await profileRes.json();
                     currentInstId = profileData.data?.institution_id;
-                    if (currentInstId) setAdminInstitutionId(currentInstId);
                 }
 
                 if (!currentInstId) {
-                    toast.error("Institution ID missing. Cannot process bulk upload.");
+                    toast.error("Institution ID missing. Please refresh.");
                     setGlobalLoading(false);
                     return;
                 }
 
-                toast.info(`Processing ${data.length} students...`);
-                let successCount = 0;
+                // Map columns intelligently
+                const studentsToUpload = rawData.map(row => {
+                    // Try to find Name column
+                    const nameKey = Object.keys(row).find(k =>
+                        ['name', 'full name', 'student name', 'fullname'].includes(k.toLowerCase().trim())
+                    );
+                    // Try to find RollNo column
+                    const rollNoKey = Object.keys(row).find(k =>
+                        ['rollno', 'roll no', 'roll number', 'student id', 'studentid', 'id'].includes(k.toLowerCase().trim())
+                    );
+                    // Try to find Password column
+                    const passwordKey = Object.keys(row).find(k =>
+                        ['password', 'pass', 'code'].includes(k.toLowerCase().trim())
+                    );
 
-                for (const row of data) {
-                    const name = row['Name'] || row['name'] || row['Full Name'];
-                    const rollNo = row['RollNo'] || row['rollno'] || row['Roll Number'] || row['Student ID'];
-                    const password = row['Password'] || row['password'];
+                    return {
+                        name: nameKey ? row[nameKey] : null,
+                        studentId: rollNoKey ? row[rollNoKey] : null,
+                        password: passwordKey ? row[passwordKey] : null
+                    };
+                }).filter(s => s.name && s.studentId);
 
-                    if (name && rollNo) {
-                        const success = await createSingleStudent(name, rollNo, password, currentInstId);
-                        if (success) successCount++;
-                    }
+                if (studentsToUpload.length === 0) {
+                    throw new Error("No valid student data found. Check column headers (Name, RollNo).");
                 }
 
-                toast.success(`Bulk upload complete. Added ${successCount} students.`);
+                setGlobalLoading(true, `Syncing ${studentsToUpload.length} Students...`);
+
+                const response = await fetch('/api/admin/bulk-create-students', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        students: studentsToUpload,
+                        institutionId: currentInstId
+                    })
+                });
+
+                const result = await response.json();
+
+                if (!response.ok) {
+                    throw new Error(result.error || 'Bulk upload failed');
+                }
+
+                const { summary } = result;
+                toast.success(`Upload Complete: ${summary.success} added, ${summary.skipped} skipped (duplicates).`);
+
+                if (summary.failed > 0) {
+                    toast.error(`${summary.failed} rows failed. Check console for details.`);
+                    console.error('Failed rows:', summary.errors);
+                }
+
                 loadStudents();
 
             } catch (error: any) {
-                toast.error("Failed to parse Excel: " + error.message);
+                toast.error("Upload Error: " + error.message);
             } finally {
                 setGlobalLoading(false);
-                if (fileInputRef.current) fileInputRef.current.value = ''; // Reset
+                if (fileInputRef.current) fileInputRef.current.value = '';
             }
         };
         reader.readAsBinaryString(file);

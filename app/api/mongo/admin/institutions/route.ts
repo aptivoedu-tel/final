@@ -101,6 +101,14 @@ export async function PATCH(req: NextRequest) {
 
         if (!updated) return NextResponse.json({ error: 'Institution not found' }, { status: 404 });
 
+        // If institution is approved, also activate pending admins for this institution
+        if (updates.status === 'approved' || updates.status === 'active') {
+            await User.updateMany(
+                { institution_id: parseInt(id), role: 'institution_admin', status: 'pending' },
+                { $set: { status: 'active' } }
+            );
+        }
+
         return NextResponse.json({ success: true, institution: updated });
 
     } catch (error: any) {

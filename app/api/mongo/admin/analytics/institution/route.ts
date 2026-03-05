@@ -9,9 +9,20 @@ export async function GET(req: NextRequest) {
         const session = await getServerSession(authOptions);
         if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
+        const userRole = (session.user as any)?.role;
+        const userInstId = (session.user as any)?.institution_id;
+
         const { searchParams } = new URL(req.url);
-        const institutionId = searchParams.get('institution_id');
+        let institutionId = searchParams.get('institution_id');
         const startDateStr = searchParams.get('start_date');
+
+        // Security: If not super_admin, force the institution_id from session
+        if (userRole !== 'super_admin') {
+            if (!userInstId) {
+                return NextResponse.json({ error: 'Institution not linked to this account' }, { status: 403 });
+            }
+            institutionId = userInstId.toString();
+        }
 
         if (!institutionId) return NextResponse.json({ error: 'institution_id required' }, { status: 400 });
 

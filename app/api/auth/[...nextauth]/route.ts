@@ -74,6 +74,7 @@ export const authOptions: AuthOptions = {
                         email: user.email,
                         name: user.full_name,
                         role: user.role,
+                        institution_id: user.institution_id
                     };
                 } catch (err: any) {
                     console.error(`[AUTH] 🔥 Error: ${err.message}`);
@@ -129,6 +130,7 @@ export const authOptions: AuthOptions = {
                     // Attach DB fields so JWT callback can pick them up
                     user.role = dbUser.role;
                     user.id = dbUser.id || dbUser._id.toString();
+                    user.institution_id = dbUser.institution_id;
                     user.provider = 'google';
                     console.log("[AUTH] Google sign-in OK:", user.email, "role:", user.role);
                     return true;
@@ -143,6 +145,7 @@ export const authOptions: AuthOptions = {
             if (user) {
                 token.role = user.role;
                 token.id = user.id;
+                token.institution_id = user.institution_id;
                 token.provider = user.provider;
             }
             return token;
@@ -151,6 +154,7 @@ export const authOptions: AuthOptions = {
             if (session.user) {
                 (session.user as any).role = token.role;
                 (session.user as any).id = token.id;
+                (session.user as any).institution_id = token.institution_id;
                 (session.user as any).provider = token.provider;
             }
             return session;
