@@ -45,6 +45,18 @@ export const authOptions: AuthOptions = {
                         throw new Error("EMAIL_NOT_VERIFIED");
                     }
 
+                    // Institution admins must be approved by super admin before login
+                    if (user.role === 'institution_admin' && user.status === 'pending') {
+                        console.log(`[AUTH] ⏳ Institution admin awaiting approval: ${email}`);
+                        throw new Error("PENDING_APPROVAL");
+                    }
+
+                    // Check if account is suspended or blocked
+                    if (user.status === 'suspended' || user.status === 'blocked') {
+                        console.log(`[AUTH] 🚫 Account suspended/blocked: ${email}`);
+                        throw new Error("ACCOUNT_SUSPENDED");
+                    }
+
                     if (!user.password) {
                         console.log(`[AUTH] 🔑 No password set (Google user): ${email}`);
                         return null;

@@ -155,28 +155,57 @@ export default function RegisterPage() {
     };
 
     if (success) {
+        const isAdmin = formData.role === 'institution_admin';
         return (
             <div className="min-h-screen bg-[#F8FAFC] flex items-center justify-center p-4">
-                <div className="bg-white rounded-[3rem] shadow-2xl p-12 text-center max-w-sm animate-scale-in border border-slate-100 relative">
-                    <div className="w-24 h-24 bg-green-50 rounded-3xl flex items-center justify-center mx-auto mb-8 animate-bounce-slow">
-                        <Mail className="w-12 h-12 text-[#4CAF50]" />
+                <div className="bg-white rounded-[3rem] shadow-2xl p-12 text-center max-w-md animate-scale-in border border-slate-100 relative overflow-hidden">
+                    <div className={`w-24 h-24 ${isAdmin ? 'bg-amber-50' : 'bg-green-50'} rounded-3xl flex items-center justify-center mx-auto mb-8`}>
+                        {isAdmin ? (
+                            <Shield className={`w-12 h-12 text-amber-500`} />
+                        ) : (
+                            <Mail className="w-12 h-12 text-[#4CAF50]" />
+                        )}
                     </div>
-                    <h2 className="text-3xl font-black text-[#1B3A3A] mb-3">Verification Sent!</h2>
-                    <p className="text-[#4A7272] text-[13px] font-medium leading-relaxed mb-4">
-                        {formData.role === 'student'
-                            ? "A verification link has been sent to:"
-                            : "Your institution registration is received and currently under audit."}
-                    </p>
-                    {formData.role === 'student' && (
-                        <p className="text-[#1B3A3A] text-sm font-bold mb-6 bg-slate-50 px-4 py-2 rounded-xl">
-                            {formData.email}
-                        </p>
+
+                    <h2 className="text-3xl font-black text-[#1B3A3A] mb-3">
+                        {isAdmin ? 'Application Submitted!' : 'Verify Your Email!'}
+                    </h2>
+
+                    {isAdmin ? (
+                        <>
+                            <p className="text-[#4A7272] text-[13px] font-medium leading-relaxed mb-6">
+                                Your institution account has been created. Please verify your email and then wait for a Super Admin to approve your account.
+                            </p>
+                            <div className="bg-amber-50 border border-amber-100 rounded-2xl p-5 text-left space-y-3 mb-8">
+                                <p className="text-[10px] font-black text-amber-600 uppercase tracking-widest mb-3">What happens next?</p>
+                                <div className="flex items-start gap-3">
+                                    <div className="w-6 h-6 rounded-full bg-amber-500 text-white flex items-center justify-center text-[10px] font-black flex-shrink-0 mt-0.5">1</div>
+                                    <p className="text-xs font-bold text-slate-700">Check your inbox at <span className="text-[#1B3A3A]">{formData.email}</span> and click the verification link.</p>
+                                </div>
+                                <div className="flex items-start gap-3">
+                                    <div className="w-6 h-6 rounded-full bg-amber-400 text-white flex items-center justify-center text-[10px] font-black flex-shrink-0 mt-0.5">2</div>
+                                    <p className="text-xs font-bold text-slate-700">A Super Admin will review and approve your institution within a few business days.</p>
+                                </div>
+                                <div className="flex items-start gap-3">
+                                    <div className="w-6 h-6 rounded-full bg-teal-500 text-white flex items-center justify-center text-[10px] font-black flex-shrink-0 mt-0.5">3</div>
+                                    <p className="text-xs font-bold text-slate-700">Once approved, you can log in and access your Institution Admin dashboard.</p>
+                                </div>
+                            </div>
+                        </>
+                    ) : (
+                        <>
+                            <p className="text-[#4A7272] text-[13px] font-medium leading-relaxed mb-4">
+                                A verification link has been sent to:
+                            </p>
+                            <p className="text-[#1B3A3A] text-sm font-bold mb-6 bg-slate-50 px-4 py-2 rounded-xl">
+                                {formData.email}
+                            </p>
+                            <p className="text-[#4A7272] text-xs font-medium leading-relaxed mb-8">
+                                Please check your inbox and click the link to activate your account.
+                            </p>
+                        </>
                     )}
-                    <p className="text-[#4A7272] text-xs font-medium leading-relaxed mb-10">
-                        {formData.role === 'student'
-                            ? "Please check your inbox and verify your email to access your dashboard."
-                            : ""}
-                    </p>
+
                     <button
                         onClick={() => window.location.href = '/login'}
                         className="w-full py-5 bg-[#244D4D] text-white font-black rounded-2xl hover:bg-[#1B3A3A] transition-all shadow-xl active:scale-95"
@@ -184,6 +213,7 @@ export default function RegisterPage() {
                         RETURN TO LOGIN
                     </button>
                     <div className="absolute top-10 right-10 w-24 h-24 bg-emerald-500/5 rounded-full blur-3xl -z-10"></div>
+                    <div className="absolute bottom-0 left-0 w-32 h-32 bg-amber-500/5 rounded-full blur-3xl -z-10"></div>
                 </div>
             </div>
         );

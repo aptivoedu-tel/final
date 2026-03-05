@@ -92,7 +92,11 @@ export default function LoginPage() {
 
         const searchParams = new URLSearchParams(window.location.search);
         if (searchParams.get('verified') === 'true') {
-            setInfoMessage('Email verified successfully! You can now log in.');
+            if (searchParams.get('pending_approval') === 'true') {
+                setInfoMessage('✅ Email verified! Your institution account is now pending Super Admin approval. You will be notified once approved.');
+            } else {
+                setInfoMessage('Email verified successfully! You can now log in.');
+            }
         }
 
         const errorType = searchParams.get('error');
@@ -122,6 +126,23 @@ export default function LoginPage() {
         try {
             const result = await AuthService.login({ email, password });
             if (result.error) {
+                // Handle specific backend errors with friendly messages
+                if (result.error.includes('PENDING_APPROVAL') || result.error.toLowerCase().includes('pending approval')) {
+                    setError('');
+                    setInfoMessage('⏳ Your institution account is pending Super Admin approval. Please wait — you will receive an email once approved.');
+                    setGlobalLoading(false);
+                    return;
+                }
+                if (result.error.includes('EMAIL_NOT_VERIFIED') || result.error.toLowerCase().includes('email not verified')) {
+                    setError('Please verify your email first. Check your inbox for the verification link.');
+                    setGlobalLoading(false);
+                    return;
+                }
+                if (result.error.includes('ACCOUNT_SUSPENDED') || result.error.toLowerCase().includes('suspended')) {
+                    setError('Your account has been suspended. Please contact support.');
+                    setGlobalLoading(false);
+                    return;
+                }
                 setError(result.error);
                 setGlobalLoading(false);
                 return;

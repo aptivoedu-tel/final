@@ -25,13 +25,20 @@ export async function GET(req: NextRequest) {
             return NextResponse.redirect(new URL('/login?error=expired_token', req.url));
         }
 
-        // Mark as verified
+        // Mark as verified — institution admins remain 'pending' until super admin approves
         user.email_verified = true;
-        user.status = 'active';
+        if (user.role === 'institution_admin') {
+            user.status = 'pending'; // Needs super admin approval before login
+        } else {
+            user.status = 'active'; // Students become active immediately
+        }
         user.verification_token = undefined;
         user.verification_token_expiry = undefined;
         await user.save();
 
+        if (user.role === 'institution_admin') {
+            return NextResponse.redirect(new URL('/login?verified=true&pending_approval=true', req.url));
+        }
         return NextResponse.redirect(new URL('/login?verified=true', req.url));
 
     } catch (error: any) {

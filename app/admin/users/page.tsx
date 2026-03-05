@@ -88,12 +88,38 @@ export default function UserManagementPage() {
         }
     };
 
+    const handleApproveUser = async (userId: string, fullName: string) => {
+        if (!confirm(`Approve institution admin account for ${fullName}? They will be able to log in immediately.`)) return;
+        try {
+            const response = await fetch('/api/mongo/admin/users', {
+                method: 'PATCH',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ userId, status: 'active' })
+            });
+            if (!response.ok) {
+                const err = await response.json();
+                throw new Error(err.error || 'Failed to approve user');
+            }
+            loadUsers();
+        } catch (error: any) {
+            alert(`Error approving user: ${error.message}`);
+        }
+    };
+
     const filteredUsers = users.filter(user => {
         const matchesSearch =
             user.full_name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
             user.email?.toLowerCase().includes(searchQuery.toLowerCase());
-        const matchesRole = filterRole === 'all' ||
-            (filterRole === 'admin' ? ['super_admin', 'institution_admin'].includes(user.role) : user.role === 'student');
+
+        let matchesRole = true;
+        if ((filterRole as any) === 'pending') {
+            matchesRole = user.role === 'institution_admin' && user.status === 'pending';
+        } else if (filterRole === 'admin') {
+            matchesRole = ['super_admin', 'institution_admin'].includes(user.role);
+        } else if (filterRole === 'student') {
+            matchesRole = user.role === 'student';
+        }
+        // 'all' => matchesRole stays true
 
         return matchesSearch && matchesRole;
     });
@@ -302,6 +328,13 @@ export default function UserManagementPage() {
                             >
                                 Admins
                             </button>
+                            <button
+                                onClick={() => setFilterRole('pending' as any)}
+                                className={`flex-1 lg:flex-none px-4 py-2 rounded-lg text-xs font-bold transition-all whitespace-nowrap ${(filterRole as any) === 'pending' ? 'bg-amber-50 shadow-sm text-amber-600' : 'text-slate-500 hover:text-slate-700'
+                                    }`}
+                            >
+                                ⏳ Pending
+                            </button>
                         </div>
                     </div>
 
@@ -355,20 +388,11 @@ export default function UserManagementPage() {
                                                         <ExternalLink className="w-2.5 h-2.5 opacity-0 group-hover:opacity-100 transition-opacity" />
                                                     </Link>
                                                 ) : (
-                                                    <div className="flex items-center gap-2">
-                                                        <span className="text-xs font-medium text-slate-400 italic">No link</span>
-                                                        {user.role === 'institution_admin' && (
-                                                            <button
-                                                                onClick={() => {
-                                                                    setLinkingUser(user);
-                                                                    fetchInstitutions();
-                                                                }}
-                                                                className="px-2 py-0.5 bg-amber-50 text-amber-600 text-[10px] font-black uppercase tracking-widest rounded border border-amber-100 hover:bg-amber-100 transition-colors"
-                                                            >
-                                                                Link
-                                                            </button>
-                                                        )}
-                                                    </div>
+                                                    <span className="text-xs font-medium text-slate-400 italic">
+                                                        {user.role === 'institution_admin' && user.status === 'pending'
+                                                            ? 'Awaiting Approval'
+                                                            : 'No Institution'}
+                                                    </span>
                                                 )}
                                             </td>
                                             <td className="px-6 py-4 whitespace-nowrap">
@@ -400,6 +424,17 @@ export default function UserManagementPage() {
                                             </td>
                                             <td className="px-6 py-4 whitespace-nowrap text-right">
                                                 <div className="flex justify-end gap-2">
+                                                    {/* Approve button — only for pending institution admins */}
+                                                    {user.role === 'institution_admin' && user.status === 'pending' && (
+                                                        <button
+                                                            onClick={() => handleApproveUser(user.id, user.full_name || user.email)}
+                                                            className="px-3 py-1.5 bg-emerald-500 text-white text-[10px] font-black uppercase tracking-widest rounded-lg hover:bg-emerald-600 transition-all active:scale-90 flex items-center gap-1.5"
+                                                            title="Approve Institution Admin"
+                                                        >
+                                                            <UserCheck className="w-3.5 h-3.5" />
+                                                            Approve
+                                                        </button>
+                                                    )}
                                                     <button
                                                         onClick={() => openEditModal(user)}
                                                         className="p-2 hover:bg-slate-100 rounded-lg text-slate-400 hover:text-teal-600 transition-all active:scale-90"
