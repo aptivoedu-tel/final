@@ -68,12 +68,15 @@ function InstitutionsContent() {
         setGlobalLoading(true, 'Accessing Institutional Directory...');
         try {
             const res = await fetch('/api/mongo/admin/institutions');
-            if (res.ok) {
-                const data = await res.json();
-                setInstitutions(data.institutions || []);
+            if (!res.ok) {
+                const errData = await res.json().catch(() => ({}));
+                throw new Error(errData.error || `HTTP error! status: ${res.status}`);
             }
-        } catch (err) {
-            console.error(err);
+            const data = await res.json();
+            setInstitutions(data.institutions || []);
+        } catch (err: any) {
+            console.error('Fetch error:', err);
+            toast.error(`Database Error: ${err.message}`);
         } finally {
             setGlobalLoading(false);
         }
@@ -220,8 +223,11 @@ function InstitutionsContent() {
     };
 
     const filteredInstitutions = institutions.filter(inst => {
-        const matchesSearch = inst.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-            inst.domain.toLowerCase().includes(searchTerm.toLowerCase());
+        const name = inst.name?.toLowerCase() || '';
+        const domain = inst.domain?.toLowerCase() || '';
+        const search = searchTerm.toLowerCase();
+
+        const matchesSearch = name.includes(search) || domain.includes(search);
         const matchesTab = inst.status === activeTab;
         return matchesSearch && matchesTab;
     });

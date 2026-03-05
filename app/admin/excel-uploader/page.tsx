@@ -3,6 +3,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { Download, FileSpreadsheet, Upload, Folder, BookOpen, Layers, CheckCircle, AlertTriangle, Save, X, AlertCircle, Info, Filter, Search, ArrowRight, ShieldCheck, Database, FileWarning, SearchCode } from 'lucide-react';
 import { useLoading } from '@/lib/context/LoadingContext';
+import { toast } from 'sonner';
 
 import Sidebar from '@/components/layout/Sidebar';
 import Header from '@/components/layout/Header';
@@ -386,8 +387,9 @@ export default function ExcelUploaderPage() {
     };
 
     const handleSaveToDatabase = async () => {
-        if (!user) return alert('Session expired.');
-        if (selectedRows.size === 0) return alert('No questions selected for upload.');
+        if (!user) return toast.error('Session expired.');
+        if (loading) return;
+        if (selectedRows.size === 0) return toast.error('No questions selected for upload.');
 
         if (stats.unidentified > 0 && autoDetectMode) {
             const hasUnidentifiedInSelection = processedTableData.some(d => selectedRows.has(d.index) && !d.hierarchyValid);
@@ -425,11 +427,11 @@ export default function ExcelUploaderPage() {
         try {
             const result = await ExcelUploadService.uploadMCQsWithAutoDetect(mcqsToUpload as any, user.id, selectedFile?.name || 'bulk_upload.xlsx');
             if (result.success) {
-                alert(`Successfully indexed ${result.processedRows} new questions to central library.`);
+                toast.success(`Successfully uploaded ${result.processedRows} questions!`);
                 resetUpload();
             }
         } catch (err: any) {
-            alert('Upload error: ' + err.message);
+            toast.error('Upload failed: ' + err.message);
         } finally {
             setGlobalLoading(false);
         }
@@ -539,9 +541,10 @@ export default function ExcelUploaderPage() {
                                         </div>
                                         <button
                                             onClick={handleSaveToDatabase}
-                                            className="w-full py-4 bg-slate-900 text-white font-black text-[10px] uppercase tracking-widest rounded-2xl hover:bg-indigo-600 transition-all shadow-xl shadow-slate-200 active:scale-95"
+                                            disabled={loading}
+                                            className={`w-full py-4 font-black text-[10px] uppercase tracking-widest rounded-2xl transition-all shadow-xl shadow-slate-200 active:scale-95 ${loading ? 'bg-slate-400 cursor-not-allowed' : 'bg-slate-900 text-white hover:bg-indigo-600'}`}
                                         >
-                                            Commit Changes
+                                            {loading ? 'Processing...' : 'Commit Changes'}
                                         </button>
                                     </div>
                                 )}

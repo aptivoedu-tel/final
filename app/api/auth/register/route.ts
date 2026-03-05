@@ -66,6 +66,16 @@ export async function POST(req: NextRequest) {
             created_at: new Date(),
         });
 
+        // Create the mapping record for institution admins
+        if (role === 'institution_admin' && finalInstitutionId) {
+            const { InstitutionAdmin } = await import('@/lib/mongodb/models');
+            await InstitutionAdmin.create({
+                user_id: newUser.id,
+                institution_id: finalInstitutionId,
+                assigned_at: new Date()
+            });
+        }
+
         // Send verification email
         const baseUrl = process.env.NEXTAUTH_URL || 'http://localhost:3000';
         const verificationLink = `${baseUrl}/api/auth/verify-email?token=${verificationToken}`;

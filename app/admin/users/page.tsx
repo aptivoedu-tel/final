@@ -388,11 +388,24 @@ export default function UserManagementPage() {
                                                         <ExternalLink className="w-2.5 h-2.5 opacity-0 group-hover:opacity-100 transition-opacity" />
                                                     </Link>
                                                 ) : (
-                                                    <span className="text-xs font-medium text-slate-400 italic">
-                                                        {user.role === 'institution_admin' && user.status === 'pending'
-                                                            ? 'Awaiting Approval'
-                                                            : 'No Institution'}
-                                                    </span>
+                                                    <div className="flex items-center gap-2">
+                                                        <span className="text-xs font-medium text-slate-400 italic">
+                                                            {user.role === 'institution_admin' && user.status === 'pending'
+                                                                ? 'Awaiting Approval'
+                                                                : 'No Link'}
+                                                        </span>
+                                                        {user.role === 'institution_admin' && (
+                                                            <button
+                                                                onClick={() => {
+                                                                    setLinkingUser(user);
+                                                                    fetchInstitutions();
+                                                                }}
+                                                                className="px-2 py-0.5 bg-amber-50 text-amber-600 text-[10px] font-black uppercase tracking-widest rounded border border-amber-100 hover:bg-amber-100 transition-colors"
+                                                            >
+                                                                Link
+                                                            </button>
+                                                        )}
+                                                    </div>
                                                 )}
                                             </td>
                                             <td className="px-6 py-4 whitespace-nowrap">
