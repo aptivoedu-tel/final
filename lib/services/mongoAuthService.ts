@@ -94,6 +94,8 @@ export class MongoAuthService {
                     full_name: data.fullName,
                     role: data.role,
                     institution_id: data.institutionId,
+                    institution_name: data.institutionName,
+                    institution_type: data.institutionType,
                 }),
             });
 

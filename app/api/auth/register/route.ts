@@ -12,7 +12,7 @@ import { verificationEmailTemplate } from '@/lib/emailTemplates';
 export async function POST(req: NextRequest) {
     try {
         const body = await req.json();
-        const { email, password, full_name, role = 'student', institution_id } = body;
+        const { email, password, full_name, role = 'student', institution_id, institution_name, institution_type } = body;
 
         if (!email || !password || !full_name) {
             return NextResponse.json({ error: 'Email, password, and full name are required.' }, { status: 400 });
@@ -26,6 +26,26 @@ export async function POST(req: NextRequest) {
             return NextResponse.json({ error: 'An account with this email already exists.' }, { status: 409 });
         }
 
+        let finalInstitutionId = institution_id;
+
+        // If it's an institution admin and they provided a name but no ID, create a NEW pending institution
+        if (role === 'institution_admin' && !institution_id && institution_name) {
+            const { Institution } = await import('@/lib/mongodb/models');
+            const lastInst = await Institution.findOne().sort({ id: -1 });
+            const nextId = (lastInst?.id || 0) + 1;
+
+            const inst = await Institution.create({
+                id: nextId,
+                name: institution_name,
+                institution_type: institution_type || 'Other',
+                status: 'pending',
+                admin_name: full_name,
+                admin_email: email.toLowerCase().trim(),
+                is_active: false
+            });
+            finalInstitutionId = inst.id;
+        }
+
         const hashedPassword = await bcrypt.hash(password, 12);
         const verificationToken = crypto.randomBytes(32).toString('hex');
         const verificationExpiry = new Date(Date.now() + 30 * 60 * 1000); // 30 min
@@ -37,8 +57,8 @@ export async function POST(req: NextRequest) {
             role,
             status: role === 'student' ? 'active' : 'pending',
             email_verified: false,
-            is_solo: !institution_id,
-            institution_id,
+            is_solo: !finalInstitutionId,
+            institution_id: finalInstitutionId,
             password: hashedPassword,
             provider: 'credentials',
             verification_token: verificationToken,
