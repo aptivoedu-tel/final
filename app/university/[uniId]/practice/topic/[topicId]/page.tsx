@@ -61,8 +61,10 @@ export default function TopicPracticeSessionPage() {
         const initSession = async () => {
             setGlobalLoading(true, 'Initialising Topic Practice...');
             try {
+                console.log('Practicing Topic:', topicId, 'Uni:', uniId);
                 const currentUser = AuthService.getCurrentUser() || await AuthService.syncSession();
                 if (!currentUser) {
+                    console.error('No user found');
                     router.push('/login');
                     return;
                 }
@@ -83,8 +85,11 @@ export default function TopicPracticeSessionPage() {
                     topicId // Pass topicId
                 );
 
+                console.log('Topic MCQs fetched:', mcqs?.length);
+
                 if (!mcqs || mcqs.length === 0) {
                     toast.error('No practice questions available for this topic yet.');
+                    console.warn('Redirecting back - zero questions in topic pool');
                     router.push(`/university/${uniId}`);
                     return;
                 }
@@ -92,7 +97,7 @@ export default function TopicPracticeSessionPage() {
                 setQuestions(mcqs);
 
                 // 2. Create Session in DB
-                const { session: sess, error } = await PracticeService.createSession(
+                const { session: startedSession, error } = await PracticeService.createSession(
                     currentUser.id,
                     null, // No subtopicId
                     uniId,
@@ -100,9 +105,16 @@ export default function TopicPracticeSessionPage() {
                     topicId // Pass topicId
                 );
 
-                if (error) throw new Error(error);
-                setSession(sess);
+                if (error) {
+                    console.error('Failed to create topic session:', error);
+                    throw new Error(error);
+                }
 
+                if (!startedSession) {
+                    throw new Error('Could not initialize session record');
+                }
+
+                setSession(startedSession);
                 setLastInteractionTime(Date.now());
 
                 // 3. Start Timer
@@ -111,7 +123,7 @@ export default function TopicPracticeSessionPage() {
                 }, 1000);
 
             } catch (error: any) {
-                console.error('Practice Init Error:', error);
+                console.error('Topic practice init failure:', error);
                 toast.error(error.message || 'Failed to start practice.');
                 router.push(`/university/${uniId}`);
             } finally {

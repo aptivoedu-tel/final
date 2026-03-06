@@ -237,20 +237,26 @@ export default function SuperAdminQuestionBankPage() {
 
     const fetchSettings = async () => {
         try {
-            const res = await fetch('/api/mongo/admin/settings');
+            // Force fetch newest settings with cache-busting
+            const res = await fetch('/api/mongo/admin/settings?t=' + Date.now(), {
+                cache: 'no-store',
+                headers: { 'Cache-Control': 'no-cache', 'Pragma': 'no-cache' }
+            });
             if (res.ok) {
                 const data = await res.json();
-                if (data.settings?.practice_mcqs_limit) {
+                if (data.settings && data.settings.practice_mcqs_limit !== undefined) {
                     setPracticeMcqLimit(data.settings.practice_mcqs_limit);
+                    console.log('Synchronized platform limit:', data.settings.practice_mcqs_limit);
                 }
             }
         } catch (error) {
-            console.error('Error fetching settings:', error);
+            console.error('Core parameter fetch error:', error);
         }
     };
 
     const handleSavePracticeSettings = async () => {
         setGlobalLoading(true, 'Synchronizing Global Parameters...');
+        console.log('[QuestionBank] Syncing limit:', practiceMcqLimit);
         try {
             const res = await fetch('/api/mongo/admin/settings', {
                 method: 'PATCH',
@@ -261,6 +267,7 @@ export default function SuperAdminQuestionBankPage() {
             if (!res.ok) throw new Error('Failed to update platform settings');
 
             toast.success('Practice parameters synchronized successfully');
+            await fetchSettings(); // Ensure state is truly consistent with DB
             setIsSettingsModalOpen(false);
         } catch (error: any) {
             toast.error(error.message);

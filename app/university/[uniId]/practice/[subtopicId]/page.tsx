@@ -47,9 +47,10 @@ export default function PracticeSessionPage() {
         const initSession = async () => {
             setGlobalLoading(true, 'Initializing Practice Session...');
             try {
-
+                console.log('Practicing Subtopic:', subtopicId, 'Uni:', uniId);
                 const user = AuthService.getCurrentUser() || await AuthService.syncSession();
                 if (!user) {
+                    console.error('No user found for practice session');
                     router.push('/login');
                     return;
                 }
@@ -69,8 +70,11 @@ export default function PracticeSessionPage() {
                     user.id
                 );
 
+                console.log('MCQs fetched:', mcqs?.length);
+
                 if (!mcqs || mcqs.length === 0) {
                     toast.error('No practice questions available for this subtopic yet.');
+                    console.warn('Redirecting back - zero questions in subtopic pool');
                     router.push(`/university/${uniId}`);
                     return;
                 }
@@ -78,15 +82,22 @@ export default function PracticeSessionPage() {
                 setQuestions(mcqs);
 
                 // 2. Create Session in DB
-                const { session, error } = await PracticeService.createSession(
+                const { session: startedSession, error } = await PracticeService.createSession(
                     user.id,
                     subtopicId,
                     uniId
                 );
 
-                if (error) throw new Error(error);
-                setSession(session);
+                if (error) {
+                    console.error('Failed to create session record:', error);
+                    throw new Error(error);
+                }
 
+                if (!startedSession) {
+                    throw new Error('Could not initialize session record');
+                }
+
+                setSession(startedSession);
                 setLastInteractionTime(Date.now());
 
                 // Start Timer
@@ -95,12 +106,12 @@ export default function PracticeSessionPage() {
                 }, 1000);
 
             } catch (error: any) {
+                console.error('Practice session initialization fatal error:', error);
                 toast.error(error.message || 'Failed to start practice session.');
                 router.push(`/university/${uniId}`);
             } finally {
                 setGlobalLoading(false);
             }
-
         };
 
         if (subtopicId && uniId) {
@@ -134,7 +145,7 @@ export default function PracticeSessionPage() {
     };
 
     const finalizeSession = async () => {
-        if (isCompleted) return;
+        if (isCompleted || !session) return;
 
         setIsCompleted(true);
         if (timerRef.current) clearInterval(timerRef.current);

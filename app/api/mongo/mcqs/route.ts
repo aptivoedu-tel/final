@@ -87,7 +87,6 @@ export async function GET(req: NextRequest) {
 
         let finalSet: any[] = [];
         if (shuffle) {
-            // Function to shuffle array in place
             const shuffleArray = (array: any[]) => {
                 for (let i = array.length - 1; i > 0; i--) {
                     const j = Math.floor(Math.random() * (i + 1));
@@ -96,37 +95,44 @@ export async function GET(req: NextRequest) {
                 return array;
             };
 
-            // Shuffle the grouped blocks
+            // 1. Randomize items within each group (especially for 'single' groups which only have 1 item, but good for passages)
+            groupedMcqs.forEach(group => {
+                group.items = shuffleArray([...group.items]);
+            });
+
+            // 2. Shuffle the primary pool (independent blocks or passages)
             let pool = shuffleArray([...groupedMcqs]);
 
-            // If we have a limit and not enough questions, we need to loop/repeat
-            if (limit && limit > 0) {
-                let count = 0;
-                while (count < limit) {
-                    // Flatten the next block in the pool
-                    const nextBlock = pool[count % pool.length];
-                    if (!nextBlock) break; // Safety if pool is empty
+            // 3. Populate finalSet up to limit
+            if (pool.length > 0) {
+                if (limit && limit > 0) {
+                    let totalPushed = 0;
+                    let passCount = 0;
 
-                    // For passages, we usually add the whole block
-                    // But for simple repeats to reach 'limit' exactly, we flatten
-                    nextBlock.items.forEach((item: any) => {
-                        if (count < limit) {
-                            finalSet.push(item);
-                            count++;
+                    while (totalPushed < limit) {
+                        // For each pass through the pool, reshuffle the pool for extra variety
+                        if (passCount > 0) pool = shuffleArray([...pool]);
+
+                        for (const block of pool) {
+                            if (totalPushed >= limit) break;
+
+                            // Add all questions from the block (passage or single)
+                            for (const item of block.items) {
+                                if (totalPushed >= limit) break;
+                                finalSet.push(item);
+                                totalPushed++;
+                            }
                         }
-                    });
-
-                    // If we finished a full pass of the pool, reshuffle for next pass
-                    if ((count % pool.length) === 0 && count < limit) {
-                        pool = shuffleArray([...groupedMcqs]);
+                        passCount++;
+                        // Emergency break to prevent infinite loop (shouldn't happen with pool.length > 0)
+                        if (passCount > 100) break;
                     }
+                } else {
+                    finalSet = pool.flatMap(g => g.items);
                 }
-            } else {
-                // Just flatten the shuffled pool
-                finalSet = pool.flatMap(g => g.items);
             }
         } else {
-            // Just flatten the original grouped blocks
+            // No shuffle: just flatten and slice
             finalSet = groupedMcqs.flatMap(g => g.items);
             if (limit) finalSet = finalSet.slice(0, limit);
         }

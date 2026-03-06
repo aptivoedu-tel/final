@@ -1,6 +1,7 @@
 import mongoose, { Schema, Document } from 'mongoose';
 
 export interface ISystemSettings extends Document {
+    setting_id: string;
     maintenance_mode: boolean;
     maintenance_message: string;
     maintenance_title: string;
@@ -12,7 +13,7 @@ export interface ISystemSettings extends Document {
 }
 
 const SystemSettingsSchema: Schema = new Schema({
-    id: { type: String, default: 'global_settings', unique: true },
+    setting_id: { type: String, default: 'global_settings', unique: true, index: true },
     maintenance_mode: { type: Boolean, default: false },
     maintenance_message: { type: String, default: 'We are currently performing scheduled maintenance to improve our services. Please check back shortly.' },
     maintenance_title: { type: String, default: 'System Maintenance in Progress' },
@@ -21,6 +22,10 @@ const SystemSettingsSchema: Schema = new Schema({
     ai_chatbot_active: { type: Boolean, default: true },
     practice_mcqs_limit: { type: Number, default: 20 },
     updated_at: { type: Date, default: Date.now }
+}, {
+    id: false,
+    versionKey: false,
+    collection: 'platform_settings'
 });
 
-export default mongoose.models.SystemSettings || mongoose.model<ISystemSettings>('SystemSettings', SystemSettingsSchema);
+export default mongoose.models.AptivoSettings || mongoose.model<ISystemSettings>('AptivoSettings', SystemSettingsSchema);

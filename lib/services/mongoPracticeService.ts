@@ -19,8 +19,11 @@ export class MongoPracticeService {
             if (topicId) params.append('topic_id', topicId.toString());
             params.append('limit', limit.toString());
             params.append('shuffle', 'true');
+            params.append('t', Date.now().toString());
 
-            const response = await fetch(`/api/mongo/mcqs?${params.toString()}`);
+            const response = await fetch(`/api/mongo/mcqs?${params.toString()}`, {
+                cache: 'no-store'
+            });
             const data = await response.json();
 
             return data.mcqs || [];
@@ -43,11 +46,13 @@ export class MongoPracticeService {
             }
 
             // Fallback to global setting from system settings
-            const settingsRes = await fetch('/api/mongo/admin/settings');
+            const settingsRes = await fetch('/api/mongo/admin/settings?t=' + Date.now(), {
+                cache: 'no-store'
+            });
             let globalLimit = 20;
             if (settingsRes.ok) {
                 const settingsData = await settingsRes.json();
-                globalLimit = settingsData.settings?.practice_mcqs_limit || 20;
+                globalLimit = settingsData.settings?.practice_mcqs_limit ?? 20;
             }
 
             return {

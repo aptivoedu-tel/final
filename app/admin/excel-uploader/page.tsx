@@ -211,11 +211,16 @@ export default function ExcelUploaderPage() {
             if (t) {
                 const topicKey = s ? `${s}|${t}` : t;
                 if (newMap.topics[topicKey] === undefined) {
-                    const matchT = allHierarchy.topics.find(db =>
-                        db.name.toLowerCase().trim() === t.toLowerCase() &&
-                        (!matchedSubjectId || db.subject_id === matchedSubjectId)
-                    );
-                    newMap.topics[topicKey] = matchT ? matchT.id : null;
+                    // If subject was provided but not found, don't auto-match topic to some random subject
+                    if (s && !matchedSubjectId) {
+                        newMap.topics[topicKey] = null;
+                    } else {
+                        const matchT = allHierarchy.topics.find(db =>
+                            db.name.toLowerCase().trim() === t.toLowerCase() &&
+                            (!matchedSubjectId || db.subject_id === matchedSubjectId)
+                        );
+                        newMap.topics[topicKey] = matchT ? matchT.id : null;
+                    }
                 }
                 matchedTopicId = newMap.topics[topicKey];
             }
@@ -223,11 +228,16 @@ export default function ExcelUploaderPage() {
             if (st) {
                 const subtopicKey = t ? `${t}|${st}` : st;
                 if (newMap.subtopics[subtopicKey] === undefined) {
-                    const matchST = allHierarchy.subtopics.find(db =>
-                        db.name.toLowerCase().trim() === st.toLowerCase() &&
-                        (!matchedTopicId || db.topic_id === matchedTopicId)
-                    );
-                    newMap.subtopics[subtopicKey] = matchST ? matchST.id : null;
+                    // If topic was provided but not found, don't auto-match subtopic
+                    if (t && !matchedTopicId) {
+                        newMap.subtopics[subtopicKey] = null;
+                    } else {
+                        const matchST = allHierarchy.subtopics.find(db =>
+                            db.name.toLowerCase().trim() === st.toLowerCase() &&
+                            (!matchedTopicId || db.topic_id === matchedTopicId)
+                        );
+                        newMap.subtopics[subtopicKey] = matchST ? matchST.id : null;
+                    }
                 }
             }
         });
