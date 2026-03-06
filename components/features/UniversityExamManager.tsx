@@ -538,6 +538,24 @@ export default function UniversityExamManager({ uniId, userRole, onBack }: Unive
         reader.readAsBinaryString(file);
     };
 
+    const handleDownloadTemplate = () => {
+        const templateData = [
+            {
+                'Question': 'Which service provides virtual servers in the cloud?',
+                'Option A': 'S3',
+                'Option B': 'EC2',
+                'Option C': 'Lambda',
+                'Option D': 'RDS',
+                'Correct Option': 'B',
+                'Explanation': 'EC2 stands for Elastic Compute Cloud.'
+            }
+        ];
+        const ws = XLSX.utils.json_to_sheet(templateData);
+        const wb = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(wb, ws, "Template");
+        XLSX.writeFile(wb, "aptivo_exam_mcq_template.xlsx");
+    };
+
     const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
         if (!file) return;
@@ -1469,9 +1487,9 @@ export default function UniversityExamManager({ uniId, userRole, onBack }: Unive
                                 </div>
                             </label>
 
-                            <a href="#" className="inline-block text-xs font-bold text-emerald-600 hover:underline">
+                            <button onClick={handleDownloadTemplate} className="inline-block text-xs font-bold text-emerald-600 hover:underline">
                                 Download Template
-                            </a>
+                            </button>
                         </div>
                     </div>
                 </div>
