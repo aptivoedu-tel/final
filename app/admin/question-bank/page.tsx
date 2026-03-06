@@ -7,8 +7,9 @@ import {
     Search, RefreshCw, Target,
     CheckCircle2, HelpCircle,
     BarChart3, Plus, Filter, Settings, ArrowRightLeft,
-    Edit2, Pencil
+    Edit2, Pencil, UploadCloud, ChevronLeft, ChevronDown as ChevronDownIcon
 } from 'lucide-react';
+import * as XLSX from 'xlsx';
 import Sidebar from '@/components/layout/Sidebar';
 import Header from '@/components/layout/Header';
 import { AuthService } from '@/lib/services/authService';
@@ -27,6 +28,7 @@ type HierarchyItem = {
     dbId: number;
     type: 'subject' | 'topic' | 'subtopic';
     title: string;
+    parentId?: number | null;
     children?: HierarchyItem[];
     expanded?: boolean;
     mcqCount?: number;
@@ -63,6 +65,10 @@ export default function SuperAdminQuestionBankPage() {
         explanation_image_type: 'direct',
         passage_id: '' as string | number
     });
+
+    // Bulk Logic
+    const [isBulkModalOpen, setIsBulkModalOpen] = useState(false);
+    const fileInputRef = React.useRef<HTMLInputElement>(null);
 
     const [passageForm, setPassageForm] = useState({
         title: '',
@@ -150,6 +156,7 @@ export default function SuperAdminQuestionBankPage() {
                                     dbId: st.id,
                                     type: 'subtopic',
                                     title: st.name,
+                                    parentId: t.id,
                                     mcqCount: count
                                 };
                             });
@@ -163,6 +170,7 @@ export default function SuperAdminQuestionBankPage() {
                                 dbId: t.id,
                                 type: 'topic',
                                 title: t.name,
+                                parentId: s.id,
                                 expanded: false,
                                 mcqCount: totalTopicCount,
                                 children: processedSubtopics
@@ -485,9 +493,9 @@ export default function SuperAdminQuestionBankPage() {
 
     const handleBulkDelete = async () => {
         if (selectedQuestionIds.length === 0) return;
-        if (!confirm(`Are you sure you want to permanently delete ${selectedQuestionIds.length} questions? This action cannot be undone.`)) return;
+        if (!confirm(`CRITICAL ACTION: Are you sure you want to MASS DELETE ${selectedQuestionIds.length} questions? This will permanently erase them from the platform registry.`)) return;
 
-        setGlobalLoading(true, 'Initiating Mass Deletion...');
+        setGlobalLoading(true, 'Initiating Multi-Entity Deletion...');
         try {
             const res = await fetch(`/api/mongo/mcqs?ids=${selectedQuestionIds.join(',')}`, { method: 'DELETE' });
             if (!res.ok) {
@@ -495,7 +503,7 @@ export default function SuperAdminQuestionBankPage() {
                 throw new Error(errData.error || 'Bulk delete failed');
             }
 
-            toast.success(`${selectedQuestionIds.length} questions deleted successfully`);
+            toast.success(`Eliminated ${selectedQuestionIds.length} questions from registry`);
             setSelectedQuestionIds([]);
             if (selectedItem) loadQuestions(selectedItem);
             loadHierarchy(); // Refresh counts
@@ -505,6 +513,70 @@ export default function SuperAdminQuestionBankPage() {
         } finally {
             setGlobalLoading(false);
         }
+    };
+
+    const handleBulkUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+        if (!e.target.files?.[0] || !selectedItem) return;
+        const file = e.target.files[0];
+        setGlobalLoading(true, 'Ingesting Academic Data Stream...');
+
+        const reader = new FileReader();
+        reader.onload = async (evt) => {
+            try {
+                const bstr = evt.target?.result;
+                const wb = XLSX.read(bstr, { type: 'binary' });
+                const wsname = wb.SheetNames[0];
+                const ws = wb.Sheets[wsname];
+                const rawData: any[] = XLSX.utils.sheet_to_json(ws);
+
+                // Auto-map based on selected node
+                const questions_to_insert = rawData.map(row => {
+                    // Try to find correct option (A, B, C, D)
+                    let correct = 'A';
+                    const rawCorrect = (row.correct_option || row.Answer || row.correct_answer || 'A').toString().trim().toUpperCase();
+                    if (['A', 'B', 'C', 'D'].includes(rawCorrect)) correct = rawCorrect;
+                    else if (rawCorrect === '1') correct = 'A';
+                    else if (rawCorrect === '2') correct = 'B';
+                    else if (rawCorrect === '3') correct = 'C';
+                    else if (rawCorrect === '4') correct = 'D';
+
+                    return {
+                        question: row.question || row.question_text || row.Question || '',
+                        difficulty: (row.difficulty || 'medium').toLowerCase(),
+                        question_type: row.question_type || 'mcq_single',
+                        option_a: (row.option_a || row.A || row.option1 || '').toString(),
+                        option_b: (row.option_b || row.B || row.option2 || '').toString(),
+                        option_c: (row.option_c || row.C || row.option3 || '').toString(),
+                        option_d: (row.option_d || row.D || row.option4 || '').toString(),
+                        correct_option: correct,
+                        explanation: row.explanation || row.Explanation || row.reason || '',
+                        topic_id: selectedItem.type === 'topic' ? selectedItem.dbId : (selectedItem.type === 'subtopic' ? selectedItem.parentId : null),
+                        subtopic_id: selectedItem.type === 'subtopic' ? selectedItem.dbId : null,
+                        subject_id: selectedItem.type === 'subject' ? selectedItem.dbId : null, // Though we usually upload to topic/subtopic
+                        marks: row.marks || 1,
+                        times_attempted: 0,
+                        times_correct: 0
+                    };
+                });
+
+                const res = await fetch('/api/mongo/mcqs', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(questions_to_insert)
+                });
+
+                if (!res.ok) throw new Error('Bulk ingestion failed');
+
+                toast.success(`Successfully ingested ${questions_to_insert.length} questions`);
+                loadQuestions(selectedItem);
+                setIsBulkModalOpen(false);
+            } catch (err: any) {
+                toast.error(err.message);
+            } finally {
+                setGlobalLoading(false);
+            }
+        };
+        reader.readAsBinaryString(file);
     };
 
     const handleSaveHierarchyName = async () => {
@@ -712,46 +784,57 @@ export default function SuperAdminQuestionBankPage() {
                                             </div>
                                             <h2 className="text-xl font-black text-slate-900">{selectedItem?.title}</h2>
                                         </div>
-                                        <div className="flex items-center gap-3">
+                                        <div className="flex items-center gap-4">
                                             {questions.length > 0 && (
-                                                <div className="flex items-center gap-3 mr-4 py-2 px-4 bg-slate-50 rounded-xl border border-gray-100">
-                                                    <label className="flex items-center gap-2 cursor-pointer">
-                                                        <input
-                                                            type="checkbox"
-                                                            checked={selectedQuestionIds.length === questions.length && questions.length > 0}
-                                                            onChange={handleSelectAll}
-                                                            className="w-4 h-4 rounded border-gray-300 text-teal-600 focus:ring-teal-500"
-                                                        />
-                                                        <span className="text-[10px] font-black text-slate-600 uppercase tracking-wider">Select All</span>
+                                                <div className="flex items-center gap-3 py-1.5 px-3 bg-slate-900 rounded-xl border border-slate-700 shadow-lg">
+                                                    <label className="flex items-center gap-3 cursor-pointer group/check px-2 border-r border-slate-700 mr-2">
+                                                        <div className="relative flex items-center">
+                                                            <input
+                                                                type="checkbox"
+                                                                className="peer h-5 w-5 cursor-pointer appearance-none rounded-lg border-2 border-slate-600 bg-slate-800 transition-all checked:bg-teal-500 checked:border-teal-500"
+                                                                checked={selectedQuestionIds.length === questions.length && questions.length > 0}
+                                                                onChange={handleSelectAll}
+                                                            />
+                                                            <CheckCircle2 className="pointer-events-none absolute left-1/2 top-1/2 h-3.5 w-3.5 -translate-x-1/2 -translate-y-1/2 text-white opacity-0 transition-opacity peer-checked:opacity-100" />
+                                                        </div>
+                                                        <span className="text-[10px] font-black text-teal-400 group-hover:text-white uppercase tracking-widest transition-colors">Select All</span>
                                                     </label>
 
-                                                    {selectedQuestionIds.length > 0 && (
-                                                        <div className="flex items-center gap-4 ml-4">
+                                                    {selectedQuestionIds.length > 0 ? (
+                                                        <div className="flex items-center gap-4 py-1">
                                                             <button
                                                                 onClick={() => {
                                                                     setIsBulkTransfer(true);
                                                                     setIsTransferModalOpen(true);
                                                                 }}
-                                                                className="flex items-center gap-1.5 text-indigo-600 hover:text-indigo-700 transition-colors"
+                                                                className="flex items-center gap-1.5 text-indigo-400 hover:text-white transition-colors"
                                                             >
                                                                 <ArrowRightLeft className="w-3.5 h-3.5" />
                                                                 <span className="text-[10px] font-black uppercase tracking-wider">Transfer ({selectedQuestionIds.length})</span>
                                                             </button>
                                                             <button
                                                                 onClick={handleBulkDelete}
-                                                                className="flex items-center gap-1.5 text-rose-600 hover:text-rose-700 transition-colors"
+                                                                className="flex items-center gap-1.5 text-rose-400 hover:text-white transition-colors"
                                                             >
                                                                 <Trash2 className="w-3.5 h-3.5" />
                                                                 <span className="text-[10px] font-black uppercase tracking-wider">Delete ({selectedQuestionIds.length})</span>
                                                             </button>
                                                         </div>
+                                                    ) : (
+                                                        <button
+                                                            onClick={() => setIsBulkModalOpen(true)}
+                                                            className="flex items-center gap-2 px-3 py-1 bg-white/5 hover:bg-white/10 text-slate-300 hover:text-white rounded-lg transition-all"
+                                                        >
+                                                            <UploadCloud className="w-4 h-4" />
+                                                            <span className="text-[10px] font-black uppercase tracking-widest">Bulk Injest</span>
+                                                        </button>
                                                     )}
                                                 </div>
                                             )}
-                                            <div className="flex items-center gap-2 p-1.5 bg-slate-50 rounded-lg border border-gray-100">
+                                            <div className="flex items-center gap-2 px-3 py-2 bg-slate-50 rounded-xl border border-gray-100 shadow-sm">
                                                 <Filter className="w-4 h-4 text-slate-400" />
                                                 <select className="bg-transparent border-none text-[10px] font-black text-slate-600 outline-none uppercase tracking-wider">
-                                                    <option>Filter Difficulty</option>
+                                                    <option>Difficulty</option>
                                                     <option>Easy</option>
                                                     <option>Medium</option>
                                                     <option>Hard</option>
@@ -779,14 +862,16 @@ export default function SuperAdminQuestionBankPage() {
                                                             </div>
                                                         )}
                                                         <div className={`bg-white p-6 rounded-xl border transition-all group relative overflow-hidden ${selectedQuestionIds.includes(q.id) ? 'border-teal-500 ring-1 ring-teal-500 shadow-lg shadow-teal-500/5' : 'border-gray-100 shadow-sm hover:shadow-xl hover:shadow-teal-500/5'} ${q.passage_id ? 'ml-8 border-l-4 border-l-slate-800' : ''}`}>
-                                                            {/* Selection Checkbox */}
                                                             <div className="absolute top-4 left-4 z-10">
-                                                                <input
-                                                                    type="checkbox"
-                                                                    checked={selectedQuestionIds.includes(q.id)}
-                                                                    onChange={() => handleSelectQuestion(q.id)}
-                                                                    className="w-5 h-5 rounded border-gray-300 text-teal-600 focus:ring-teal-500 cursor-pointer"
-                                                                />
+                                                                <div className="relative flex items-center">
+                                                                    <input
+                                                                        type="checkbox"
+                                                                        checked={selectedQuestionIds.includes(q.id)}
+                                                                        onChange={() => handleSelectQuestion(q.id)}
+                                                                        className="peer h-6 w-6 cursor-pointer appearance-none rounded-xl border-2 border-slate-200 bg-white transition-all checked:bg-teal-600 checked:border-teal-600 hover:border-teal-300"
+                                                                    />
+                                                                    <CheckCircle2 className="pointer-events-none absolute left-1/2 top-1/2 h-4 w-4 -translate-x-1/2 -translate-y-1/2 text-white opacity-0 transition-opacity peer-checked:opacity-100" />
+                                                                </div>
                                                             </div>
 
                                                             <div className="pl-10">

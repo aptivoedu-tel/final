@@ -143,12 +143,21 @@ export async function POST(req: NextRequest) {
         await connectToDatabase();
         const body = await req.json();
 
-        // Use a more robust way to get next ID if not using autoincrement
-        const last = await MCQ.findOne().sort({ id: -1 });
-        const newId = (last?.id || 0) + 1;
-
-        const mcq = await MCQ.create({ id: newId, ...body });
-        return NextResponse.json({ mcq }, { status: 201 });
+        // Support for single or multiple creation
+        if (Array.isArray(body)) {
+            // Bulk Create
+            const last = await MCQ.findOne().sort({ id: -1 });
+            let nextId = (last?.id || 0) + 1;
+            const questionsWithIds = body.map(q => ({ ...q, id: nextId++ }));
+            const mcqs = await MCQ.insertMany(questionsWithIds);
+            return NextResponse.json({ success: true, count: mcqs.length }, { status: 201 });
+        } else {
+            // Single Create
+            const last = await MCQ.findOne().sort({ id: -1 });
+            const newId = (last?.id || 0) + 1;
+            const mcq = await MCQ.create({ id: newId, ...body });
+            return NextResponse.json({ mcq }, { status: 201 });
+        }
     } catch (error: any) {
         console.error('MCQ POST error:', error);
         return NextResponse.json({ error: error.message }, { status: 500 });

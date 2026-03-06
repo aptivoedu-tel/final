@@ -85,6 +85,7 @@ export default function UniversityExamManager({ uniId, userRole, onBack }: Unive
     const [questions, setQuestions] = useState<Question[]>([]);
     const [passages, setPassages] = useState<Passage[]>([]);
     const [examResults, setExamResults] = useState<any[]>([]);
+    const [selectedQuestions, setSelectedQuestions] = useState<number[]>([]);
 
     // Modal States
     const [isExamModalOpen, setIsExamModalOpen] = useState(false);
@@ -583,6 +584,7 @@ export default function UniversityExamManager({ uniId, userRole, onBack }: Unive
     };
 
     const handleBack = () => {
+        setSelectedQuestions([]);
         if (view === 'questions') {
             setView('sections');
             return;
@@ -958,13 +960,62 @@ export default function UniversityExamManager({ uniId, userRole, onBack }: Unive
                                         </div>
                                     </div>
                                 </div>
-                                <button
-                                    onClick={() => { setActiveSection(null); setView('sections'); fetchSections(activeExam!.id); }}
-                                    className="relative z-10 px-10 py-5 bg-white text-slate-900 hover:bg-emerald-50 rounded-2xl font-black uppercase tracking-widest text-[10px] transition-all shadow-xl flex items-center gap-2 group/back"
-                                >
-                                    <ArrowLeft className="w-4 h-4 group-hover/back:-translate-x-1 transition-transform" />
-                                    Back to Blueprint
-                                </button>
+                                <div className="flex flex-col sm:flex-row items-center gap-4 relative z-10">
+                                    {questions.length > 0 && (userRole === 'super_admin' || (activeExam?.institution_id && activeExam.institution_id === user?.institution_id)) && (
+                                        <div className="flex items-center gap-3 bg-white/5 backdrop-blur-sm p-2 px-4 rounded-2xl border border-white/10 mr-4">
+                                            <label className="flex items-center gap-3 cursor-pointer group/check">
+                                                <div className="relative flex items-center">
+                                                    <input
+                                                        type="checkbox"
+                                                        className="peer h-5 w-5 cursor-pointer appearance-none rounded-lg border-2 border-white/20 bg-white/5 transition-all checked:bg-emerald-500 checked:border-emerald-500"
+                                                        checked={questions.length > 0 && selectedQuestions.length === questions.length}
+                                                        onChange={(e) => {
+                                                            if (e.target.checked) {
+                                                                setSelectedQuestions(questions.map(q => q.id!));
+                                                            } else {
+                                                                setSelectedQuestions([]);
+                                                            }
+                                                        }}
+                                                    />
+                                                    <CheckCircle className="pointer-events-none absolute left-1/2 top-1/2 h-3.5 w-3.5 -translate-x-1/2 -translate-y-1/2 text-white opacity-0 transition-opacity peer-checked:opacity-100" />
+                                                </div>
+                                                <span className="text-[10px] font-black uppercase tracking-widest text-emerald-400 group-hover:text-white transition-colors">Select All</span>
+                                            </label>
+
+                                            {selectedQuestions.length > 0 && (
+                                                <button
+                                                    onClick={async () => {
+                                                        if (!confirm(`Are you sure you want to delete ${selectedQuestions.length} selected questions? This action cannot be undone.`)) return;
+                                                        setGlobalLoading(true, 'Batch Eliminating Question Entities...');
+                                                        try {
+                                                            const deletePromises = selectedQuestions.map(id =>
+                                                                fetch(`/api/mongo/exams/questions?id=${id}`, { method: 'DELETE' })
+                                                            );
+                                                            await Promise.all(deletePromises);
+                                                            toast.success(`Successfully removed ${selectedQuestions.length} questions`);
+                                                            setSelectedQuestions([]);
+                                                            fetchQuestions(activeSection!.id);
+                                                        } catch (error: any) {
+                                                            toast.error(`Error during batch delete: ${error.message}`);
+                                                        } finally {
+                                                            setGlobalLoading(false);
+                                                        }
+                                                    }}
+                                                    className="flex items-center gap-2 px-4 py-2 bg-rose-500 text-white rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-rose-600 transition-all shadow-lg animate-in fade-in slide-in-from-right-2"
+                                                >
+                                                    <Trash2 className="w-3.5 h-3.5" /> Delete ({selectedQuestions.length})
+                                                </button>
+                                            )}
+                                        </div>
+                                    )}
+                                    <button
+                                        onClick={() => { setActiveSection(null); setView('sections'); fetchSections(activeExam!.id); }}
+                                        className="px-10 py-5 bg-white text-slate-900 hover:bg-emerald-50 rounded-2xl font-black uppercase tracking-widest text-[10px] transition-all shadow-xl flex items-center gap-2 group/back"
+                                    >
+                                        <ArrowLeft className="w-4 h-4 group-hover/back:-translate-x-1 transition-transform" />
+                                        Back
+                                    </button>
+                                </div>
                             </div>
 
                             <div className="grid grid-cols-1 gap-6">
@@ -973,7 +1024,26 @@ export default function UniversityExamManager({ uniId, userRole, onBack }: Unive
                                         key={q.id}
                                         className="bg-white overflow-hidden rounded-[2.5rem] border border-slate-100 shadow-sm hover:shadow-2xl transition-all group flex flex-col md:flex-row"
                                     >
-                                        <div className="md:w-32 bg-slate-50 flex items-center justify-center p-8 md:p-0 border-r border-slate-100">
+                                        <div className="md:w-32 bg-slate-50 flex items-center justify-center p-8 md:p-0 border-r border-slate-100 relative group/card">
+                                            {(userRole === 'super_admin' || (activeExam?.institution_id && activeExam.institution_id === user?.institution_id)) && (
+                                                <div className="absolute top-4 left-4 z-10">
+                                                    <div className="relative flex items-center">
+                                                        <input
+                                                            type="checkbox"
+                                                            className="peer h-6 w-6 cursor-pointer appearance-none rounded-xl border-2 border-slate-200 bg-white transition-all checked:bg-emerald-600 checked:border-emerald-600 hover:border-emerald-300"
+                                                            checked={selectedQuestions.includes(q.id!)}
+                                                            onChange={(e) => {
+                                                                if (e.target.checked) {
+                                                                    setSelectedQuestions([...selectedQuestions, q.id!]);
+                                                                } else {
+                                                                    setSelectedQuestions(selectedQuestions.filter(id => id !== q.id!));
+                                                                }
+                                                            }}
+                                                        />
+                                                        <CheckCircle className="pointer-events-none absolute left-1/2 top-1/2 h-4 w-4 -translate-x-1/2 -translate-y-1/2 text-white opacity-0 transition-opacity peer-checked:opacity-100" />
+                                                    </div>
+                                                </div>
+                                            )}
                                             <div className="flex flex-col items-center">
                                                 <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Q-Index</span>
                                                 <span className="text-3xl font-black text-slate-900">{idx + 1}</span>
@@ -1014,6 +1084,7 @@ export default function UniversityExamManager({ uniId, userRole, onBack }: Unive
                                                                         const res = await fetch(`/api/mongo/exams/questions?id=${q.id}`, { method: 'DELETE' });
                                                                         if (!res.ok) throw new Error('Failed to delete question');
                                                                         toast.success('Question removed');
+                                                                        setSelectedQuestions(selectedQuestions.filter(id => id !== q.id));
                                                                         fetchQuestions(activeSection!.id);
                                                                     } catch (error: any) {
                                                                         toast.error(error.message);
