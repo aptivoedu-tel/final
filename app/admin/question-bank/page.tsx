@@ -108,6 +108,10 @@ export default function SuperAdminQuestionBankPage() {
     const [editingHierarchyItem, setEditingHierarchyItem] = useState<HierarchyItem | null>(null);
     const [renameValue, setRenameValue] = useState('');
 
+    // Practice Settings State
+    const [isSettingsModalOpen, setIsSettingsModalOpen] = useState(false);
+    const [practiceMcqLimit, setPracticeMcqLimit] = useState(20);
+
     const convertDriveLink = (url: string) => {
         if (!url) return '';
         if (url.includes('drive.google.com')) {
@@ -646,13 +650,22 @@ export default function SuperAdminQuestionBankPage() {
                             <h1 className="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight">Question Bank Master</h1>
                             <p className="text-sm sm:text-base text-slate-500 font-medium">Platform-wide question repository and verification hub.</p>
                         </div>
-                        <button
-                            onClick={handleOpenAddMcq}
-                            className="w-full sm:w-auto flex items-center justify-center gap-2 px-6 py-2.5 bg-slate-900 text-white font-black uppercase tracking-wider text-[11px] rounded-xl hover:bg-teal-600 transition-all shadow-lg active:scale-95"
-                        >
-                            <Plus className="w-4 h-4" />
-                            New Question
-                        </button>
+                        <div className="flex items-center gap-3">
+                            <button
+                                onClick={() => setIsSettingsModalOpen(true)}
+                                className="p-2.5 bg-white border border-gray-200 text-slate-400 hover:text-indigo-600 rounded-xl transition-all shadow-sm active:scale-95"
+                                title="Practice Parameters"
+                            >
+                                <Settings className="w-5 h-5 transition-transform hover:rotate-90 duration-500" />
+                            </button>
+                            <button
+                                onClick={handleOpenAddMcq}
+                                className="flex-1 sm:flex-none flex items-center justify-center gap-2 px-6 py-2.5 bg-slate-900 text-white font-black uppercase tracking-wider text-[11px] rounded-xl hover:bg-teal-600 transition-all shadow-lg active:scale-95"
+                            >
+                                <Plus className="w-4 h-4" />
+                                New Question
+                            </button>
+                        </div>
                     </div>
 
                     <div className="flex-1 flex flex-col lg:flex-row gap-8 min-h-0">
@@ -1480,6 +1493,49 @@ export default function SuperAdminQuestionBankPage() {
                     </div>
                 )
             }
-        </div >
+
+            {/* Practice Parameters Modal */}
+            {isSettingsModalOpen && (
+                <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+                    <div className="absolute inset-0 bg-slate-950/40 backdrop-blur-md" onClick={() => setIsSettingsModalOpen(false)} />
+                    <div className="relative w-full max-w-md bg-white rounded-[32px] shadow-2xl border border-slate-100 p-8 animate-in zoom-in-95 duration-200">
+                        <h2 className="text-xl font-black text-slate-900 mb-2 tracking-tight">Practice Session Protocol</h2>
+                        <p className="text-xs font-medium text-slate-400 mb-8 uppercase tracking-widest">Global MCQ Density Control</p>
+
+                        <div className="space-y-6">
+                            <div>
+                                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-3 block text-center">MCQs per Practice Session</label>
+                                <div className="relative">
+                                    <Hash className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-300" />
+                                    <input
+                                        type="number"
+                                        value={practiceMcqLimit}
+                                        onChange={(e) => setPracticeMcqLimit(Number(e.target.value))}
+                                        className="w-full pl-12 pr-4 py-4 bg-slate-50 border border-slate-200 rounded-2xl text-sm font-black text-slate-900 focus:ring-2 focus:ring-teal-500/20 outline-none transition-all text-center"
+                                        placeholder="Standard: 20"
+                                    />
+                                </div>
+                                <p className="mt-3 text-[10px] font-bold text-slate-400 italic text-center">Sets the dynamic threshold for auto-shuffled rounds.</p>
+                            </div>
+
+                            <div className="flex gap-4 pt-4">
+                                <button
+                                    onClick={() => setIsSettingsModalOpen(false)}
+                                    className="flex-1 py-4 text-[10px] font-black uppercase tracking-widest text-slate-400 hover:text-slate-600 bg-slate-50 rounded-2xl transition-all"
+                                >
+                                    Dismiss
+                                </button>
+                                <button
+                                    onClick={handleSavePracticeSettings}
+                                    className="flex-[2] py-4 text-[10px] font-black uppercase tracking-widest text-white bg-slate-900 hover:bg-teal-600 rounded-2xl transition-all shadow-xl shadow-slate-200 active:scale-95 flex items-center justify-center gap-2"
+                                >
+                                    <Save className="w-4 h-4" /> Synchronize
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            )}
+        </div>
     );
 }

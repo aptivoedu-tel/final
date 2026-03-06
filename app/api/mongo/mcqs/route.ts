@@ -54,7 +54,10 @@ export async function GET(req: NextRequest) {
             ];
         }
 
-        const rawMcqs = await MCQ.find(filter).sort({ created_at: -1 });
+        const limit = searchParams.get('limit') ? parseInt(searchParams.get('limit')!) : null;
+        const shuffle = searchParams.get('shuffle') === 'true';
+
+        let rawMcqs = await MCQ.find(filter).sort({ created_at: -1 });
 
         // Group by passage_id to keep passage questions strictly together
         const groupedMcqs: any[] = [];
@@ -74,14 +77,61 @@ export async function GET(req: NextRequest) {
             if (mcq.passage_id) {
                 if (!seenPassages.has(mcq.passage_id)) {
                     seenPassages.add(mcq.passage_id);
-                    groupedMcqs.push(...passageMap.get(mcq.passage_id)!);
+                    // Instead of raw items, keep the grouped blocks for shuffling
+                    groupedMcqs.push({ type: 'passage', id: mcq.passage_id, items: passageMap.get(mcq.passage_id)! });
                 }
             } else {
-                groupedMcqs.push(mcq);
+                groupedMcqs.push({ type: 'single', items: [mcq] });
             }
         });
 
-        return NextResponse.json({ mcqs: groupedMcqs });
+        let finalSet: any[] = [];
+        if (shuffle) {
+            // Function to shuffle array in place
+            const shuffleArray = (array: any[]) => {
+                for (let i = array.length - 1; i > 0; i--) {
+                    const j = Math.floor(Math.random() * (i + 1));
+                    [array[i], array[j]] = [array[j], array[i]];
+                }
+                return array;
+            };
+
+            // Shuffle the grouped blocks
+            let pool = shuffleArray([...groupedMcqs]);
+
+            // If we have a limit and not enough questions, we need to loop/repeat
+            if (limit && limit > 0) {
+                let count = 0;
+                while (count < limit) {
+                    // Flatten the next block in the pool
+                    const nextBlock = pool[count % pool.length];
+                    if (!nextBlock) break; // Safety if pool is empty
+
+                    // For passages, we usually add the whole block
+                    // But for simple repeats to reach 'limit' exactly, we flatten
+                    nextBlock.items.forEach((item: any) => {
+                        if (count < limit) {
+                            finalSet.push(item);
+                            count++;
+                        }
+                    });
+
+                    // If we finished a full pass of the pool, reshuffle for next pass
+                    if ((count % pool.length) === 0 && count < limit) {
+                        pool = shuffleArray([...groupedMcqs]);
+                    }
+                }
+            } else {
+                // Just flatten the shuffled pool
+                finalSet = pool.flatMap(g => g.items);
+            }
+        } else {
+            // Just flatten the original grouped blocks
+            finalSet = groupedMcqs.flatMap(g => g.items);
+            if (limit) finalSet = finalSet.slice(0, limit);
+        }
+
+        return NextResponse.json({ mcqs: finalSet });
     } catch (error: any) {
         console.error('MCQs GET error:', error);
         return NextResponse.json({ error: error.message }, { status: 500 });

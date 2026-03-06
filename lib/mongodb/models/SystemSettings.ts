@@ -7,6 +7,7 @@ export interface ISystemSettings extends Document {
     maintenance_time: string;
     maintenance_intensity: string;
     ai_chatbot_active: boolean;
+    practice_mcqs_limit: number;
     updated_at: Date;
 }
 
@@ -18,6 +19,7 @@ const SystemSettingsSchema: Schema = new Schema({
     maintenance_time: { type: String, default: '' },
     maintenance_intensity: { type: String, default: 'Standard' },
     ai_chatbot_active: { type: Boolean, default: true },
+    practice_mcqs_limit: { type: Number, default: 20 },
     updated_at: { type: Date, default: Date.now }
 });
 

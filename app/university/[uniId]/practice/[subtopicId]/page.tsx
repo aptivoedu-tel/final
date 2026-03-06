@@ -226,10 +226,10 @@ export default function PracticeSessionPage() {
                         <div className="space-y-4">
                             <button
                                 onClick={() => window.location.reload()}
-                                className="w-full py-5 bg-teal-600 text-white rounded-2xl font-black uppercase tracking-[0.2em] text-[10px] shadow-xl shadow-teal-100 hover:bg-teal-700 transition-all active:scale-98 flex items-center justify-center gap-3"
+                                className="w-full py-5 bg-teal-600 text-white rounded-2xl font-black uppercase tracking-[0.2em] text-[10px] shadow-xl shadow-teal-100 hover:bg-teal-700 transition-all active:scale-98 flex items-center justify-center gap-3 animate-pulse hover:animate-none"
                             >
                                 <RotateCcw className="w-4 h-4" />
-                                Practice Again
+                                Practice More Questions
                             </button>
                             <button
                                 onClick={() => router.push(`/university/${uniId}`)}

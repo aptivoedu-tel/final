@@ -10,10 +10,14 @@ export class MongoPracticeService {
         topicId?: number | null
     ): Promise<any[]> {
         try {
+            // First get rules to find the session limit
+            const rules = await this.getPracticeRules(universityId || 0, subjectId);
+            const limit = rules?.mcq_count_per_session || 20;
+
             const params = new URLSearchParams();
             if (subtopicId) params.append('subtopic_id', subtopicId.toString());
             if (topicId) params.append('topic_id', topicId.toString());
-            params.append('limit', '20');
+            params.append('limit', limit.toString());
             params.append('shuffle', 'true');
 
             const response = await fetch(`/api/mongo/mcqs?${params.toString()}`);
@@ -31,11 +35,23 @@ export class MongoPracticeService {
      */
     static async getPracticeRules(universityId: number, subjectId: number): Promise<any> {
         try {
+            // First check for university specific rules
             const res = await fetch(`/api/mongo/admin/universities/rules?university_id=${universityId}&subject_id=${subjectId}`);
-            if (!res.ok) throw new Error('Failed to fetch rules');
-            const data = await res.json();
-            return data.rules || {
-                mcq_count_per_session: 10,
+            if (res.ok) {
+                const data = await res.json();
+                if (data.rules) return data.rules;
+            }
+
+            // Fallback to global setting from system settings
+            const settingsRes = await fetch('/api/mongo/admin/settings');
+            let globalLimit = 20;
+            if (settingsRes.ok) {
+                const settingsData = await settingsRes.json();
+                globalLimit = settingsData.settings?.practice_mcqs_limit || 20;
+            }
+
+            return {
+                mcq_count_per_session: globalLimit,
                 easy_percentage: 40,
                 medium_percentage: 40,
                 hard_percentage: 20,
@@ -43,7 +59,7 @@ export class MongoPracticeService {
             };
         } catch (error) {
             return {
-                mcq_count_per_session: 10,
+                mcq_count_per_session: 20,
                 easy_percentage: 40,
                 medium_percentage: 40,
                 hard_percentage: 20,
