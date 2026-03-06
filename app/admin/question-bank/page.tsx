@@ -235,11 +235,46 @@ export default function SuperAdminQuestionBankPage() {
         }
     };
 
+    const fetchSettings = async () => {
+        try {
+            const res = await fetch('/api/mongo/admin/settings');
+            if (res.ok) {
+                const data = await res.json();
+                if (data.settings?.practice_mcqs_limit) {
+                    setPracticeMcqLimit(data.settings.practice_mcqs_limit);
+                }
+            }
+        } catch (error) {
+            console.error('Error fetching settings:', error);
+        }
+    };
+
+    const handleSavePracticeSettings = async () => {
+        setGlobalLoading(true, 'Synchronizing Global Parameters...');
+        try {
+            const res = await fetch('/api/mongo/admin/settings', {
+                method: 'PATCH',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ practice_mcqs_limit: practiceMcqLimit })
+            });
+
+            if (!res.ok) throw new Error('Failed to update platform settings');
+
+            toast.success('Practice parameters synchronized successfully');
+            setIsSettingsModalOpen(false);
+        } catch (error: any) {
+            toast.error(error.message);
+        } finally {
+            setGlobalLoading(false);
+        }
+    };
+
     useEffect(() => {
         const currentUser = AuthService.getCurrentUser();
         if (currentUser) setUser(currentUser);
         loadHierarchy();
         fetchPassages();
+        fetchSettings();
     }, []);
 
     const loadQuestions = async (item: HierarchyItem) => {
