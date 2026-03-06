@@ -59,6 +59,7 @@ export default function ExcelUploaderPage() {
     const [selectedRows, setSelectedRows] = useState<Set<number>>(new Set());
     const [rejectedIndices, setRejectedIndices] = useState<Set<number>>(new Set());
     const [expandedOptions, setExpandedOptions] = useState<Set<number>>(new Set());
+    const [isCommitting, setIsCommitting] = useState(false);
 
     const { setLoading: setGlobalLoading, isLoading: loading } = useLoading();
     const { isSidebarCollapsed } = useUI();
@@ -393,7 +394,7 @@ export default function ExcelUploaderPage() {
 
     const handleSaveToDatabase = async () => {
         if (!user) return toast.error('Session expired.');
-        if (loading) return;
+        if (loading || isCommitting) return;
         if (selectedRows.size === 0) return toast.error('No questions selected for upload.');
 
         if (stats.unidentified > 0 && autoDetectMode) {
@@ -428,6 +429,7 @@ export default function ExcelUploaderPage() {
 
         if (mcqsToUpload.length === 0) return alert('No valid questions to upload after duplicate filtering.');
 
+        setIsCommitting(true);
         setGlobalLoading(true, 'Committing Verified Data...');
         try {
             const result = await ExcelUploadService.uploadMCQsWithAutoDetect(mcqsToUpload as any, user.id, selectedFile?.name || 'bulk_upload.xlsx');
@@ -439,6 +441,7 @@ export default function ExcelUploaderPage() {
             toast.error('Upload failed: ' + err.message);
         } finally {
             setGlobalLoading(false);
+            setIsCommitting(false);
         }
     };
 
@@ -546,10 +549,15 @@ export default function ExcelUploaderPage() {
                                         </div>
                                         <button
                                             onClick={handleSaveToDatabase}
-                                            disabled={loading}
-                                            className={`w-full py-4 font-black text-[10px] uppercase tracking-widest rounded-2xl transition-all shadow-xl shadow-slate-200 active:scale-95 ${loading ? 'bg-slate-400 cursor-not-allowed' : 'bg-slate-900 text-white hover:bg-indigo-600'}`}
+                                            disabled={loading || isCommitting}
+                                            className={`w-full py-4 font-black text-[10px] uppercase tracking-widest rounded-2xl transition-all shadow-xl shadow-slate-200 active:scale-95 ${loading || isCommitting ? 'bg-slate-400 cursor-not-allowed text-white/50' : 'bg-slate-900 text-white hover:bg-indigo-600'}`}
                                         >
-                                            {loading ? 'Processing...' : 'Commit Changes'}
+                                            {isCommitting ? (
+                                                <span className="flex items-center justify-center gap-2">
+                                                    <RefreshCw className="w-4 h-4 animate-spin" />
+                                                    Finalizing Pipeline...
+                                                </span>
+                                            ) : 'Commit Changes'}
                                         </button>
                                     </div>
                                 )}

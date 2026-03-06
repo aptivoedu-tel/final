@@ -6,7 +6,7 @@ import {
     Layers, Hash, FileText,
     Search, RefreshCw, Target,
     CheckCircle2, HelpCircle,
-    BarChart3, Plus, Filter, Settings, Edit2
+    BarChart3, Plus, Filter, Settings
 } from 'lucide-react';
 import Sidebar from '@/components/layout/Sidebar';
 import Header from '@/components/layout/Header';
@@ -67,10 +67,6 @@ export default function SuperAdminQuestionBankPage() {
         title: '',
         content: ''
     });
-
-    // Hierarchy Edit State
-    const [isEditHierarchyModalOpen, setIsEditHierarchyModalOpen] = useState(false);
-    const [editingHierarchyItem, setEditingHierarchyItem] = useState<{ dbId: number, type: string, title: string } | null>(null);
 
     const convertDriveLink = (url: string) => {
         if (!url) return '';
@@ -180,39 +176,6 @@ export default function SuperAdminQuestionBankPage() {
             setPassageForm({ title: '', content: '' });
         } catch (error: any) {
             toast.error(error.message);
-        }
-    };
-
-    const handleUpdateHierarchyItem = async () => {
-        if (!editingHierarchyItem?.title) {
-            toast.error("Name is required");
-            return;
-        }
-
-        setGlobalLoading(true, 'Updating Master Data...');
-        try {
-            const res = await fetch('/api/mongo/content', {
-                method: 'PATCH',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    id: editingHierarchyItem.dbId,
-                    type: editingHierarchyItem.type,
-                    name: editingHierarchyItem.title
-                })
-            });
-
-            if (!res.ok) {
-                const err = await res.json();
-                throw new Error(err.error || "Update failed");
-            }
-
-            toast.success("Updated successfully");
-            setIsEditHierarchyModalOpen(false);
-            loadHierarchy();
-        } catch (error: any) {
-            toast.error(error.message);
-        } finally {
-            setGlobalLoading(false);
         }
     };
 
@@ -474,20 +437,8 @@ export default function SuperAdminQuestionBankPage() {
                     </div>
 
                     {item.mcqCount !== undefined && (
-                        <div className="flex items-center gap-2">
-                            <button
-                                onClick={(e) => {
-                                    e.stopPropagation();
-                                    setEditingHierarchyItem({ dbId: item.dbId, type: item.type, title: item.title });
-                                    setIsEditHierarchyModalOpen(true);
-                                }}
-                                className="p-1 opacity-0 group-hover:opacity-100 hover:bg-slate-200 rounded transition-all text-slate-400 hover:text-indigo-600"
-                            >
-                                <Edit2 className="w-3 h-3" />
-                            </button>
-                            <div className={`text-[9px] font-black px-1.5 py-0.5 rounded min-w-[20px] text-center shadow-sm ${item.mcqCount > 0 ? 'bg-teal-600 text-white' : 'bg-slate-800 text-slate-500'}`}>
-                                {item.mcqCount}
-                            </div>
+                        <div className={`text-[9px] font-black px-1.5 py-0.5 rounded min-w-[20px] text-center shadow-sm ${item.mcqCount > 0 ? 'bg-teal-600 text-white' : 'bg-slate-800 text-slate-500'}`}>
+                            {item.mcqCount}
                         </div>
                     )}
                 </div>
@@ -998,47 +949,6 @@ export default function SuperAdminQuestionBankPage() {
                                     >
                                         Deploy Passage to Repository
                                     </button>
-                                </div>
-                            </div>
-                        </div>
-                    )}
-                    {/* Hierarchy Edit Modal */}
-                    {isEditHierarchyModalOpen && (
-                        <div className="fixed inset-0 z-[70] flex items-center justify-center bg-slate-900/60 backdrop-blur-sm p-4">
-                            <div className="bg-white rounded-[2rem] shadow-2xl w-full max-w-md overflow-hidden flex flex-col animate-in fade-in zoom-in duration-200">
-                                <div className="p-8 border-b border-gray-100 flex justify-between items-center">
-                                    <div>
-                                        <h3 className="text-xl font-black text-slate-900 uppercase">Edit {editingHierarchyItem?.type}</h3>
-                                        <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Master Data Update</p>
-                                    </div>
-                                    <button onClick={() => setIsEditHierarchyModalOpen(false)} className="p-2 hover:bg-slate-100 rounded-full text-slate-400">
-                                        <X className="w-5 h-5" />
-                                    </button>
-                                </div>
-                                <div className="p-8 space-y-6">
-                                    <div className="space-y-2">
-                                        <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">{editingHierarchyItem?.type} Name</label>
-                                        <input
-                                            value={editingHierarchyItem?.title || ''}
-                                            onChange={e => setEditingHierarchyItem(prev => prev ? { ...prev, title: e.target.value } : null)}
-                                            placeholder="Enter new name..."
-                                            className="w-full px-6 py-4 bg-slate-50 border border-gray-100 rounded-2xl font-bold outline-none focus:ring-2 focus:ring-indigo-600/20"
-                                        />
-                                    </div>
-                                    <div className="flex gap-4">
-                                        <button
-                                            onClick={() => setIsEditHierarchyModalOpen(false)}
-                                            className="flex-1 py-4 bg-slate-100 text-slate-600 rounded-2xl font-black uppercase tracking-widest text-[10px]"
-                                        >
-                                            Cancel
-                                        </button>
-                                        <button
-                                            onClick={handleUpdateHierarchyItem}
-                                            className="flex-1 py-4 bg-indigo-600 text-white rounded-2xl font-black uppercase tracking-widest text-[10px] shadow-lg shadow-indigo-600/20 hover:scale-[1.02] active:scale-[0.98] transition-all"
-                                        >
-                                            Save Changes
-                                        </button>
-                                    </div>
                                 </div>
                             </div>
                         </div>

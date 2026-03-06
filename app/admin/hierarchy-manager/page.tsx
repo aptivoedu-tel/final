@@ -36,13 +36,14 @@ type HierarchyItem = {
 
 // --- DND Helper Components ---
 
-const DraggableItem = ({ item, level, children, onExpand, onDelete, onAddChild }: {
+const DraggableItem = ({ item, level, children, onExpand, onDelete, onAddChild, onEdit }: {
     item: HierarchyItem,
     level: number,
     children?: React.ReactNode,
     onExpand: (id: string) => void,
     onDelete: (item: HierarchyItem) => void,
-    onAddChild: (item: HierarchyItem) => void
+    onAddChild: (item: HierarchyItem) => void,
+    onEdit: (item: HierarchyItem) => void
 }) => {
     const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({
         id: item.id,
@@ -118,6 +119,14 @@ const DraggableItem = ({ item, level, children, onExpand, onDelete, onAddChild }
                         </button>
                     )}
                     <button
+                        onClick={(e) => { e.stopPropagation(); onEdit(item); }}
+                        className="p-2 text-gray-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors"
+                        title="Edit Name"
+                        onPointerDown={(e) => e.stopPropagation()}
+                    >
+                        <Edit2 className="w-4 h-4" />
+                    </button>
+                    <button
                         onClick={(e) => { e.stopPropagation(); onDelete(item); }}
                         className="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
                         onPointerDown={(e) => e.stopPropagation()}
@@ -152,6 +161,10 @@ export default function HierarchyManagerPage() {
     const [addType, setAddType] = useState<'subject' | 'topic' | 'subtopic'>('subject');
     const [inputList, setInputList] = useState<string[]>(['']);
     const [parentId, setParentId] = useState<number | null>(null);
+
+    // Edit Modal State
+    const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+    const [editingItem, setEditingItem] = useState<{ dbId: number, type: string, title: string } | null>(null);
 
     // Sensors
     const sensors = useSensors(
@@ -240,6 +253,41 @@ export default function HierarchyManagerPage() {
         setInputList(['']);
         setParentId(item.dbId);
         setIsAddModalOpen(true);
+    };
+
+    const handleEdit = (item: HierarchyItem) => {
+        setEditingItem({ dbId: item.dbId, type: item.type, title: item.title });
+        setIsEditModalOpen(true);
+    };
+
+    const handleUpdate = async () => {
+        if (!editingItem?.title) return;
+
+        try {
+            setGlobalLoading(true, 'Updating hierarchy meta...');
+            const res = await fetch('/api/mongo/content', {
+                method: 'PATCH',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    id: editingItem.dbId,
+                    type: editingItem.type,
+                    name: editingItem.title
+                })
+            });
+
+            if (!res.ok) {
+                const err = await res.json();
+                throw new Error(err.error || 'Update failed');
+            }
+
+            setIsEditModalOpen(false);
+            loadHierarchy();
+        } catch (e: any) {
+            console.error(e);
+            alert(`Error updating: ${e.message}`);
+        } finally {
+            setGlobalLoading(false);
+        }
     };
 
     const handleSave = async () => {
@@ -409,6 +457,7 @@ export default function HierarchyManagerPage() {
                     onExpand={handleExpandCallback}
                     onDelete={handleDelete}
                     onAddChild={handleAddChild}
+                    onEdit={handleEdit}
                 >
                     {item.children && renderTree(item.children, level + 1)}
                 </DraggableItem>
@@ -581,6 +630,36 @@ export default function HierarchyManagerPage() {
                                     <div className="p-6 bg-gray-50 flex justify-end gap-3">
                                         <button onClick={() => setIsAddModalOpen(false)} className="px-4 py-2 text-slate-600 font-medium hover:bg-gray-200 rounded-lg">Cancel</button>
                                         <button onClick={handleSave} className="px-4 py-2 bg-teal-600 text-white font-bold rounded-lg hover:bg-teal-700">Save</button>
+                                    </div>
+                                </div>
+                            </div>
+                        )}
+                        {/* Edit Modal */}
+                        {isEditModalOpen && (
+                            <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
+                                <div className="bg-white rounded-3xl shadow-xl w-full max-w-md overflow-hidden animate-in fade-in zoom-in duration-200">
+                                    <div className="p-8 border-b border-gray-100 flex justify-between items-center bg-white">
+                                        <div>
+                                            <h3 className="text-xl font-black text-slate-800 uppercase tracking-tight">Edit {editingItem?.type}</h3>
+                                            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Metadata Repository Update</p>
+                                        </div>
+                                        <button onClick={() => setIsEditModalOpen(false)} className="text-slate-400 hover:text-slate-600"><X className="w-5 h-5" /></button>
+                                    </div>
+                                    <div className="p-8 space-y-6">
+                                        <div>
+                                            <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2 ml-1">New Identity Name</label>
+                                            <input
+                                                type="text"
+                                                value={editingItem?.title || ''}
+                                                onChange={(e) => setEditingItem(prev => prev ? { ...prev, title: e.target.value } : null)}
+                                                className="w-full px-6 py-4 rounded-2xl bg-slate-50 border border-gray-100 focus:ring-4 focus:ring-teal-500/5 focus:border-teal-500 outline-none font-bold text-slate-700 transition-all"
+                                                placeholder={`Enter new name`}
+                                            />
+                                        </div>
+                                    </div>
+                                    <div className="p-8 bg-slate-50 border-t border-gray-100 flex justify-end gap-3">
+                                        <button onClick={() => setIsEditModalOpen(false)} className="px-6 py-3 text-slate-600 font-bold hover:bg-slate-200 rounded-xl transition-all">Cancel</button>
+                                        <button onClick={handleUpdate} className="px-8 py-3 bg-slate-900 text-white font-black rounded-xl hover:scale-105 active:scale-95 transition-all shadow-xl shadow-slate-900/20 uppercase text-xs tracking-widest">Update Master Data</button>
                                     </div>
                                 </div>
                             </div>
