@@ -170,10 +170,6 @@ export default function ExcelUploaderPage() {
         setIsAnalyzing(true);
         await loadMissingHierarchy();
 
-        const fileSubjects = new Set<string>();
-        const fileTopics = new Set<string>();
-        const fileSubtopics = new Set<string>();
-
         const mcqRows = data.map((row: any) => {
             const getVal = (patterns: string[]) => {
                 const rowKeys = Object.keys(row);
@@ -181,17 +177,10 @@ export default function ExcelUploaderPage() {
                 return key ? row[key]?.toString().trim() : undefined;
             };
 
-            const s = getVal(['subject']);
-            const t = getVal(['topic']);
-            const st = getVal(['subtopic']);
-            if (s) fileSubjects.add(s);
-            if (t) fileTopics.add(t);
-            if (st) fileSubtopics.add(st);
-
             return {
-                subject: s,
-                topic: t,
-                subtopic: st,
+                subject: getVal(['subject']),
+                topic: getVal(['topic']),
+                subtopic: getVal(['subtopic']),
                 question: getVal(['question', 'text', 'statement']) || '',
                 option_a: getVal(['option a', 'a']) || '',
                 option_b: getVal(['option b', 'b']) || '',
@@ -201,29 +190,61 @@ export default function ExcelUploaderPage() {
             };
         });
 
-        // Map to DB IDs
+        // Map to DB IDs using composite keys for accurate nesting hierarchy
         const newMap = { subjects: {} as any, topics: {} as any, subtopics: {} as any };
-        fileSubjects.forEach(s => {
-            const match = allHierarchy.subjects.find(db => db.name.toLowerCase().trim() === s.toLowerCase());
-            newMap.subjects[s] = match ? match.id : null;
+
+        mcqRows.forEach(row => {
+            const s = row.subject;
+            const t = row.topic;
+            const st = row.subtopic;
+
+            let matchedSubjectId: number | null = null;
+            if (s) {
+                if (newMap.subjects[s] === undefined) {
+                    const matchS = allHierarchy.subjects.find(db => db.name.toLowerCase().trim() === s.toLowerCase());
+                    newMap.subjects[s] = matchS ? matchS.id : null;
+                }
+                matchedSubjectId = newMap.subjects[s];
+            }
+
+            let matchedTopicId: number | null = null;
+            if (t) {
+                const topicKey = s ? `${s}|${t}` : t;
+                if (newMap.topics[topicKey] === undefined) {
+                    const matchT = allHierarchy.topics.find(db =>
+                        db.name.toLowerCase().trim() === t.toLowerCase() &&
+                        (!matchedSubjectId || db.subject_id === matchedSubjectId)
+                    );
+                    newMap.topics[topicKey] = matchT ? matchT.id : null;
+                }
+                matchedTopicId = newMap.topics[topicKey];
+            }
+
+            if (st) {
+                const subtopicKey = t ? `${t}|${st}` : st;
+                if (newMap.subtopics[subtopicKey] === undefined) {
+                    const matchST = allHierarchy.subtopics.find(db =>
+                        db.name.toLowerCase().trim() === st.toLowerCase() &&
+                        (!matchedTopicId || db.topic_id === matchedTopicId)
+                    );
+                    newMap.subtopics[subtopicKey] = matchST ? matchST.id : null;
+                }
+            }
         });
-        fileTopics.forEach(t => {
-            const match = allHierarchy.topics.find(db => db.name.toLowerCase().trim() === t.toLowerCase());
-            newMap.topics[t] = match ? match.id : null;
-        });
-        fileSubtopics.forEach(st => {
-            const match = allHierarchy.subtopics.find(db => db.name.toLowerCase().trim() === st.toLowerCase());
-            newMap.subtopics[st] = match ? match.id : null;
-        });
+
         setUnresolvedMappings(newMap);
 
         // Prepare rows for duplicate validation with resolved IDs
-        const rowsForValidation = mcqRows.map(row => ({
-            ...row,
-            subjectId: row.subject ? newMap.subjects[row.subject] : null,
-            topicId: row.topic ? newMap.topics[row.topic] : null,
-            subtopicId: row.subtopic ? newMap.subtopics[row.subtopic] : null
-        }));
+        const rowsForValidation = mcqRows.map(row => {
+            const topicKey = row.subject ? `${row.subject}|${row.topic}` : row.topic;
+            const subtopicKey = row.topic ? `${row.topic}|${row.subtopic}` : row.subtopic;
+            return {
+                ...row,
+                subjectId: row.subject ? newMap.subjects[row.subject] : null,
+                topicId: row.topic ? newMap.topics[topicKey] : null,
+                subtopicId: row.subtopic ? newMap.subtopics[subtopicKey] : null
+            };
+        });
 
         // Run Pre-validation Duplicate Scan
         const dupResult = await ExcelUploadService.validateDuplicates(rowsForValidation as any);
@@ -290,8 +311,8 @@ export default function ExcelUploaderPage() {
 
                 const override = manualResolutions[idx] || {};
                 const resolvedSubjId = override.subjId || (excelSubj ? unresolvedMappings.subjects[excelSubj] : null);
-                const resolvedTopicId = override.topicId || (excelTopic ? unresolvedMappings.topics[excelTopic] : null);
-                const resolvedSubtopicId = override.subtopicId || (excelSubtopic ? unresolvedMappings.subtopics[excelSubtopic] : null);
+                const resolvedTopicId = override.topicId || (excelTopic ? unresolvedMappings.topics[excelSubj ? `${excelSubj}|${excelTopic}` : excelTopic] : null);
+                const resolvedSubtopicId = override.subtopicId || (excelSubtopic ? unresolvedMappings.subtopics[excelTopic ? `${excelTopic}|${excelSubtopic}` : excelSubtopic] : null);
 
                 const topicHasSubtopics = resolvedTopicId ? allHierarchy.subtopics.some(st => st.topic_id === resolvedTopicId) : false;
                 const subtopicValid = !topicHasSubtopics || resolvedSubtopicId !== null;
