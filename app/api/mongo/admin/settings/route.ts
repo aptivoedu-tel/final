@@ -1,10 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
+import { revalidatePath } from 'next/cache';
 import { authOptions } from '@/app/api/auth/[...nextauth]/route';
 import connectToDatabase from '@/lib/mongodb/connection';
 import { SystemSettings } from '@/lib/mongodb/models';
 
 export const dynamic = 'force-dynamic';
+export const revalidate = 0;
+export const fetchCache = 'force-no-store';
 
 export async function GET() {
     try {
@@ -39,6 +42,8 @@ export async function PATCH(req: NextRequest) {
             },
             { new: true, upsert: true }
         );
+
+        revalidatePath('/', 'layout');
 
         return NextResponse.json({ settings: updatedSettings });
     } catch (error: any) {
