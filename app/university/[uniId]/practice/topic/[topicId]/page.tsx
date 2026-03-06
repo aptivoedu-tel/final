@@ -406,7 +406,10 @@ export default function TopicPracticeSessionPage() {
                                         </div>
                                         <div className="flex-1">
                                             <h4 className="text-xs font-black text-teal-600 uppercase tracking-widest mb-2">Explanation</h4>
-                                            <p className="text-sm text-slate-700 leading-relaxed">{currentMCQ.explanation}</p>
+                                            <MarkdownRenderer
+                                                content={currentMCQ.explanation}
+                                                className="text-sm text-slate-700"
+                                            />
                                             {currentMCQ.explanation_url && (
                                                 <div className="mt-4 rounded-xl overflow-hidden border border-slate-200">
                                                     <img src={currentMCQ.explanation_url} alt="Explanation" className="w-full h-auto" />

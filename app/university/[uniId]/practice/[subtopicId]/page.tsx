@@ -357,10 +357,10 @@ export default function PracticeSessionPage() {
                                             Correct Answer: {currentMCQ.correct_option}
                                         </div>
                                     </div>
-                                    <p className={`text-sm ${isCorrect[currentMCQ.id] ? 'text-emerald-800' : 'text-rose-800'
-                                        }`}>
-                                        {currentMCQ.explanation || "No explanation provided."}
-                                    </p>
+                                    <MarkdownRenderer
+                                        content={currentMCQ.explanation || 'No explanation provided.'}
+                                        className={`text-sm ${isCorrect[currentMCQ.id] ? 'text-emerald-800' : 'text-rose-800'}`}
+                                    />
                                 </div>
                             )}
 
