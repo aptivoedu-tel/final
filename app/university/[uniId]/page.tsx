@@ -369,7 +369,14 @@ export default function UniversityDetailPage() {
         }
     };
 
-    if (loading) return null;
+    if (loading) return (
+        <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+            <div className="flex flex-col items-center gap-4 text-center">
+                <div className="w-14 h-14 border-4 border-teal-600 border-t-transparent rounded-full animate-spin" />
+                <p className="text-sm font-black text-teal-600 uppercase tracking-[0.2em] animate-pulse">Loading University Content...</p>
+            </div>
+        </div>
+    );
 
     return (
         <div className="min-h-screen bg-gray-50 flex font-sans">

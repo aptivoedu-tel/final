@@ -28,9 +28,21 @@ export async function GET(req: NextRequest) {
         }
 
         const filter: any = { is_active: true };
-        if (subtopic_id) filter.subtopic_id = parseInt(subtopic_id);
-        else if (topic_id) filter.topic_id = parseInt(topic_id);
-        else if (subject_id) {
+        if (subtopic_id) {
+            filter.subtopic_id = parseInt(subtopic_id);
+        } else if (topic_id) {
+            // Include MCQs directly on topic AND MCQs on its subtopics
+            const childSubtopics = await Subtopic.find({ topic_id: parseInt(topic_id) }).select('id');
+            const childSubtopicIds = childSubtopics.map(st => st.id);
+            if (childSubtopicIds.length > 0) {
+                filter.$or = [
+                    { topic_id: parseInt(topic_id) },
+                    { subtopic_id: { $in: childSubtopicIds } },
+                ];
+            } else {
+                filter.topic_id = parseInt(topic_id);
+            }
+        } else if (subject_id) {
             // Find all subtopics under this subject
             const subjectTopics = await Topic.find({ subject_id: parseInt(subject_id) }).select('id');
             const topicIds = subjectTopics.map(t => t.id);
