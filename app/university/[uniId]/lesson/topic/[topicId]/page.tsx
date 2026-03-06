@@ -62,10 +62,9 @@ export default function TopicLessonReaderPage() {
             }
 
             // 2. Fetch MCQ count (including subtopics)
-            // The MCQ API and model handles topic_id and subtopic_id
-            const mcqRes = await fetch(`/api/mongo/mcqs?topic_id=${topicId}&limit=1`);
+            const mcqRes = await fetch(`/api/mongo/mcqs?topic_id=${topicId}`);
             const mcqData = await mcqRes.json();
-            setMcqCount(mcqData.count || 0);
+            setMcqCount(mcqData.mcqs?.length || 0);
 
         } catch (e: any) {
             console.error('Error loading lesson:', e);
