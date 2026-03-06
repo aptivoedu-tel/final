@@ -203,15 +203,15 @@ export default function ExcelUploaderPage() {
         // Map to DB IDs
         const newMap = { subjects: {} as any, topics: {} as any, subtopics: {} as any };
         fileSubjects.forEach(s => {
-            const match = allHierarchy.subjects.find(db => db.name.toLowerCase() === s.toLowerCase());
+            const match = allHierarchy.subjects.find(db => db.name.toLowerCase().trim() === s.toLowerCase());
             newMap.subjects[s] = match ? match.id : null;
         });
         fileTopics.forEach(t => {
-            const match = allHierarchy.topics.find(db => db.name.toLowerCase() === t.toLowerCase());
+            const match = allHierarchy.topics.find(db => db.name.toLowerCase().trim() === t.toLowerCase());
             newMap.topics[t] = match ? match.id : null;
         });
         fileSubtopics.forEach(st => {
-            const match = allHierarchy.subtopics.find(db => db.name.toLowerCase() === st.toLowerCase());
+            const match = allHierarchy.subtopics.find(db => db.name.toLowerCase().trim() === st.toLowerCase());
             newMap.subtopics[st] = match ? match.id : null;
         });
         setUnresolvedMappings(newMap);
@@ -231,8 +231,11 @@ export default function ExcelUploaderPage() {
         // Identify which items need resolution
         const unID = new Set<number>();
         rowsForValidation.forEach((row, idx) => {
-            if (!row.subjectId || !row.topicId) unID.add(idx);
+            const topicHasSubtopics = row.topicId ? allHierarchy.subtopics.some(st => st.topic_id === row.topicId) : false;
+            const subtopicValid = !topicHasSubtopics || row.subtopicId !== null;
+            if (!row.subjectId || !row.topicId || !subtopicValid) unID.add(idx);
         });
+        setUnidentifiedIndices(unID);
         // Initialize selection (select all by default except duplicates)
         const initialSelection = new Set<number>();
         rowsForValidation.forEach((row, idx) => {
@@ -289,10 +292,12 @@ export default function ExcelUploaderPage() {
                 const resolvedTopicId = override.topicId || (excelTopic ? unresolvedMappings.topics[excelTopic] : null);
                 const resolvedSubtopicId = override.subtopicId || (excelSubtopic ? unresolvedMappings.subtopics[excelSubtopic] : null);
 
+                const topicHasSubtopics = resolvedTopicId ? allHierarchy.subtopics.some(st => st.topic_id === resolvedTopicId) : false;
+                const subtopicValid = !topicHasSubtopics || resolvedSubtopicId !== null;
+
                 const validation = ExcelUploadService.validateMCQRow(row);
-                // Subtopic being unresolved is NOT a hierarchy invalidation. 
-                // "If the subtopic does not exist, keep the question under the main topic."
-                const hierarchyValid = !autoDetectMode || (resolvedSubjId !== null && resolvedTopicId !== null);
+                // "If the topic has subtopic the mcqs must goes in that respective subtopics not in main topic"
+                const hierarchyValid = !autoDetectMode || (resolvedSubjId !== null && resolvedTopicId !== null && subtopicValid);
 
                 // Check duplicate status
                 const dupInfo = duplicateAnalysis?.items?.find((item: any) => item.index === idx);
