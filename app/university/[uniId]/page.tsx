@@ -77,6 +77,7 @@ export default function UniversityDetailPage() {
     const [progressMap, setProgressMap] = useState<Record<number, { isRead: boolean; isMastered: boolean }>>({});
     const [selectedSubjectId, setSelectedSubjectId] = useState<number | null>(null);
     const [moduleSearch, setModuleSearch] = useState('');
+    const [contentLoading, setContentLoading] = useState(true);
 
     useEffect(() => {
         if (isNaN(uniId)) {
@@ -148,60 +149,65 @@ export default function UniversityDetailPage() {
     }
 
     async function loadContent(uniId: number, institutionId?: number | null) {
-        // Use our new content-access API which joins data
-        const res = await fetch(`/api/mongo/universities/content-access?university_id=${uniId}&institution_id=${institutionId || 'null'}`);
-        const data = await res.json();
-        const access = data.mappings || [];
+        setContentLoading(true);
+        try {
+            // Use our new content-access API which joins data
+            const res = await fetch(`/api/mongo/universities/content-access?university_id=${uniId}&institution_id=${institutionId || 'null'}`);
+            const data = await res.json();
+            const access = data.mappings || [];
 
-        // Fetch MCQ counts
-        // For performance, we could have an API that returns counts, but for now we fetch mappings
-        const mcqSubtopicMap: Record<number, number> = {};
-        const mcqTopicMap: Record<number, number> = {};
+            // Fetch MCQ counts
+            // For performance, we could have an API that returns counts, but for now we fetch mappings
+            const mcqSubtopicMap: Record<number, number> = {};
+            const mcqTopicMap: Record<number, number> = {};
 
-        // Fetch mcqs to get counts (removed limit to ensure all subjects get their counts)
-        const mcqRes = await fetch(`/api/mongo/mcqs`);
-        const mcqData = await mcqRes.json();
-        mcqData.mcqs?.forEach((m: any) => {
-            if (m.subtopic_id) {
-                mcqSubtopicMap[m.subtopic_id] = (mcqSubtopicMap[m.subtopic_id] || 0) + 1;
-            }
-            if (m.topic_id) {
-                mcqTopicMap[m.topic_id] = (mcqTopicMap[m.topic_id] || 0) + 1;
-            }
-        });
-
-        const subjectMap = new Map<number, ContentMap>();
-        access.forEach((row: any) => {
-            if (!row.subject) return;
-            if (!subjectMap.has(row.subject.id)) {
-                subjectMap.set(row.subject.id, { subject: row.subject, topics: [] });
-            }
-            const currentSubject = subjectMap.get(row.subject.id)!;
-
-            if (row.topic) {
-                let topic = (currentSubject.topics as any[]).find((t: any) => t.id === row.topic.id);
-                if (!topic) {
-                    const newTopic = {
-                        ...row.topic,
-                        subtopics: [],
-                        mcqCount: mcqTopicMap[row.topic.id] || 0
-                    };
-                    currentSubject.topics.push(newTopic);
-                    topic = newTopic;
+            // Fetch mcqs to get counts (removed limit to ensure all subjects get their counts)
+            const mcqRes = await fetch(`/api/mongo/mcqs`);
+            const mcqData = await mcqRes.json();
+            mcqData.mcqs?.forEach((m: any) => {
+                if (m.subtopic_id) {
+                    mcqSubtopicMap[m.subtopic_id] = (mcqSubtopicMap[m.subtopic_id] || 0) + 1;
                 }
+                if (m.topic_id) {
+                    mcqTopicMap[m.topic_id] = (mcqTopicMap[m.topic_id] || 0) + 1;
+                }
+            });
 
-                if (row.subtopic && topic) {
-                    if (!(topic.subtopics as any[]).find((st: any) => st.id === row.subtopic.id)) {
-                        const subtopicWithCount = {
-                            ...row.subtopic,
-                            mcqCount: mcqSubtopicMap[row.subtopic.id] || 0
+            const subjectMap = new Map<number, ContentMap>();
+            access.forEach((row: any) => {
+                if (!row.subject) return;
+                if (!subjectMap.has(row.subject.id)) {
+                    subjectMap.set(row.subject.id, { subject: row.subject, topics: [] });
+                }
+                const currentSubject = subjectMap.get(row.subject.id)!;
+
+                if (row.topic) {
+                    let topic = (currentSubject.topics as any[]).find((t: any) => t.id === row.topic.id);
+                    if (!topic) {
+                        const newTopic = {
+                            ...row.topic,
+                            subtopics: [],
+                            mcqCount: mcqTopicMap[row.topic.id] || 0
                         };
-                        topic.subtopics.push(subtopicWithCount);
+                        currentSubject.topics.push(newTopic);
+                        topic = newTopic;
+                    }
+
+                    if (row.subtopic && topic) {
+                        if (!(topic.subtopics as any[]).find((st: any) => st.id === row.subtopic.id)) {
+                            const subtopicWithCount = {
+                                ...row.subtopic,
+                                mcqCount: mcqSubtopicMap[row.subtopic.id] || 0
+                            };
+                            topic.subtopics.push(subtopicWithCount);
+                        }
                     }
                 }
-            }
-        });
-        setContent(Array.from(subjectMap.values()));
+            });
+            setContent(Array.from(subjectMap.values()));
+        } finally {
+            setContentLoading(false);
+        }
     }
 
     async function loadStudentProgress(userId: string) {
@@ -723,6 +729,24 @@ export default function UniversityDetailPage() {
                                                                 );
                                                             })}
                                                         </div>
+                                                    </div>
+                                                ) : contentLoading ? (
+                                                    <div className="py-10 px-10 space-y-4 animate-pulse">
+                                                        {[...Array(5)].map((_, i) => (
+                                                            <div key={i} className="grid grid-cols-12 gap-4 items-center px-4 py-5 border-b border-slate-50">
+                                                                <div className="col-span-3">
+                                                                    <div className="h-7 w-24 bg-slate-100 rounded-xl" />
+                                                                </div>
+                                                                <div className="col-span-5">
+                                                                    <div className="h-4 w-40 bg-slate-100 rounded-lg mb-2" />
+                                                                    <div className="h-3 w-24 bg-slate-50 rounded-lg" />
+                                                                </div>
+                                                                <div className="col-span-4 flex justify-end gap-3">
+                                                                    <div className="h-9 w-16 bg-slate-100 rounded-xl" />
+                                                                    <div className="h-9 w-24 bg-teal-100 rounded-xl" />
+                                                                </div>
+                                                            </div>
+                                                        ))}
                                                     </div>
                                                 ) : (
                                                     <div className="py-20 text-center">
