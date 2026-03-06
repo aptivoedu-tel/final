@@ -23,5 +23,6 @@ export { default as University } from './University';
 export { default as UniversityExam } from './UniversityExam';
 export { default as Upload } from './Upload';
 export { default as User } from './User';
+export { default as SystemSettings } from './SystemSettings';
 export { default as SubtopicProgress } from './SubtopicProgress';
 export { default as TopicProgress } from './TopicProgress';

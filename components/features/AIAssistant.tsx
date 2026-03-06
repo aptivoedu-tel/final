@@ -54,6 +54,7 @@ export const AIAssistant: React.FC = () => {
     const pathname = usePathname();
     const { status } = useSession();
     const [isOpen, setIsOpen] = useState(false);
+    const [isGlobalActive, setIsGlobalActive] = useState<boolean | null>(null);
     const [input, setInput] = useState('');
     const [messages, setMessages] = useState<Message[]>([
         {
@@ -71,6 +72,27 @@ export const AIAssistant: React.FC = () => {
 
     // Hide AI Assistant during exams or specific restricted pages
     const isRestrictedPage = pathname === '/' || pathname === '/login' || pathname === '/register' || pathname === '/forgot-password' || pathname === '/get-started' || pathname?.includes('/exam/');
+
+    // Fetch global AI active status
+    useEffect(() => {
+        const checkGlobalStatus = async () => {
+            try {
+                const res = await fetch(`/api/mongo/admin/settings?t=${Date.now()}`, {
+                    cache: 'no-store'
+                });
+                if (res.ok) {
+                    const data = await res.json();
+                    setIsGlobalActive(data.settings?.ai_chatbot_active ?? true);
+                } else {
+                    setIsGlobalActive(true);
+                }
+            } catch (e) {
+                console.error('AI global status fetch failed:', e);
+                setIsGlobalActive(true);
+            }
+        };
+        checkGlobalStatus();
+    }, []);
 
     // Log warning if token is missing (for debugging)
     useEffect(() => {
@@ -154,7 +176,7 @@ export const AIAssistant: React.FC = () => {
         };
     }, [isResizing]);
 
-    if (status !== 'authenticated' || isRestrictedPage) return null;
+    if (isGlobalActive === null || status !== 'authenticated' || isRestrictedPage || isGlobalActive === false) return null;
 
     const handleSend = async (text: string = input) => {
         if (!text.trim() || isTyping) return;

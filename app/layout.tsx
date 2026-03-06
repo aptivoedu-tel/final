@@ -16,6 +16,7 @@ import { LoadingProvider } from "@/lib/context/LoadingContext";
 import { UIProvider } from "@/lib/context/UIContext";
 import { AuthProvider } from "@/components/providers/AuthProvider";
 import AIAssistant from "@/components/features/AIAssistant";
+import MaintenanceGuard from "@/components/guards/MaintenanceGuard";
 import "./ai-assistant.css";
 
 export default function RootLayout({
@@ -29,8 +30,10 @@ export default function RootLayout({
         <AuthProvider>
           <LoadingProvider>
             <UIProvider>
-              {children}
-              <AIAssistant />
+              <MaintenanceGuard>
+                {children}
+                <AIAssistant />
+              </MaintenanceGuard>
             </UIProvider>
           </LoadingProvider>
         </AuthProvider>

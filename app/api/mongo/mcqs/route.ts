@@ -42,8 +42,34 @@ export async function GET(req: NextRequest) {
             ];
         }
 
-        const mcqs = await MCQ.find(filter).sort({ created_at: -1 });
-        return NextResponse.json({ mcqs });
+        const rawMcqs = await MCQ.find(filter).sort({ created_at: -1 });
+
+        // Group by passage_id to keep passage questions strictly together
+        const groupedMcqs: any[] = [];
+        const passageMap = new Map<number, any[]>();
+
+        rawMcqs.forEach(mcq => {
+            if (mcq.passage_id) {
+                if (!passageMap.has(mcq.passage_id)) {
+                    passageMap.set(mcq.passage_id, []);
+                }
+                passageMap.get(mcq.passage_id)!.push(mcq);
+            }
+        });
+
+        const seenPassages = new Set<number>();
+        rawMcqs.forEach(mcq => {
+            if (mcq.passage_id) {
+                if (!seenPassages.has(mcq.passage_id)) {
+                    seenPassages.add(mcq.passage_id);
+                    groupedMcqs.push(...passageMap.get(mcq.passage_id)!);
+                }
+            } else {
+                groupedMcqs.push(mcq);
+            }
+        });
+
+        return NextResponse.json({ mcqs: groupedMcqs });
     } catch (error: any) {
         console.error('MCQs GET error:', error);
         return NextResponse.json({ error: error.message }, { status: 500 });

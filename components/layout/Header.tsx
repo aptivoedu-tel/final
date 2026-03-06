@@ -234,12 +234,35 @@ const Header: React.FC<HeaderProps> = ({ userName, userEmail, userAvatar, avatar
         });
     };
 
+    const [isMaintenanceActive, setIsMaintenanceActive] = useState(false);
+
+    useEffect(() => {
+        const checkMaintenance = async () => {
+            try {
+                const res = await fetch(`/api/mongo/admin/settings?t=${Date.now()}`, { cache: 'no-store' });
+                if (res.ok) {
+                    const data = await res.json();
+                    setIsMaintenanceActive(!!data.settings?.maintenance_mode);
+                }
+            } catch (e) { console.error(e); }
+        };
+        checkMaintenance();
+        // Check every minute
+        const interval = setInterval(checkMaintenance, 60000);
+        return () => clearInterval(interval);
+    }, []);
+
     return (
         <header className={`fixed top-4 right-4 h-16 lg:h-14 rounded-2xl border z-40 transition-all duration-300 shadow-xl
             bg-white/95 backdrop-blur-md border-slate-200/80
             ${isSidebarCollapsed ? 'lg:left-24 left-4' : 'lg:left-72 left-4'}
             ${isSidebarOpen ? 'max-lg:opacity-0 max-lg:pointer-events-none' : 'max-lg:opacity-100'}
         `}>
+            {isMaintenanceActive && userRole === 'super_admin' && (
+                <div className="absolute -top-3 left-1/2 -translate-x-1/2 px-4 py-1 bg-rose-500 text-white text-[9px] font-black uppercase tracking-[0.2em] rounded-full shadow-lg z-50 animate-bounce">
+                    Maintenance Mode Active
+                </div>
+            )}
             <div className="h-full px-4 lg:px-5 flex items-center justify-between gap-4">
                 <button
                     onClick={toggleSidebar}

@@ -6,7 +6,8 @@ import {
     Layers, Hash, FileText,
     Search, RefreshCw, Target,
     CheckCircle2, HelpCircle,
-    BarChart3, Plus, Filter, Settings, ArrowRightLeft
+    BarChart3, Plus, Filter, Settings, ArrowRightLeft,
+    Edit2, Pencil
 } from 'lucide-react';
 import Sidebar from '@/components/layout/Sidebar';
 import Header from '@/components/layout/Header';
@@ -68,6 +69,27 @@ export default function SuperAdminQuestionBankPage() {
         content: ''
     });
 
+    const createDefaultBlockQuestion = () => ({
+        question: '',
+        difficulty: 'medium',
+        option_a: '',
+        option_b: '',
+        option_c: '',
+        option_d: '',
+        correct_option: 'A',
+        explanation: '',
+        question_image_url: '',
+        question_image_type: 'direct',
+        explanation_url: '',
+        explanation_image_type: 'direct',
+    });
+
+    const [passageBlockForm, setPassageBlockForm] = useState({
+        title: '',
+        content: '',
+        questions: [createDefaultBlockQuestion()]
+    });
+
     // Transfer State
     const [isTransferModalOpen, setIsTransferModalOpen] = useState(false);
     const [transferTarget, setTransferTarget] = useState({
@@ -80,6 +102,11 @@ export default function SuperAdminQuestionBankPage() {
     const [subtopicsList, setSubtopicsList] = useState<any[]>([]);
     const [isBulkTransfer, setIsBulkTransfer] = useState(false);
     const [transferringMcqId, setTransferringMcqId] = useState<number | null>(null);
+
+    // Rename State
+    const [isRenameModalOpen, setIsRenameModalOpen] = useState(false);
+    const [editingHierarchyItem, setEditingHierarchyItem] = useState<HierarchyItem | null>(null);
+    const [renameValue, setRenameValue] = useState('');
 
     const convertDriveLink = (url: string) => {
         if (!url) return '';
@@ -276,6 +303,67 @@ export default function SuperAdminQuestionBankPage() {
     };
 
     const handleSaveMcq = async () => {
+        if (mcqForm.question_type === 'passage' && !editingMcq) {
+            if (!passageBlockForm.content) {
+                toast.error("Passage content is required");
+                return;
+            }
+            if (passageBlockForm.questions.length === 0) {
+                toast.error("Add at least one question to the passage");
+                return;
+            }
+
+            try {
+                // 1. Create Passage
+                const passageRes = await fetch('/api/mongo/passages', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        title: passageBlockForm.title,
+                        content: passageBlockForm.content
+                    })
+                });
+
+                if (!passageRes.ok) throw new Error('Failed to create passage');
+                const passageData = await passageRes.json();
+                const newPassageId = passageData.passage.id;
+
+                // 2. Create MCQs
+                const mcqPromises = passageBlockForm.questions.map(q => {
+                    const payload = {
+                        ...q,
+                        question_type: 'passage',
+                        passage_id: newPassageId,
+                        question_image_url: q.question_image_type === 'drive' ? convertDriveLink(q.question_image_url) : q.question_image_url,
+                        explanation_url: q.explanation_image_type === 'drive' ? convertDriveLink(q.explanation_url) : q.explanation_url,
+                        subtopic_id: selectedItem?.type === 'subtopic' ? selectedItem.dbId : null,
+                        topic_id: selectedItem?.type === 'topic' ? selectedItem.dbId : null,
+                        is_active: true
+                    };
+                    return fetch('/api/mongo/mcqs', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(payload)
+                    });
+                });
+
+                await Promise.all(mcqPromises);
+
+                toast.success("Passage and block created successfully");
+                setIsMcqModalOpen(false);
+                setPassages([passageData.passage, ...passages]);
+                if (selectedItem) loadQuestions(selectedItem);
+                loadHierarchy(); // Refresh counts
+
+                // Reset form
+                setPassageBlockForm({ title: '', content: '', questions: [createDefaultBlockQuestion()] });
+            } catch (err: any) {
+                console.error("Save Passage Block error:", err);
+                toast.error(err.message || "Failed to save passage block");
+            }
+            return;
+        }
+
         if (!mcqForm.question || !mcqForm.option_a || !mcqForm.option_b) {
             toast.error("Please fill in the question and at least two options");
             return;
@@ -415,6 +503,39 @@ export default function SuperAdminQuestionBankPage() {
         }
     };
 
+    const handleSaveHierarchyName = async () => {
+        if (!renameValue.trim() || !editingHierarchyItem) return;
+
+        setGlobalLoading(true, 'Updating Master Registry...');
+        try {
+            const res = await fetch('/api/mongo/content', {
+                method: 'PATCH',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    id: editingHierarchyItem.dbId,
+                    type: editingHierarchyItem.type,
+                    name: renameValue.trim()
+                })
+            });
+
+            if (res.ok) {
+                toast.success('Identity updated successfully');
+                setIsRenameModalOpen(false);
+                loadHierarchy(); // Refresh the sidebar
+                if (selectedItem?.id === editingHierarchyItem.id) {
+                    setSelectedItem({ ...selectedItem, title: renameValue.trim() });
+                }
+            } else {
+                const err = await res.json();
+                throw new Error(err.error || 'Update failed');
+            }
+        } catch (error: any) {
+            toast.error(error.message);
+        } finally {
+            setGlobalLoading(false);
+        }
+    };
+
 
     const toggleExpand = (id: string, items: HierarchyItem[]): HierarchyItem[] => {
         return items.map(item => {
@@ -476,10 +597,22 @@ export default function SuperAdminQuestionBankPage() {
                     </div>
 
                     {/* Content */}
-                    <div className="flex-1 min-w-0">
+                    <div className="flex-1 min-w-0 flex items-center justify-between group/title">
                         <div className={`text-xs font-bold truncate ${selectedItem?.id === item.id ? 'text-slate-900' : 'text-slate-500'}`}>
                             {item.title}
                         </div>
+                        <button
+                            onClick={(e) => {
+                                e.stopPropagation();
+                                setEditingHierarchyItem(item);
+                                setRenameValue(item.title);
+                                setIsRenameModalOpen(true);
+                            }}
+                            className="opacity-0 group-hover/title:opacity-100 p-1 hover:bg-white rounded transition-all text-indigo-600 ml-2"
+                            title="Rename"
+                        >
+                            <Pencil className="w-2.5 h-2.5" />
+                        </button>
                     </div>
 
                     {item.mcqCount !== undefined && (
@@ -615,113 +748,131 @@ export default function SuperAdminQuestionBankPage() {
                                     </div>
                                     <div className="flex-1 p-6 space-y-6 bg-slate-50/50 custom-scrollbar">
                                         {questionsLoading ? null : questions.length > 0 ? (
-                                            questions.map((q, idx) => (
-                                                <div key={q.id} className={`bg-white p-6 rounded-xl border transition-all group relative overflow-hidden ${selectedQuestionIds.includes(q.id) ? 'border-teal-500 ring-1 ring-teal-500 shadow-lg shadow-teal-500/5' : 'border-gray-100 shadow-sm hover:shadow-xl hover:shadow-teal-500/5'}`}>
-                                                    {/* Selection Checkbox */}
-                                                    <div className="absolute top-4 left-4 z-10">
-                                                        <input
-                                                            type="checkbox"
-                                                            checked={selectedQuestionIds.includes(q.id)}
-                                                            onChange={() => handleSelectQuestion(q.id)}
-                                                            className="w-5 h-5 rounded border-gray-300 text-teal-600 focus:ring-teal-500 cursor-pointer"
-                                                        />
-                                                    </div>
+                                            questions.map((q, idx) => {
+                                                const showPassageHeader = q.passage_id && (idx === 0 || questions[idx - 1].passage_id !== q.passage_id);
+                                                const passage = showPassageHeader ? passages.find(p => p.id === q.passage_id) : null;
 
-                                                    <div className="pl-10">
-                                                        <div className="absolute top-0 right-0 p-4 opacity-0 group-hover:opacity-100 transition-opacity">
-                                                            <div className="flex gap-2">
-                                                                <button
-                                                                    onClick={() => {
-                                                                        setTransferringMcqId(q.id);
-                                                                        setIsBulkTransfer(false);
-                                                                        setIsTransferModalOpen(true);
-                                                                    }}
-                                                                    className="text-slate-400 hover:text-indigo-600 p-1 bg-slate-50 rounded-lg border border-gray-100 transition-colors"
-                                                                    title="Transfer Question"
-                                                                >
-                                                                    <ArrowRightLeft className="w-3.5 h-3.5" />
-                                                                </button>
-                                                                <button
-                                                                    onClick={() => handleOpenEditMcq(q)}
-                                                                    className="text-slate-400 hover:text-teal-600 px-3 py-1 text-[10px] font-black uppercase tracking-widest bg-slate-50 rounded-lg border border-gray-100 transition-colors"
-                                                                >
-                                                                    Edit Entry
-                                                                </button>
-                                                                <button
-                                                                    onClick={() => handleDeleteMcq(q.id)}
-                                                                    className="text-slate-400 hover:text-rose-600 p-1 bg-slate-50 rounded-lg border border-gray-100 transition-colors"
-                                                                    title="Delete Question"
-                                                                >
-                                                                    <Trash2 className="w-3.5 h-3.5" />
-                                                                </button>
-                                                            </div>
-                                                        </div>
-
-                                                        <div className="flex justify-between items-start mb-4">
-                                                            <div className="flex items-center gap-3">
-                                                                <span className="w-9 h-9 rounded-xl bg-slate-900 text-white flex items-center justify-center font-black text-sm shadow-lg shadow-slate-900/10">
-                                                                    {idx + 1}
-                                                                </span>
-                                                                <span className={`px-2.5 py-1 rounded-lg text-[9px] font-black uppercase tracking-[0.1em] ${q.difficulty === 'easy' ? 'bg-emerald-100 text-emerald-700' :
-                                                                    q.difficulty === 'medium' ? 'bg-amber-100 text-amber-700' :
-                                                                        'bg-rose-100 text-rose-700'
-                                                                    }`}>
-                                                                    {q.difficulty}
-                                                                </span>
-                                                                <span className="px-2.5 py-1 bg-teal-50 text-teal-600 rounded-lg text-[9px] font-black uppercase tracking-[0.1em]">
-                                                                    {q.question_type?.replace('_', ' ') || 'MCQ Single'}
-                                                                </span>
-                                                            </div>
-                                                            <div className="flex items-center gap-6 pr-12">
-                                                                <div className="flex flex-col items-end">
-                                                                    <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Global Attempts</span>
-                                                                    <span className="text-sm font-black text-slate-900">{q.times_attempted || 0}</span>
-                                                                </div>
-                                                                <div className="flex flex-col items-end">
-                                                                    <span className="text-[10px] font-black text-emerald-500 uppercase tracking-widest">Platform Accuracy</span>
-                                                                    <span className="text-sm font-black text-emerald-600">{((q.times_correct || 0) / (q.times_attempted || 1) * 100).toFixed(1)}%</span>
-                                                                </div>
-                                                            </div>
-                                                        </div>
-
-                                                        <div className="text-slate-800 text-lg font-black mb-8 leading-tight">
-                                                            <MarkdownRenderer content={q.question} />
-                                                        </div>
-
-                                                        <div className="grid grid-cols-2 gap-4 mb-8">
-                                                            {['A', 'B', 'C', 'D'].map((opt) => (
-                                                                <div
-                                                                    key={opt}
-                                                                    className={`px-5 py-4 rounded-2xl border-2 transition-all flex items-center gap-4 ${q.correct_option === opt
-                                                                        ? 'border-emerald-500 bg-emerald-50/50 text-emerald-900 shadow-sm'
-                                                                        : 'border-slate-100 bg-slate-50/50 text-slate-500'
-                                                                        }`}
-                                                                >
-                                                                    <span className={`w-7 h-7 rounded-lg flex items-center justify-center text-xs font-black ${q.correct_option === opt ? 'bg-emerald-500 text-white shadow-lg shadow-emerald-500/20' : 'bg-slate-200 text-slate-500'
-                                                                        }`}>
-                                                                        {opt}
-                                                                    </span>
-                                                                    <div className="text-sm font-bold">
-                                                                        <MarkdownRenderer content={q[`option_${opt.toLowerCase()}`]} />
-                                                                    </div>
-                                                                </div>
-                                                            ))}
-                                                        </div>
-
-                                                        {q.explanation && (
-                                                            <div className="p-5 bg-teal-50/30 rounded-2xl border border-teal-50">
-                                                                <div className="flex items-center gap-2 text-teal-700 text-[10px] font-black uppercase tracking-widest mb-2">
-                                                                    <HelpCircle className="w-4 h-4" />
-                                                                    Academic Rationale
-                                                                </div>
-                                                                <div className="text-sm text-teal-900/80 font-medium leading-relaxed italic">
-                                                                    <MarkdownRenderer content={q.explanation} />
+                                                return (
+                                                    <React.Fragment key={`frag-${q.id}`}>
+                                                        {showPassageHeader && passage && (
+                                                            <div className="bg-slate-900 text-white p-8 rounded-3xl shadow-xl mb-8 border border-slate-800">
+                                                                <h3 className="text-xl font-black text-teal-400 mb-4 tracking-tight flex items-center gap-3">
+                                                                    <FileText className="w-5 h-5" />
+                                                                    {passage.title || `Passage #${passage.id}`}
+                                                                </h3>
+                                                                <div className="prose prose-invert max-w-none text-slate-300">
+                                                                    <MarkdownRenderer content={passage.content} />
                                                                 </div>
                                                             </div>
                                                         )}
-                                                    </div>
-                                                </div>
-                                            ))
+                                                        <div className={`bg-white p-6 rounded-xl border transition-all group relative overflow-hidden ${selectedQuestionIds.includes(q.id) ? 'border-teal-500 ring-1 ring-teal-500 shadow-lg shadow-teal-500/5' : 'border-gray-100 shadow-sm hover:shadow-xl hover:shadow-teal-500/5'} ${q.passage_id ? 'ml-8 border-l-4 border-l-slate-800' : ''}`}>
+                                                            {/* Selection Checkbox */}
+                                                            <div className="absolute top-4 left-4 z-10">
+                                                                <input
+                                                                    type="checkbox"
+                                                                    checked={selectedQuestionIds.includes(q.id)}
+                                                                    onChange={() => handleSelectQuestion(q.id)}
+                                                                    className="w-5 h-5 rounded border-gray-300 text-teal-600 focus:ring-teal-500 cursor-pointer"
+                                                                />
+                                                            </div>
+
+                                                            <div className="pl-10">
+                                                                <div className="absolute top-0 right-0 p-4 opacity-0 group-hover:opacity-100 transition-opacity">
+                                                                    <div className="flex gap-2">
+                                                                        <button
+                                                                            onClick={() => {
+                                                                                setTransferringMcqId(q.id);
+                                                                                setIsBulkTransfer(false);
+                                                                                setIsTransferModalOpen(true);
+                                                                            }}
+                                                                            className="text-slate-400 hover:text-indigo-600 p-1 bg-slate-50 rounded-lg border border-gray-100 transition-colors"
+                                                                            title="Transfer Question"
+                                                                        >
+                                                                            <ArrowRightLeft className="w-3.5 h-3.5" />
+                                                                        </button>
+                                                                        <button
+                                                                            onClick={() => handleOpenEditMcq(q)}
+                                                                            className="text-slate-400 hover:text-teal-600 px-3 py-1 text-[10px] font-black uppercase tracking-widest bg-slate-50 rounded-lg border border-gray-100 transition-colors"
+                                                                        >
+                                                                            Edit Entry
+                                                                        </button>
+                                                                        <button
+                                                                            onClick={() => handleDeleteMcq(q.id)}
+                                                                            className="text-slate-400 hover:text-rose-600 p-1 bg-slate-50 rounded-lg border border-gray-100 transition-colors"
+                                                                            title="Delete Question"
+                                                                        >
+                                                                            <Trash2 className="w-3.5 h-3.5" />
+                                                                        </button>
+                                                                    </div>
+                                                                </div>
+
+                                                                <div className="flex justify-between items-start mb-4">
+                                                                    <div className="flex items-center gap-3">
+                                                                        <span className="w-9 h-9 rounded-xl bg-slate-900 text-white flex items-center justify-center font-black text-sm shadow-lg shadow-slate-900/10">
+                                                                            {idx + 1}
+                                                                        </span>
+                                                                        <span className={`px-2.5 py-1 rounded-lg text-[9px] font-black uppercase tracking-[0.1em] ${q.difficulty === 'easy' ? 'bg-emerald-100 text-emerald-700' :
+                                                                            q.difficulty === 'medium' ? 'bg-amber-100 text-amber-700' :
+                                                                                'bg-rose-100 text-rose-700'
+                                                                            }`}>
+                                                                            {q.difficulty}
+                                                                        </span>
+                                                                        <span className="px-2.5 py-1 bg-teal-50 text-teal-600 rounded-lg text-[9px] font-black uppercase tracking-[0.1em]">
+                                                                            {q.question_type?.replace('_', ' ') || 'MCQ Single'}
+                                                                        </span>
+                                                                    </div>
+                                                                    <div className="flex items-center gap-6 pr-12">
+                                                                        <div className="flex flex-col items-end">
+                                                                            <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Global Attempts</span>
+                                                                            <span className="text-sm font-black text-slate-900">{q.times_attempted || 0}</span>
+                                                                        </div>
+                                                                        <div className="flex flex-col items-end">
+                                                                            <span className="text-[10px] font-black text-emerald-500 uppercase tracking-widest">Platform Accuracy</span>
+                                                                            <span className="text-sm font-black text-emerald-600">{((q.times_correct || 0) / (q.times_attempted || 1) * 100).toFixed(1)}%</span>
+                                                                        </div>
+                                                                    </div>
+                                                                </div>
+
+                                                                <div className="text-slate-800 text-lg font-black mb-8 leading-tight">
+                                                                    <MarkdownRenderer content={q.question} />
+                                                                </div>
+
+                                                                <div className="grid grid-cols-2 gap-4 mb-8">
+                                                                    {['A', 'B', 'C', 'D'].map((opt) => (
+                                                                        <div
+                                                                            key={opt}
+                                                                            className={`px-5 py-4 rounded-2xl border-2 transition-all flex items-center gap-4 ${q.correct_option === opt
+                                                                                ? 'border-emerald-500 bg-emerald-50/50 text-emerald-900 shadow-sm'
+                                                                                : 'border-slate-100 bg-slate-50/50 text-slate-500'
+                                                                                }`}
+                                                                        >
+                                                                            <span className={`w-7 h-7 rounded-lg flex items-center justify-center text-xs font-black ${q.correct_option === opt ? 'bg-emerald-500 text-white shadow-lg shadow-emerald-500/20' : 'bg-slate-200 text-slate-500'
+                                                                                }`}>
+                                                                                {opt}
+                                                                            </span>
+                                                                            <div className="text-sm font-bold">
+                                                                                <MarkdownRenderer content={q[`option_${opt.toLowerCase()}`]} />
+                                                                            </div>
+                                                                        </div>
+                                                                    ))}
+                                                                </div>
+
+                                                                {q.explanation && (
+                                                                    <div className="p-5 bg-teal-50/30 rounded-2xl border border-teal-50">
+                                                                        <div className="flex items-center gap-2 text-teal-700 text-[10px] font-black uppercase tracking-widest mb-2">
+                                                                            <HelpCircle className="w-4 h-4" />
+                                                                            Academic Rationale
+                                                                        </div>
+                                                                        <div className="text-sm text-teal-900/80 font-medium leading-relaxed italic">
+                                                                            <MarkdownRenderer content={q.explanation} />
+                                                                        </div>
+                                                                    </div>
+                                                                )}
+                                                            </div>
+                                                        </div>
+                                                    </React.Fragment>
+                                                );
+                                            })
                                         ) : (
                                             <div className="h-full flex flex-col items-center justify-center text-center p-20">
                                                 <div className="w-24 h-24 bg-white rounded-full shadow-2xl shadow-teal-500/10 flex items-center justify-center mb-8">
@@ -796,172 +947,330 @@ export default function SuperAdminQuestionBankPage() {
                                         </div>
                                     </div>
 
-                                    {/* Passage Selection */}
-                                    <div>
-                                        <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">Passage (Optional)</label>
-                                        <div className="flex gap-2">
-                                            <select
-                                                value={mcqForm.passage_id}
-                                                onChange={(e) => setMcqForm({ ...mcqForm, passage_id: e.target.value })}
-                                                className="flex-1 px-5 py-3 bg-slate-50 border border-gray-100 rounded-xl text-slate-800 font-bold outline-none truncate"
-                                            >
-                                                <option value="">No Passage</option>
-                                                {passages.map(p => (
-                                                    <option key={p.id} value={p.id}>{p.title || `Passage #${p.id}`}</option>
-                                                ))}
-                                            </select>
-                                            <button
-                                                onClick={() => setIsPassageModalOpen(true)}
-                                                className="px-4 py-3 bg-teal-50 text-teal-600 rounded-xl font-black text-[10px] uppercase tracking-widest hover:bg-teal-100 transition-all"
-                                            >
-                                                <Plus className="w-4 h-4" />
-                                            </button>
-                                        </div>
-                                    </div>
-
-                                    {/* Question Text */}
-                                    <div>
-                                        <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">Question Prompt</label>
-                                        <RichTextEditor
-                                            value={mcqForm.question}
-                                            onChange={(val) => setMcqForm({ ...mcqForm, question: val })}
-                                            placeholder="Enter the question text (Markdown & LaTeX supported)..."
-                                            height="h-64"
-                                        />
-                                    </div>
-
-                                    <div className="grid grid-cols-2 gap-6">
-                                        <div>
-                                            <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">Difficulty</label>
-                                            <select
-                                                value={mcqForm.difficulty}
-                                                onChange={(e) => setMcqForm({ ...mcqForm, difficulty: e.target.value })}
-                                                className="w-full px-5 py-3 bg-slate-50 border border-gray-100 rounded-xl text-slate-800 font-bold outline-none"
-                                            >
-                                                <option value="easy">Easy</option>
-                                                <option value="medium">Medium</option>
-                                                <option value="hard">Hard</option>
-                                            </select>
-                                        </div>
-                                        <div>
-                                            <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">Correct Option</label>
-                                            <div className="flex bg-slate-100 p-1 rounded-xl">
-                                                {['A', 'B', 'C', 'D'].map(opt => (
-                                                    <button
-                                                        key={opt}
-                                                        onClick={() => setMcqForm({ ...mcqForm, correct_option: opt as any })}
-                                                        className={`flex-1 py-1.5 rounded-lg text-xs font-black transition-all ${mcqForm.correct_option === opt ? 'bg-teal-600 text-white shadow-md' : 'text-slate-400 hover:text-slate-600'}`}
-                                                    >
-                                                        {opt}
-                                                    </button>
-                                                ))}
-                                            </div>
-                                        </div>
-                                    </div>
-
-                                    {/* Options */}
-                                    <div className="space-y-4">
-                                        <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">Answer Options</label>
-                                        <div className="grid grid-cols-2 gap-4">
-                                            {['a', 'b', 'c', 'd'].map(opt => (
-                                                <div key={opt} className="relative">
-                                                    <span className="absolute left-4 top-1/2 -translate-y-1/2 text-[10px] font-black text-slate-300 uppercase">{opt}</span>
+                                    {mcqForm.question_type === 'passage' && !editingMcq ? (
+                                        <div className="space-y-6">
+                                            {/* Passage Heading & Content */}
+                                            <div className="p-6 bg-slate-50 border border-slate-200 rounded-3xl space-y-6">
+                                                <h4 className="text-sm font-black text-slate-900 uppercase tracking-widest flex items-center gap-2">
+                                                    <FileText className="w-4 h-4 text-teal-600" />
+                                                    Passage Details
+                                                </h4>
+                                                <div className="space-y-2">
+                                                    <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Heading / Title</label>
                                                     <input
-                                                        type="text"
-                                                        value={(mcqForm as any)[`option_${opt}`]}
-                                                        onChange={(e) => setMcqForm({ ...mcqForm, [`option_${opt}`]: e.target.value })}
-                                                        className="w-full pl-10 pr-5 py-3 bg-slate-50 border border-gray-100 rounded-xl text-slate-800 font-bold focus:ring-2 focus:ring-teal-500/20 outline-none"
-                                                        placeholder={`Option ${opt.toUpperCase()}`}
+                                                        value={passageBlockForm.title}
+                                                        onChange={e => setPassageBlockForm({ ...passageBlockForm, title: e.target.value })}
+                                                        placeholder="e.g. Reading Comprehension - The Solar System"
+                                                        className="w-full px-5 py-3 bg-white border border-gray-100 rounded-xl font-bold outline-none focus:ring-2 focus:ring-teal-500/20"
                                                     />
                                                 </div>
-                                            ))}
-                                        </div>
-                                    </div>
+                                                <div className="space-y-2">
+                                                    <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Passage Content</label>
+                                                    <RichTextEditor
+                                                        value={passageBlockForm.content}
+                                                        onChange={val => setPassageBlockForm({ ...passageBlockForm, content: val })}
+                                                        placeholder="Enter the full passage here..."
+                                                        height="h-48"
+                                                    />
+                                                </div>
+                                            </div>
 
-                                    {/* Question Image */}
-                                    <div>
-                                        <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">Question image (Optional)</label>
-                                        <div className="flex bg-slate-50 p-1 rounded-xl border border-gray-100 mb-2">
-                                            <button
-                                                type="button"
-                                                onClick={() => setMcqForm({ ...mcqForm, question_image_type: 'direct' })}
-                                                className={`flex-1 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all ${mcqForm.question_image_type === 'direct' ? 'bg-white shadow-sm text-teal-600' : 'text-slate-400'}`}
-                                            >
-                                                Direct Link
-                                            </button>
-                                            <button
-                                                type="button"
-                                                onClick={() => setMcqForm({ ...mcqForm, question_image_type: 'drive' })}
-                                                className={`flex-1 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all ${mcqForm.question_image_type === 'drive' ? 'bg-white shadow-sm text-teal-600' : 'text-slate-400'}`}
-                                            >
-                                                Google Drive
-                                            </button>
+                                            {/* Passage Questions */}
+                                            <div className="space-y-6">
+                                                <div className="flex justify-between items-center bg-white p-4 rounded-2xl border border-slate-100 sticky top-0 z-10 shadow-sm">
+                                                    <h4 className="text-sm font-black text-slate-900 uppercase tracking-widest flex items-center gap-2">
+                                                        <Layers className="w-4 h-4 text-teal-600" />
+                                                        Questions in Block ({passageBlockForm.questions.length})
+                                                    </h4>
+                                                    <button
+                                                        onClick={() => setPassageBlockForm({
+                                                            ...passageBlockForm,
+                                                            questions: [...passageBlockForm.questions, createDefaultBlockQuestion()]
+                                                        })}
+                                                        className="px-4 py-2 bg-teal-50 text-teal-600 rounded-xl font-black text-[10px] uppercase tracking-widest hover:bg-teal-100 transition-all flex items-center gap-2 shadow-sm"
+                                                    >
+                                                        <Plus className="w-3.5 h-3.5" />
+                                                        Add Question
+                                                    </button>
+                                                </div>
+
+                                                {passageBlockForm.questions.map((q, idx) => (
+                                                    <div key={idx} className="p-6 bg-white border border-slate-200 rounded-3xl space-y-6 relative group shadow-sm hover:border-teal-300 transition-colors">
+                                                        {passageBlockForm.questions.length > 1 && (
+                                                            <div className="absolute top-4 right-4 z-10">
+                                                                <button
+                                                                    onClick={() => {
+                                                                        const newQs = [...passageBlockForm.questions];
+                                                                        newQs.splice(idx, 1);
+                                                                        setPassageBlockForm({ ...passageBlockForm, questions: newQs });
+                                                                    }}
+                                                                    className="p-2 text-rose-400 hover:text-rose-600 bg-rose-50 hover:bg-rose-100 rounded-lg transition-colors"
+                                                                >
+                                                                    <Trash2 className="w-4 h-4" />
+                                                                </button>
+                                                            </div>
+                                                        )}
+                                                        <h5 className="text-[10px] font-black text-slate-400 uppercase tracking-widest bg-slate-100 inline-block px-3 py-1 rounded-full">Question #{idx + 1}</h5>
+
+                                                        <div className="space-y-2">
+                                                            <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Question Prompt</label>
+                                                            <RichTextEditor
+                                                                value={q.question}
+                                                                onChange={(val) => {
+                                                                    const newQs = [...passageBlockForm.questions];
+                                                                    newQs[idx].question = val;
+                                                                    setPassageBlockForm({ ...passageBlockForm, questions: newQs });
+                                                                }}
+                                                                placeholder="Enter question..."
+                                                                height="h-32"
+                                                            />
+                                                        </div>
+
+                                                        {/* Diff & Correct */}
+                                                        <div className="grid grid-cols-2 gap-6">
+                                                            <div className="space-y-2">
+                                                                <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Difficulty</label>
+                                                                <select
+                                                                    value={q.difficulty}
+                                                                    onChange={(e) => {
+                                                                        const newQs = [...passageBlockForm.questions];
+                                                                        newQs[idx].difficulty = e.target.value;
+                                                                        setPassageBlockForm({ ...passageBlockForm, questions: newQs });
+                                                                    }}
+                                                                    className="w-full px-5 py-3 bg-slate-50 border border-gray-100 rounded-xl text-slate-800 font-bold outline-none focus:ring-2 focus:ring-teal-500/20"
+                                                                >
+                                                                    <option value="easy">Easy</option>
+                                                                    <option value="medium">Medium</option>
+                                                                    <option value="hard">Hard</option>
+                                                                </select>
+                                                            </div>
+                                                            <div className="space-y-2">
+                                                                <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Correct Option</label>
+                                                                <div className="flex bg-slate-100 p-1 rounded-xl">
+                                                                    {['A', 'B', 'C', 'D'].map(opt => (
+                                                                        <button
+                                                                            key={opt}
+                                                                            onClick={() => {
+                                                                                const newQs = [...passageBlockForm.questions];
+                                                                                newQs[idx].correct_option = opt as any;
+                                                                                setPassageBlockForm({ ...passageBlockForm, questions: newQs });
+                                                                            }}
+                                                                            className={`flex-1 py-1.5 rounded-lg text-xs font-black transition-all ${q.correct_option === opt ? 'bg-teal-600 text-white shadow-md' : 'text-slate-400 hover:text-slate-600'}`}
+                                                                        >
+                                                                            {opt}
+                                                                        </button>
+                                                                    ))}
+                                                                </div>
+                                                            </div>
+                                                        </div>
+
+                                                        {/* Options */}
+                                                        <div className="grid grid-cols-2 gap-4">
+                                                            {['a', 'b', 'c', 'd'].map(opt => (
+                                                                <div key={opt} className="relative">
+                                                                    <span className="absolute left-4 top-1/2 -translate-y-1/2 text-[10px] font-black text-slate-300 uppercase">{opt}</span>
+                                                                    <input
+                                                                        type="text"
+                                                                        value={(q as any)[`option_${opt}`]}
+                                                                        onChange={(e) => {
+                                                                            const newQs = [...passageBlockForm.questions];
+                                                                            (newQs[idx] as any)[`option_${opt}`] = e.target.value;
+                                                                            setPassageBlockForm({ ...passageBlockForm, questions: newQs });
+                                                                        }}
+                                                                        className="w-full pl-10 pr-5 py-3 bg-slate-50 border border-gray-100 rounded-xl text-slate-800 font-bold focus:ring-2 focus:ring-teal-500/20 outline-none"
+                                                                        placeholder={`Option ${opt.toUpperCase()}`}
+                                                                    />
+                                                                </div>
+                                                            ))}
+                                                        </div>
+                                                        <div className="space-y-2">
+                                                            <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Academic Rationale</label>
+                                                            <input
+                                                                type="text"
+                                                                value={q.explanation}
+                                                                onChange={(e) => {
+                                                                    const newQs = [...passageBlockForm.questions];
+                                                                    newQs[idx].explanation = e.target.value;
+                                                                    setPassageBlockForm({ ...passageBlockForm, questions: newQs });
+                                                                }}
+                                                                placeholder="Short reason for the correct option..."
+                                                                className="w-full px-5 py-3 bg-slate-50 border border-gray-100 rounded-xl text-slate-800 font-medium focus:ring-2 focus:ring-teal-500/20 outline-none"
+                                                            />
+                                                        </div>
+                                                    </div>
+                                                ))}
+                                            </div>
                                         </div>
-                                        <input
-                                            type="text"
-                                            placeholder={mcqForm.question_image_type === 'drive' ? 'Paste Drive link...' : 'https://...'}
-                                            value={mcqForm.question_image_url}
-                                            onChange={(e) => setMcqForm({ ...mcqForm, question_image_url: e.target.value })}
-                                            className="w-full px-5 py-3 bg-slate-50 border border-gray-100 rounded-xl text-slate-800 font-bold outline-none"
-                                        />
-                                        {mcqForm.question_image_url && (
-                                            <div className="mt-2 w-32 h-20 rounded-lg overflow-hidden border border-slate-100">
-                                                <img
-                                                    src={mcqForm.question_image_type === 'drive' ? convertDriveLink(mcqForm.question_image_url) : mcqForm.question_image_url}
-                                                    className="w-full h-full object-cover"
-                                                    alt="Preview"
+                                    ) : (
+                                        <>
+                                            {/* Passage Selection */}
+                                            {(mcqForm.question_type !== 'passage' || editingMcq) && (
+                                                <div>
+                                                    <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">Passage (Optional)</label>
+                                                    <div className="flex gap-2">
+                                                        <select
+                                                            value={mcqForm.passage_id}
+                                                            onChange={(e) => setMcqForm({ ...mcqForm, passage_id: e.target.value })}
+                                                            className="flex-1 px-5 py-3 bg-slate-50 border border-gray-100 rounded-xl text-slate-800 font-bold outline-none truncate"
+                                                        >
+                                                            <option value="">No Passage</option>
+                                                            {passages.map(p => (
+                                                                <option key={p.id} value={p.id}>{p.title || `Passage #${p.id}`}</option>
+                                                            ))}
+                                                        </select>
+                                                        <button
+                                                            onClick={() => setIsPassageModalOpen(true)}
+                                                            className="px-4 py-3 bg-teal-50 text-teal-600 rounded-xl font-black text-[10px] uppercase tracking-widest hover:bg-teal-100 transition-all"
+                                                        >
+                                                            <Plus className="w-4 h-4" />
+                                                        </button>
+                                                    </div>
+                                                </div>
+                                            )}                                    {/* Question Text */}
+                                            <div>
+                                                <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">Question Prompt</label>
+                                                <RichTextEditor
+                                                    value={mcqForm.question}
+                                                    onChange={(val) => setMcqForm({ ...mcqForm, question: val })}
+                                                    placeholder="Enter the question text (Markdown & LaTeX supported)..."
+                                                    height="h-64"
                                                 />
                                             </div>
-                                        )}
-                                    </div>
 
-                                    {/* Explanation */}
-                                    <div>
-                                        <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">Academic Rationale (Explanation)</label>
-                                        <RichTextEditor
-                                            value={mcqForm.explanation}
-                                            onChange={(val) => setMcqForm({ ...mcqForm, explanation: val })}
-                                            placeholder="Explain why the correct option is right..."
-                                            height="h-48"
-                                        />
-                                    </div>
+                                            <div className="grid grid-cols-2 gap-6">
+                                                <div>
+                                                    <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">Difficulty</label>
+                                                    <select
+                                                        value={mcqForm.difficulty}
+                                                        onChange={(e) => setMcqForm({ ...mcqForm, difficulty: e.target.value })}
+                                                        className="w-full px-5 py-3 bg-slate-50 border border-gray-100 rounded-xl text-slate-800 font-bold outline-none"
+                                                    >
+                                                        <option value="easy">Easy</option>
+                                                        <option value="medium">Medium</option>
+                                                        <option value="hard">Hard</option>
+                                                    </select>
+                                                </div>
+                                                <div>
+                                                    <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">Correct Option</label>
+                                                    <div className="flex bg-slate-100 p-1 rounded-xl">
+                                                        {['A', 'B', 'C', 'D'].map(opt => (
+                                                            <button
+                                                                key={opt}
+                                                                onClick={() => setMcqForm({ ...mcqForm, correct_option: opt as any })}
+                                                                className={`flex-1 py-1.5 rounded-lg text-xs font-black transition-all ${mcqForm.correct_option === opt ? 'bg-teal-600 text-white shadow-md' : 'text-slate-400 hover:text-slate-600'}`}
+                                                            >
+                                                                {opt}
+                                                            </button>
+                                                        ))}
+                                                    </div>
+                                                </div>
+                                            </div>
 
-                                    {/* Explanation Image */}
-                                    <div>
-                                        <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">Explanation image (Optional)</label>
-                                        <div className="flex bg-slate-50 p-1 rounded-xl border border-gray-100 mb-2">
-                                            <button
-                                                type="button"
-                                                onClick={() => setMcqForm({ ...mcqForm, explanation_image_type: 'direct' })}
-                                                className={`flex-1 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all ${mcqForm.explanation_image_type === 'direct' ? 'bg-white shadow-sm text-teal-600' : 'text-slate-400'}`}
-                                            >
-                                                Direct Link
-                                            </button>
-                                            <button
-                                                type="button"
-                                                onClick={() => setMcqForm({ ...mcqForm, explanation_image_type: 'drive' })}
-                                                className={`flex-1 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all ${mcqForm.explanation_image_type === 'drive' ? 'bg-white shadow-sm text-teal-600' : 'text-slate-400'}`}
-                                            >
-                                                Google Drive
-                                            </button>
-                                        </div>
-                                        <input
-                                            type="text"
-                                            placeholder={mcqForm.explanation_image_type === 'drive' ? 'Paste Drive link...' : 'https://...'}
-                                            value={mcqForm.explanation_url}
-                                            onChange={(e) => setMcqForm({ ...mcqForm, explanation_url: e.target.value })}
-                                            className="w-full px-5 py-3 bg-slate-50 border border-gray-100 rounded-xl text-slate-800 font-bold outline-none"
-                                        />
-                                        {mcqForm.explanation_url && (
-                                            <div className="mt-2 w-32 h-20 rounded-lg overflow-hidden border border-slate-100">
-                                                <img
-                                                    src={mcqForm.explanation_image_type === 'drive' ? convertDriveLink(mcqForm.explanation_url) : mcqForm.explanation_url}
-                                                    className="w-full h-full object-cover"
-                                                    alt="Preview"
+                                            {/* Options */}
+                                            <div className="space-y-4">
+                                                <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">Answer Options</label>
+                                                <div className="grid grid-cols-2 gap-4">
+                                                    {['a', 'b', 'c', 'd'].map(opt => (
+                                                        <div key={opt} className="relative">
+                                                            <span className="absolute left-4 top-1/2 -translate-y-1/2 text-[10px] font-black text-slate-300 uppercase">{opt}</span>
+                                                            <input
+                                                                type="text"
+                                                                value={(mcqForm as any)[`option_${opt}`]}
+                                                                onChange={(e) => setMcqForm({ ...mcqForm, [`option_${opt}`]: e.target.value })}
+                                                                className="w-full pl-10 pr-5 py-3 bg-slate-50 border border-gray-100 rounded-xl text-slate-800 font-bold focus:ring-2 focus:ring-teal-500/20 outline-none"
+                                                                placeholder={`Option ${opt.toUpperCase()}`}
+                                                            />
+                                                        </div>
+                                                    ))}
+                                                </div>
+                                            </div>
+
+                                            {/* Question Image */}
+                                            <div>
+                                                <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">Question image (Optional)</label>
+                                                <div className="flex bg-slate-50 p-1 rounded-xl border border-gray-100 mb-2">
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => setMcqForm({ ...mcqForm, question_image_type: 'direct' })}
+                                                        className={`flex-1 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all ${mcqForm.question_image_type === 'direct' ? 'bg-white shadow-sm text-teal-600' : 'text-slate-400'}`}
+                                                    >
+                                                        Direct Link
+                                                    </button>
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => setMcqForm({ ...mcqForm, question_image_type: 'drive' })}
+                                                        className={`flex-1 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all ${mcqForm.question_image_type === 'drive' ? 'bg-white shadow-sm text-teal-600' : 'text-slate-400'}`}
+                                                    >
+                                                        Google Drive
+                                                    </button>
+                                                </div>
+                                                <input
+                                                    type="text"
+                                                    placeholder={mcqForm.question_image_type === 'drive' ? 'Paste Drive link...' : 'https://...'}
+                                                    value={mcqForm.question_image_url}
+                                                    onChange={(e) => setMcqForm({ ...mcqForm, question_image_url: e.target.value })}
+                                                    className="w-full px-5 py-3 bg-slate-50 border border-gray-100 rounded-xl text-slate-800 font-bold outline-none"
+                                                />
+                                                {mcqForm.question_image_url && (
+                                                    <div className="mt-2 w-32 h-20 rounded-lg overflow-hidden border border-slate-100">
+                                                        <img
+                                                            src={mcqForm.question_image_type === 'drive' ? convertDriveLink(mcqForm.question_image_url) : mcqForm.question_image_url}
+                                                            className="w-full h-full object-cover"
+                                                            alt="Preview"
+                                                        />
+                                                    </div>
+                                                )}
+                                            </div>
+
+                                            {/* Explanation */}
+                                            <div>
+                                                <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">Academic Rationale (Explanation)</label>
+                                                <RichTextEditor
+                                                    value={mcqForm.explanation}
+                                                    onChange={(val) => setMcqForm({ ...mcqForm, explanation: val })}
+                                                    placeholder="Explain why the correct option is right..."
+                                                    height="h-48"
                                                 />
                                             </div>
-                                        )}
-                                    </div>
+
+                                            {/* Explanation Image */}
+                                            <div>
+                                                <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">Explanation image (Optional)</label>
+                                                <div className="flex bg-slate-50 p-1 rounded-xl border border-gray-100 mb-2">
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => setMcqForm({ ...mcqForm, explanation_image_type: 'direct' })}
+                                                        className={`flex-1 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all ${mcqForm.explanation_image_type === 'direct' ? 'bg-white shadow-sm text-teal-600' : 'text-slate-400'}`}
+                                                    >
+                                                        Direct Link
+                                                    </button>
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => setMcqForm({ ...mcqForm, explanation_image_type: 'drive' })}
+                                                        className={`flex-1 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all ${mcqForm.explanation_image_type === 'drive' ? 'bg-white shadow-sm text-teal-600' : 'text-slate-400'}`}
+                                                    >
+                                                        Google Drive
+                                                    </button>
+                                                </div>
+                                                <input
+                                                    type="text"
+                                                    placeholder={mcqForm.explanation_image_type === 'drive' ? 'Paste Drive link...' : 'https://...'}
+                                                    value={mcqForm.explanation_url}
+                                                    onChange={(e) => setMcqForm({ ...mcqForm, explanation_url: e.target.value })}
+                                                    className="w-full px-5 py-3 bg-slate-50 border border-gray-100 rounded-xl text-slate-800 font-bold outline-none"
+                                                />
+                                                {mcqForm.explanation_url && (
+                                                    <div className="mt-2 w-32 h-20 rounded-lg overflow-hidden border border-slate-100">
+                                                        <img
+                                                            src={mcqForm.explanation_image_type === 'drive' ? convertDriveLink(mcqForm.explanation_url) : mcqForm.explanation_url}
+                                                            className="w-full h-full object-cover"
+                                                            alt="Preview"
+                                                        />
+                                                    </div>
+                                                )}
+                                            </div>
+                                        </>
+                                    )}
                                 </div>
 
                                 <div className="p-6 bg-slate-50 border-t border-gray-100 flex justify-end gap-4">
@@ -1116,7 +1425,61 @@ export default function SuperAdminQuestionBankPage() {
                         </div>
                     )}
                 </main>
-            </div>
-        </div>
+            </div >
+
+            {/* Rename Modal */}
+            {
+                isRenameModalOpen && (
+                    <div className="fixed inset-0 z-[110] flex items-center justify-center bg-slate-900/60 backdrop-blur-sm p-4">
+                        <div className="bg-white rounded-[2rem] shadow-2xl w-full max-w-md overflow-hidden flex flex-col animate-in fade-in zoom-in duration-200">
+                            <div className="p-8 border-b border-gray-100 flex justify-between items-center">
+                                <div>
+                                    <h3 className="text-xl font-black text-slate-900 tracking-tight flex items-center gap-3">
+                                        <Edit2 className="w-5 h-5 text-indigo-600" />
+                                        Rename <span className="text-indigo-600">Identity</span>
+                                    </h3>
+                                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-1">Update Master Tree Component</p>
+                                </div>
+                                <button onClick={() => setIsRenameModalOpen(false)} className="p-2 hover:bg-slate-100 rounded-full text-slate-400">
+                                    <X className="w-5 h-5" />
+                                </button>
+                            </div>
+
+                            <div className="p-8 space-y-6">
+                                <div className="space-y-2">
+                                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">New Descriptor</label>
+                                    <input
+                                        value={renameValue}
+                                        onChange={e => setRenameValue(e.target.value)}
+                                        className="w-full px-6 py-4 bg-slate-50 border border-gray-100 rounded-2xl font-bold outline-none focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-600 transition-all text-slate-800"
+                                        placeholder="Enter new name..."
+                                        autoFocus
+                                        onKeyDown={(e) => {
+                                            if (e.key === 'Enter') handleSaveHierarchyName();
+                                            if (e.key === 'Escape') setIsRenameModalOpen(false);
+                                        }}
+                                    />
+                                </div>
+
+                                <div className="flex gap-4">
+                                    <button
+                                        onClick={() => setIsRenameModalOpen(false)}
+                                        className="flex-1 py-4 bg-slate-100 text-slate-500 rounded-2xl font-black uppercase tracking-widest text-[10px] hover:bg-slate-200 transition-all"
+                                    >
+                                        Abort
+                                    </button>
+                                    <button
+                                        onClick={handleSaveHierarchyName}
+                                        className="flex-[2] py-4 bg-slate-900 text-white rounded-2xl font-black uppercase tracking-widest text-[10px] shadow-xl shadow-slate-900/20 hover:scale-[1.02] active:scale-[0.98] transition-all"
+                                    >
+                                        Confirm Change
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                )
+            }
+        </div >
     );
 }
