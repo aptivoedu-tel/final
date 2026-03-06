@@ -71,7 +71,17 @@ export async function PATCH(req: NextRequest) {
     try {
         await connectToDatabase();
         const body = await req.json();
-        const { id, ...update } = body;
+        const { id, ids, ...update } = body;
+
+        // Bulk Update Support
+        if (ids && Array.isArray(ids)) {
+            const result = await MCQ.updateMany(
+                { id: { $in: ids } },
+                { $set: update }
+            );
+            return NextResponse.json({ success: true, count: result.modifiedCount });
+        }
+
         if (!id) return NextResponse.json({ error: 'id required' }, { status: 400 });
 
         const mcq = await MCQ.findOneAndUpdate({ id: parseInt(id) }, update, { new: true });

@@ -6,7 +6,7 @@ import {
     Layers, Hash, FileText,
     Search, RefreshCw, Target,
     CheckCircle2, HelpCircle,
-    BarChart3, Plus, Filter, Settings
+    BarChart3, Plus, Filter, Settings, ArrowRightLeft
 } from 'lucide-react';
 import Sidebar from '@/components/layout/Sidebar';
 import Header from '@/components/layout/Header';
@@ -68,6 +68,19 @@ export default function SuperAdminQuestionBankPage() {
         content: ''
     });
 
+    // Transfer State
+    const [isTransferModalOpen, setIsTransferModalOpen] = useState(false);
+    const [transferTarget, setTransferTarget] = useState({
+        subjectId: '',
+        topicId: '',
+        subtopicId: ''
+    });
+    const [subjectsList, setSubjectsList] = useState<any[]>([]);
+    const [topicsList, setTopicsList] = useState<any[]>([]);
+    const [subtopicsList, setSubtopicsList] = useState<any[]>([]);
+    const [isBulkTransfer, setIsBulkTransfer] = useState(false);
+    const [transferringMcqId, setTransferringMcqId] = useState<number | null>(null);
+
     const convertDriveLink = (url: string) => {
         if (!url) return '';
         if (url.includes('drive.google.com')) {
@@ -91,6 +104,10 @@ export default function SuperAdminQuestionBankPage() {
                 const allMcqs = countsData.allMcqs || [];
 
                 if (subjects) {
+                    setSubjectsList(subjects);
+                    setTopicsList(topics);
+                    setSubtopicsList(subtopics);
+
                     const tree: HierarchyItem[] = subjects.map((s: any) => {
                         const subjectTopics = topics?.filter((t: any) => t.subject_id === s.id) || [];
                         const processedTopics = subjectTopics.map((t: any): HierarchyItem => {
@@ -302,26 +319,61 @@ export default function SuperAdminQuestionBankPage() {
             loadHierarchy(); // Refresh counts
         } catch (err: any) {
             console.error("Save MCQ error:", err);
-            toast.error(err.message || "Failed to save MCQ");
+            toast.error(err.message || "Failed to save question");
         }
     };
 
     const handleDeleteMcq = async (id: number) => {
-        if (!confirm("Are you sure you want to permanently delete this question? This action cannot be undone.")) return;
-
+        if (!confirm('Are you sure you want to delete this MCQ?')) return;
+        setGlobalLoading(true, 'Removing Data Node...');
         try {
             const res = await fetch(`/api/mongo/mcqs?id=${id}`, { method: 'DELETE' });
-            if (!res.ok) {
-                const errData = await res.json();
-                throw new Error(errData.error || 'Delete failed');
+            if (res.ok) {
+                toast.success('MCQ Deleted');
+                loadQuestions(selectedItem!);
+                loadHierarchy();
             }
+        } catch (error) {
+            toast.error('Failed to delete MCQ');
+        } finally {
+            setGlobalLoading(false);
+        }
+    };
 
-            toast.success("Question deleted successfully");
-            if (selectedItem) loadQuestions(selectedItem);
-            loadHierarchy(); // Refresh counts
-        } catch (err: any) {
-            console.error("Delete MCQ error:", err);
-            toast.error(err.message || "Failed to delete question");
+    const handleBulkTransfer = async () => {
+        if (!transferTarget.topicId) {
+            toast.error("Please select at least a destination Topic");
+            return;
+        }
+
+        const idsToMove = isBulkTransfer ? selectedQuestionIds : [transferringMcqId!];
+
+        setGlobalLoading(true, 'Executing Structural Migration...');
+        try {
+            const res = await fetch('/api/mongo/mcqs', {
+                method: 'PATCH',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    ids: idsToMove,
+                    topic_id: parseInt(transferTarget.topicId),
+                    subtopic_id: transferTarget.subtopicId ? parseInt(transferTarget.subtopicId) : null
+                })
+            });
+
+            if (res.ok) {
+                toast.success(`Successfully migrated ${idsToMove.length} items`);
+                setIsTransferModalOpen(false);
+                setSelectedQuestionIds([]);
+                loadQuestions(selectedItem!);
+                loadHierarchy();
+            } else {
+                const err = await res.json();
+                throw new Error(err.error || 'Migration failed');
+            }
+        } catch (error: any) {
+            toast.error(error.message);
+        } finally {
+            setGlobalLoading(false);
         }
     };
 
@@ -362,12 +414,6 @@ export default function SuperAdminQuestionBankPage() {
             setGlobalLoading(false);
         }
     };
-
-    useEffect(() => {
-        const currentUser = AuthService.getCurrentUser();
-        if (currentUser) setUser(currentUser);
-        loadHierarchy();
-    }, []);
 
 
     const toggleExpand = (id: string, items: HierarchyItem[]): HierarchyItem[] => {
@@ -534,13 +580,25 @@ export default function SuperAdminQuestionBankPage() {
                                                     </label>
 
                                                     {selectedQuestionIds.length > 0 && (
-                                                        <button
-                                                            onClick={handleBulkDelete}
-                                                            className="flex items-center gap-1.5 ml-4 text-rose-600 hover:text-rose-700 transition-colors"
-                                                        >
-                                                            <Trash2 className="w-3.5 h-3.5" />
-                                                            <span className="text-[10px] font-black uppercase tracking-wider">Delete ({selectedQuestionIds.length})</span>
-                                                        </button>
+                                                        <div className="flex items-center gap-4 ml-4">
+                                                            <button
+                                                                onClick={() => {
+                                                                    setIsBulkTransfer(true);
+                                                                    setIsTransferModalOpen(true);
+                                                                }}
+                                                                className="flex items-center gap-1.5 text-indigo-600 hover:text-indigo-700 transition-colors"
+                                                            >
+                                                                <ArrowRightLeft className="w-3.5 h-3.5" />
+                                                                <span className="text-[10px] font-black uppercase tracking-wider">Transfer ({selectedQuestionIds.length})</span>
+                                                            </button>
+                                                            <button
+                                                                onClick={handleBulkDelete}
+                                                                className="flex items-center gap-1.5 text-rose-600 hover:text-rose-700 transition-colors"
+                                                            >
+                                                                <Trash2 className="w-3.5 h-3.5" />
+                                                                <span className="text-[10px] font-black uppercase tracking-wider">Delete ({selectedQuestionIds.length})</span>
+                                                            </button>
+                                                        </div>
                                                     )}
                                                 </div>
                                             )}
@@ -572,6 +630,17 @@ export default function SuperAdminQuestionBankPage() {
                                                     <div className="pl-10">
                                                         <div className="absolute top-0 right-0 p-4 opacity-0 group-hover:opacity-100 transition-opacity">
                                                             <div className="flex gap-2">
+                                                                <button
+                                                                    onClick={() => {
+                                                                        setTransferringMcqId(q.id);
+                                                                        setIsBulkTransfer(false);
+                                                                        setIsTransferModalOpen(true);
+                                                                    }}
+                                                                    className="text-slate-400 hover:text-indigo-600 p-1 bg-slate-50 rounded-lg border border-gray-100 transition-colors"
+                                                                    title="Transfer Question"
+                                                                >
+                                                                    <ArrowRightLeft className="w-3.5 h-3.5" />
+                                                                </button>
                                                                 <button
                                                                     onClick={() => handleOpenEditMcq(q)}
                                                                     className="text-slate-400 hover:text-teal-600 px-3 py-1 text-[10px] font-black uppercase tracking-widest bg-slate-50 rounded-lg border border-gray-100 transition-colors"
@@ -949,6 +1018,99 @@ export default function SuperAdminQuestionBankPage() {
                                     >
                                         Deploy Passage to Repository
                                     </button>
+                                </div>
+                            </div>
+                        </div>
+                    )}
+                    {/* Transfer Modal */}
+                    {isTransferModalOpen && (
+                        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-900/60 backdrop-blur-sm p-4">
+                            <div className="bg-white rounded-[2.5rem] shadow-2xl w-full max-w-lg overflow-hidden flex flex-col animate-in fade-in zoom-in duration-200">
+                                <div className="p-8 border-b border-gray-100 flex justify-between items-center">
+                                    <div>
+                                        <h3 className="text-2xl font-black text-slate-900 uppercase tracking-tight">Migrate <span className="text-indigo-600">Assets</span></h3>
+                                        <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-1">Structural Reassignment Engine</p>
+                                    </div>
+                                    <button onClick={() => setIsTransferModalOpen(false)} className="p-3 hover:bg-slate-100 rounded-full text-slate-400 transition-all">
+                                        <X className="w-6 h-6" />
+                                    </button>
+                                </div>
+
+                                <div className="p-10 space-y-8">
+                                    <div className="bg-indigo-50/50 p-6 rounded-3xl border border-indigo-100/50">
+                                        <div className="flex items-center gap-4">
+                                            <div className="w-12 h-12 bg-white rounded-2xl flex items-center justify-center shadow-sm">
+                                                <ArrowRightLeft className="w-6 h-6 text-indigo-600" />
+                                            </div>
+                                            <div>
+                                                <p className="text-[10px] font-black text-indigo-600 uppercase tracking-widest">Migration Scope</p>
+                                                <p className="text-xl font-black text-slate-900">{isBulkTransfer ? `${selectedQuestionIds.length} Items Selected` : 'Single Item Migration'}</p>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <div className="space-y-6">
+                                        {/* Subject Selection */}
+                                        <div className="space-y-2">
+                                            <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Destination Subject</label>
+                                            <select
+                                                value={transferTarget.subjectId}
+                                                onChange={(e) => setTransferTarget({ ...transferTarget, subjectId: e.target.value, topicId: '', subtopicId: '' })}
+                                                className="w-full px-6 py-4 bg-slate-50 border border-gray-100 rounded-2xl font-bold outline-none focus:ring-4 focus:ring-indigo-600/5 transition-all appearance-none"
+                                            >
+                                                <option value="">Select Target Subject</option>
+                                                {subjectsList.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
+                                            </select>
+                                        </div>
+
+                                        {/* Topic Selection */}
+                                        <div className="space-y-2">
+                                            <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Destination Topic</label>
+                                            <select
+                                                disabled={!transferTarget.subjectId}
+                                                value={transferTarget.topicId}
+                                                onChange={(e) => setTransferTarget({ ...transferTarget, topicId: e.target.value, subtopicId: '' })}
+                                                className="w-full px-6 py-4 bg-slate-50 border border-gray-100 rounded-2xl font-bold outline-none focus:ring-4 focus:ring-indigo-600/5 transition-all disabled:opacity-50 appearance-none"
+                                            >
+                                                <option value="">Select Target Topic</option>
+                                                {topicsList.filter(t => t.subject_id === parseInt(transferTarget.subjectId)).map(t => (
+                                                    <option key={t.id} value={t.id}>{t.name}</option>
+                                                ))}
+                                            </select>
+                                        </div>
+
+                                        {/* Subtopic Selection */}
+                                        <div className="space-y-2">
+                                            <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Destination Subtopic <span className="text-slate-300 font-medium">(Optional)</span></label>
+                                            <select
+                                                disabled={!transferTarget.topicId}
+                                                value={transferTarget.subtopicId}
+                                                onChange={(e) => setTransferTarget({ ...transferTarget, subtopicId: e.target.value })}
+                                                className="w-full px-6 py-4 bg-slate-50 border border-gray-100 rounded-2xl font-bold outline-none focus:ring-4 focus:ring-indigo-600/5 transition-all disabled:opacity-50 appearance-none"
+                                            >
+                                                <option value="">Move to Topic Level (No Subtopic)</option>
+                                                {subtopicsList.filter(st => st.topic_id === parseInt(transferTarget.topicId)).map(st => (
+                                                    <option key={st.id} value={st.id}>{st.name}</option>
+                                                ))}
+                                            </select>
+                                        </div>
+                                    </div>
+
+                                    <div className="flex gap-4 pt-4">
+                                        <button
+                                            onClick={() => setIsTransferModalOpen(false)}
+                                            className="flex-1 py-5 bg-slate-100 text-slate-600 rounded-2xl font-black uppercase tracking-widest text-[10px] hover:bg-slate-200 transition-all"
+                                        >
+                                            Abort
+                                        </button>
+                                        <button
+                                            onClick={handleBulkTransfer}
+                                            disabled={!transferTarget.topicId}
+                                            className="flex-1 py-5 bg-indigo-600 text-white rounded-2xl font-black uppercase tracking-widest text-[10px] shadow-xl shadow-indigo-600/20 hover:scale-[1.02] active:scale-[0.98] transition-all disabled:opacity-50 disabled:grayscale"
+                                        >
+                                            Execute Migration
+                                        </button>
+                                    </div>
                                 </div>
                             </div>
                         </div>
