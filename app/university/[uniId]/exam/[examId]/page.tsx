@@ -568,6 +568,17 @@ export default function StudentExamPage() {
                                     <div className="text-[10px] font-black text-slate-400 uppercase tracking-widest">
                                         {activeQuestion.marks} Mark(s) • Correct Option Required
                                     </div>
+                                    {activeQuestion.passage_id && passages[activeQuestion.passage_id] && (
+                                        <div className="mb-8 p-6 bg-amber-50/50 rounded-2xl border border-amber-100/50 max-h-[400px] overflow-y-auto shadow-inner">
+                                            <h3 className="text-[10px] font-black text-amber-600 uppercase tracking-[0.2em] mb-4 flex items-center gap-2">
+                                                <GraduationCap className="w-4 h-4" />
+                                                {passages[activeQuestion.passage_id].title || 'Read the following passage'}
+                                            </h3>
+                                            <div className="prose prose-slate max-w-none text-slate-700 leading-relaxed font-medium">
+                                                <MarkdownRenderer content={passages[activeQuestion.passage_id].content} />
+                                            </div>
+                                        </div>
+                                    )}
                                     <div className="prose prose-slate max-w-none">
                                         <div className="text-2xl lg:text-3xl font-black text-slate-900 leading-tight">
                                             <MarkdownRenderer content={activeQuestion.question_text} />

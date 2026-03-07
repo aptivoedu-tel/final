@@ -391,6 +391,17 @@ export default function TopicPracticeSessionPage() {
                         <div className="p-6 sm:p-10 flex-1">
                             {/* Question */}
                             <div className="mb-12">
+                                {currentMCQ.passage && (
+                                    <div className="mb-8 p-6 bg-amber-50/50 rounded-2xl border border-amber-100/50 max-h-[400px] overflow-y-auto shadow-inner">
+                                        <h3 className="text-[10px] font-black text-amber-600 uppercase tracking-[0.2em] mb-4 flex items-center gap-2">
+                                            <BookOpenText className="w-4 h-4" />
+                                            {currentMCQ.passage.title || 'Read the following passage'}
+                                        </h3>
+                                        <div className="prose prose-slate max-w-none text-slate-700 leading-relaxed font-medium">
+                                            <MarkdownRenderer content={currentMCQ.passage.content} />
+                                        </div>
+                                    </div>
+                                )}
                                 <span className="text-[10px] font-black text-teal-500 uppercase tracking-[0.2em] mb-4 block">Question</span>
                                 <div className="text-xl sm:text-2xl font-bold text-slate-900 leading-relaxed">
                                     <MarkdownRenderer content={currentMCQ.question} />

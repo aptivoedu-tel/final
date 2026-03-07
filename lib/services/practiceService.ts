@@ -17,6 +17,7 @@ export interface MCQ {
     explanation_url: string | null;
     difficulty: 'easy' | 'medium' | 'hard';
     passage_id?: number | null;
+    passage?: { id: number; title?: string; content: string } | null;
 }
 
 export interface PracticeSession {

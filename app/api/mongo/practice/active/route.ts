@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import connectToDatabase from '@/lib/mongodb/connection';
 import PracticeSession from '@/lib/mongodb/models/PracticeSession';
 import MCQAttempt from '@/lib/mongodb/models/MCQAttempt';
-import { MCQ } from '@/lib/mongodb/models';
+import { MCQ, Passage } from '@/lib/mongodb/models';
 
 export async function GET(req: NextRequest) {
     try {
@@ -44,6 +44,27 @@ export async function GET(req: NextRequest) {
             const mcqMap = new Map();
             mcqs.forEach(m => mcqMap.set(m.id, m));
             mcqs = session.mcq_ids.map((id: number) => mcqMap.get(id)).filter(Boolean);
+
+            // Populate passages
+            const passageIds = Array.from(new Set(
+                mcqs
+                    .filter((m: any) => m.passage_id)
+                    .map((m: any) => m.passage_id)
+            ));
+
+            if (passageIds.length > 0) {
+                const passages = await Passage.find({ id: { $in: passageIds } }).lean();
+                const passageMap = new Map();
+                passages.forEach((p: any) => passageMap.set(p.id, p));
+
+                mcqs = mcqs.map((m: any) => {
+                    const raw = m.toObject ? m.toObject() : m;
+                    if (raw.passage_id && passageMap.has(raw.passage_id)) {
+                        return { ...raw, passage: passageMap.get(raw.passage_id) };
+                    }
+                    return raw;
+                });
+            }
         }
 
         return NextResponse.json({

@@ -6,6 +6,7 @@ import MCQ from '@/lib/mongodb/models/MCQ';
 import Subject from '@/lib/mongodb/models/Subject';
 import Topic from '@/lib/mongodb/models/Topic';
 import Subtopic from '@/lib/mongodb/models/Subtopic';
+import Passage from '@/lib/mongodb/models/Passage';
 
 export async function GET(req: NextRequest) {
     try {
@@ -149,6 +150,26 @@ export async function GET(req: NextRequest) {
             // No shuffle
             finalSet = groupedMcqs.flatMap(g => g.items);
             if (limit) finalSet = finalSet.slice(0, limit);
+        }
+
+        // Fetch and Attach Passage Details
+        const passageIds = Array.from(new Set(
+            finalSet
+                .filter(m => m.passage_id)
+                .map(m => m.passage_id)
+        ));
+
+        if (passageIds.length > 0) {
+            const passages = await Passage.find({ id: { $in: passageIds } }).lean();
+            const passageMap = new Map();
+            passages.forEach(p => passageMap.set(p.id, p));
+
+            finalSet = finalSet.map(m => {
+                if (m.passage_id && passageMap.has(m.passage_id)) {
+                    return { ...m, passage: passageMap.get(m.passage_id) };
+                }
+                return m;
+            });
         }
 
         return NextResponse.json({ mcqs: finalSet });
