@@ -9,6 +9,9 @@ export interface IMCQAttempt extends Document {
     is_correct: boolean;
     time_spent_seconds: number;
     created_at: Date;
+    topic_id?: number;
+    subtopic_id?: number;
+    university_id?: number;
 }
 
 const MCQAttemptSchema: Schema = new Schema({
@@ -20,6 +23,9 @@ const MCQAttemptSchema: Schema = new Schema({
     is_correct: { type: Boolean, default: false },
     time_spent_seconds: { type: Number, default: 0 },
     created_at: { type: Date, default: Date.now },
+    topic_id: { type: Number },
+    subtopic_id: { type: Number },
+    university_id: { type: Number },
 });
 
 export default mongoose.models.MCQAttempt || mongoose.model<IMCQAttempt>('MCQAttempt', MCQAttemptSchema);

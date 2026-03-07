@@ -178,16 +178,6 @@ export default function UniversityExamManager({ uniId, userRole, onBack }: Unive
         }
     };
 
-    const fetchPassageQuestions = async (passageId: number) => {
-        try {
-            const res = await fetch(`/api/mongo/exams/questions?passage_id=${passageId}`);
-            const data = await res.json();
-            setPassageQuestions(data.questions || []);
-        } catch (error) {
-            console.error("Error fetching passage questions:", error);
-        }
-    };
-
     const fetchSections = async (examId: number) => {
         setGlobalLoading(true, 'Analyzing Curriculum Structure...');
         try {
@@ -465,10 +455,6 @@ export default function UniversityExamManager({ uniId, userRole, onBack }: Unive
                 toast.success('Question added');
             }
             setIsQuestionModalOpen(false);
-
-            if (activePassage) {
-                fetchPassageQuestions(activePassage.id);
-            }
 
             setQuestionForm({
                 question_text: '',

@@ -33,7 +33,7 @@ export async function POST(req: NextRequest) {
     try {
         await connectToDatabase();
         const body = await req.json();
-        const { student_id, subtopic_id, topic_id, university_id, session_type = 'practice' } = body;
+        const { student_id, subtopic_id, topic_id, university_id, session_type = 'practice', mcq_ids = [] } = body;
 
         if (!student_id) {
             return NextResponse.json({ error: 'student_id is required' }, { status: 400 });
@@ -54,6 +54,7 @@ export async function POST(req: NextRequest) {
             wrong_answers: 0,
             skipped_questions: 0,
             time_spent_seconds: 0,
+            mcq_ids: mcq_ids,
         });
 
         return NextResponse.json({ session }, { status: 201 });

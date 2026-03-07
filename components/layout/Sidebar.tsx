@@ -90,6 +90,7 @@ const Sidebar: React.FC<SidebarProps> = ({ userRole }) => {
         const studentItems = [
             { icon: LayoutDashboard, label: 'Dashboard', href: '/dashboard', section: 'General' },
             { icon: University, label: 'University Library', href: '/university', section: 'General' },
+            { icon: Target, label: 'Practice', href: '/practice', section: 'General' },
             { icon: TrendingUp, label: 'Progress', href: '/progress', section: 'General' },
             { icon: Brain, label: 'Deep Insights', href: '/dashboard/analytics', section: 'General' },
             { icon: Bell, label: 'Notifications', href: '/notifications', section: 'General' },

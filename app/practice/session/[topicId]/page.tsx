@@ -5,24 +5,15 @@ import { useRouter, useParams } from 'next/navigation';
 import {
     ChevronLeft,
     ChevronRight,
-    Send,
     Timer,
     Trophy,
     XCircle,
     CheckCircle2,
     HelpCircle,
-    AlertCircle,
     ArrowRight,
-    Play,
     RotateCcw,
-    Layout,
-    Clock,
-    Target,
-    HelpingHand,
-    Sparkles,
-    BookOpen,
-    Brain,
-    BookOpenText
+    Send,
+    BookOpen
 } from 'lucide-react';
 import MarkdownRenderer from '@/components/shared/MarkdownRenderer';
 import Sidebar from '@/components/layout/Sidebar';
@@ -30,12 +21,13 @@ import { AuthService } from '@/lib/services/authService';
 import { PracticeService, MCQ } from '@/lib/services/practiceService';
 import { toast } from 'sonner';
 import { useLoading } from '@/lib/context/LoadingContext';
+import { useUI } from '@/lib/context/UIContext';
 
-export default function TopicPracticeSessionPage() {
+export default function DirectTopicPracticePage() {
     const router = useRouter();
     const params = useParams();
-    const uniId = parseInt(params.uniId as string);
     const topicId = parseInt(params.topicId as string);
+    const { isSidebarCollapsed } = useUI();
 
     const { setLoading: setGlobalLoading, isLoading: loading } = useLoading();
     const [questions, setQuestions] = useState<MCQ[]>([]);
@@ -43,14 +35,13 @@ export default function TopicPracticeSessionPage() {
     const [answers, setAnswers] = useState<Record<number, string>>({});
     const [submittedAnswers, setSubmittedAnswers] = useState<Record<number, boolean>>({});
     const [isCompleted, setIsCompleted] = useState(false);
-    const [startTime] = useState(new Date());
     const [timeElapsed, setTimeElapsed] = useState(0);
     const [session, setSession] = useState<any>(null);
     const [topicName, setTopicName] = useState('');
     const [results, setResults] = useState<any>(null);
     const [user, setUser] = useState<any>(null);
-
     const [lastInteractionTime, setLastInteractionTime] = useState(Date.now());
+
     const timerRef = useRef<any>(null);
     const initialized = useRef(false);
 
@@ -59,25 +50,20 @@ export default function TopicPracticeSessionPage() {
         initialized.current = true;
 
         const initSession = async () => {
-            setGlobalLoading(true, 'Initialising Topic Practice...');
+            setGlobalLoading(true, 'Preparing Practice Session...');
             try {
-                console.log('Practicing Topic:', topicId, 'Uni:', uniId);
                 const currentUser = AuthService.getCurrentUser() || await AuthService.syncSession();
-                if (!currentUser) {
-                    console.error('No user found');
-                    router.push('/login');
-                    return;
-                }
+                if (!currentUser) { router.push('/login'); return; }
                 setUser(currentUser);
 
-                // Fetch topic info via MongoDB API
+                // Fetch topic info
                 const res = await fetch(`/api/mongo/content?type=topics&id=${topicId}`);
                 const data = await res.json();
                 const topic = data.topics?.[0];
-                setTopicName(topic?.name || 'Topic');
+                setTopicName(topic?.name || 'Topic Practice');
 
                 // Check for existing active session
-                const activeRecord = await PracticeService.getActiveSession(currentUser.id, { topicId, universityId: uniId });
+                const activeRecord = await PracticeService.getActiveSession(currentUser.id, { topicId });
                 let finalSession = activeRecord.session;
                 let finalMcqs = activeRecord.mcqs;
 
@@ -107,44 +93,34 @@ export default function TopicPracticeSessionPage() {
                     setSession(finalSession);
                     toast.success('Resumed previous session');
                 } else {
-                    // 1. Generate Questions (Topic Mode)
+                    // Generate MCQs — no university_id needed for direct practice
                     const mcqs = await PracticeService.generatePracticeSession(
-                        null, // No subtopicId
-                        uniId,
-                        0, // subjectId derived in service
+                        null,
+                        null, // no university
+                        0,
                         currentUser.id,
-                        topicId // Pass topicId
+                        topicId
                     );
-
-                    console.log('Topic MCQs fetched:', mcqs?.length);
 
                     if (!mcqs || mcqs.length === 0) {
                         toast.error('No practice questions available for this topic yet.');
-                        console.warn('Redirecting back - zero questions in topic pool');
-                        router.push(`/university/${uniId}`);
+                        router.push('/practice');
                         return;
                     }
 
                     const mcqIds = mcqs.map((m: any) => m.id);
 
-                    // 2. Create Session in DB
+                    // Create session (no university_id)
                     const { session: startedSession, error } = await PracticeService.createSession(
                         currentUser.id,
-                        null, // No subtopicId
-                        uniId,
+                        null,
+                        null, // no university
                         'practice',
-                        topicId, // Pass topicId
+                        topicId,
                         mcqIds
                     );
 
-                    if (error) {
-                        console.error('Failed to create topic session:', error);
-                        throw new Error(error);
-                    }
-
-                    if (!startedSession) {
-                        throw new Error('Could not initialize session record');
-                    }
+                    if (error || !startedSession) throw new Error(error || 'Could not initialize session');
 
                     setSession(startedSession);
                     setQuestions(mcqs);
@@ -152,42 +128,42 @@ export default function TopicPracticeSessionPage() {
 
                 setLastInteractionTime(Date.now());
 
-                // 3. Start Timer
                 timerRef.current = setInterval(() => {
                     setTimeElapsed(prev => prev + 1);
                 }, 1000);
 
-            } catch (error: any) {
-                console.error('Topic practice init failure:', error);
-                toast.error(error.message || 'Failed to start practice.');
-                router.push(`/university/${uniId}`);
+            } catch (err: any) {
+                console.error('Direct practice init error:', err);
+                toast.error(err.message || 'Failed to start practice.');
+                router.push('/practice');
             } finally {
                 setGlobalLoading(false);
             }
         };
 
-        if (topicId && uniId) {
-            initSession();
-        }
+        if (topicId) initSession();
 
-        return () => {
-            if (timerRef.current) clearInterval(timerRef.current);
-        };
-    }, [topicId, uniId]);
+        return () => { if (timerRef.current) clearInterval(timerRef.current); };
+    }, [topicId]);
 
     const handleSelectOption = (option: string) => {
         if (isCompleted || submittedAnswers[currentIndex]) return;
         setAnswers({ ...answers, [currentIndex]: option });
     };
 
-    const handleSubmitAttempt = async (mcqId: number, selectedOption: string, timeSpent: number) => {
-        await PracticeService.submitAttempt(
-            session.id,
-            mcqId,
-            user.id,
-            selectedOption as any,
-            timeSpent
-        );
+    const handleSubmitAnswer = async () => {
+        if (!answers[currentIndex] || !session) return;
+        const currentMCQ = questions[currentIndex];
+        const timeSpent = Math.round((Date.now() - lastInteractionTime) / 1000);
+
+        setGlobalLoading(true, 'Submitting...');
+        try {
+            await PracticeService.submitAttempt(session.id, currentMCQ.id, user.id, answers[currentIndex] as any, timeSpent);
+            setSubmittedAnswers({ ...submittedAnswers, [currentIndex]: true });
+            setLastInteractionTime(Date.now());
+        } finally {
+            setGlobalLoading(false);
+        }
     };
 
     const nextQuestion = () => {
@@ -199,39 +175,17 @@ export default function TopicPracticeSessionPage() {
         }
     };
 
-    const handleSubmitAnswer = async () => {
-        if (!answers[currentIndex]) return;
-
-        const currentMCQ = questions[currentIndex];
-        const timeSpent = Math.round((Date.now() - lastInteractionTime) / 1000);
-
-        setGlobalLoading(true, 'Submitting...');
-        try {
-            await handleSubmitAttempt(currentMCQ.id, answers[currentIndex], timeSpent);
-            setSubmittedAnswers({ ...submittedAnswers, [currentIndex]: true });
-            setLastInteractionTime(Date.now());
-        } finally {
-            setGlobalLoading(false);
-        }
-    };
-
     const prevQuestion = () => {
         setLastInteractionTime(Date.now());
-        if (currentIndex > 0) {
-            setCurrentIndex(currentIndex - 1);
-        }
+        if (currentIndex > 0) setCurrentIndex(currentIndex - 1);
     };
 
     const finalizeSession = async () => {
-        if (isCompleted) return;
-
+        if (isCompleted || !session) return;
         setIsCompleted(true);
         if (timerRef.current) clearInterval(timerRef.current);
 
-        let correct = 0;
-        let wrong = 0;
-        let skipped = 0;
-
+        let correct = 0, wrong = 0, skipped = 0;
         questions.forEach((q, idx) => {
             const answer = answers[idx];
             if (!answer) skipped++;
@@ -240,24 +194,12 @@ export default function TopicPracticeSessionPage() {
         });
 
         const { success, error } = await PracticeService.completeSession(
-            session.id,
-            user.id,
-            questions.length,
-            correct,
-            wrong,
-            skipped,
-            timeElapsed
+            session.id, user.id, questions.length, correct, wrong, skipped, timeElapsed
         );
 
         if (success) {
-            setResults({
-                correct,
-                wrong,
-                skipped,
-                score: Math.round((correct / questions.length) * 100),
-                time: timeElapsed
-            });
-            toast.success('Session completed!');
+            setResults({ correct, wrong, skipped, score: Math.round((correct / questions.length) * 100), time: timeElapsed });
+            toast.success('Session completed! Great work!');
         } else {
             toast.error(error || 'Failed to save session');
         }
@@ -275,56 +217,60 @@ export default function TopicPracticeSessionPage() {
         </div>
     );
 
+    // Results Screen
     if (isCompleted && results) {
         return (
-            <div className="min-h-screen bg-[#F8FAFC] flex flex-col items-center justify-center p-4">
-                <div className="w-full max-w-2xl bg-white rounded-[3rem] shadow-2xl overflow-hidden border border-slate-100 animate-scale-in">
-                    <div className="bg-gradient-to-br from-slate-900 to-teal-950 p-12 text-center relative overflow-hidden">
-                        <div className="absolute top-0 right-0 w-64 h-64 bg-teal-500/10 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2" />
-                        <div className="relative z-10">
-                            <div className="w-24 h-24 bg-white/10 backdrop-blur-md rounded-[2rem] flex items-center justify-center mx-auto mb-6 border border-white/20">
-                                <Trophy className="w-12 h-12 text-teal-300" />
-                            </div>
-                            <h1 className="text-4xl font-black text-white mb-2 tracking-tight">Practice Complete!</h1>
-                            <p className="text-teal-400 font-bold uppercase tracking-widest text-xs">{topicName}</p>
-                        </div>
-                    </div>
-
-                    <div className="p-12">
-                        <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-12">
-                            <div className="bg-slate-50 p-6 rounded-3xl border border-slate-100 text-center transition-transform hover:scale-105">
-                                <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Score</p>
-                                <p className="text-3xl font-black text-teal-600">{results.score}%</p>
-                            </div>
-                            <div className="bg-green-50 p-6 rounded-3xl border border-emerald-100 text-center transition-transform hover:scale-105">
-                                <p className="text-[10px] font-black text-emerald-400 uppercase tracking-widest mb-1">Correct</p>
-                                <p className="text-3xl font-black text-emerald-600">{results.correct}</p>
-                            </div>
-                            <div className="bg-rose-50 p-6 rounded-3xl border border-rose-100 text-center transition-transform hover:scale-105">
-                                <p className="text-[10px] font-black text-rose-400 uppercase tracking-widest mb-1">Wrong</p>
-                                <p className="text-3xl font-black text-rose-600">{results.wrong}</p>
-                            </div>
-                            <div className="bg-slate-50 p-6 rounded-3xl border border-slate-100 text-center transition-transform hover:scale-105">
-                                <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Time</p>
-                                <p className="text-3xl font-black text-slate-900">{formatTime(results.time)}</p>
+            <div className="min-h-screen bg-[#F8FAFC] flex flex-col">
+                <Sidebar userRole="student" />
+                <div className={`flex-1 flex flex-col items-center justify-center p-6 transition-all duration-300 ${isSidebarCollapsed ? 'lg:ml-24' : 'lg:ml-72'}`}>
+                    <div className="w-full max-w-2xl bg-white rounded-[3rem] shadow-2xl overflow-hidden border border-slate-100">
+                        <div className="bg-gradient-to-br from-slate-900 to-teal-950 p-12 text-center relative overflow-hidden">
+                            <div className="absolute top-0 right-0 w-64 h-64 bg-teal-500/10 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2" />
+                            <div className="relative z-10">
+                                <div className="w-24 h-24 bg-white/10 backdrop-blur-md rounded-[2rem] flex items-center justify-center mx-auto mb-6 border border-white/20">
+                                    <Trophy className="w-12 h-12 text-teal-300" />
+                                </div>
+                                <h1 className="text-4xl font-black text-white mb-2 tracking-tight">Practice Complete!</h1>
+                                <p className="text-teal-400 font-bold uppercase tracking-widest text-xs">{topicName}</p>
                             </div>
                         </div>
 
-                        <div className="space-y-4">
-                            <button
-                                onClick={() => window.location.reload()}
-                                className="w-full py-5 bg-teal-600 text-white rounded-2xl font-black uppercase tracking-[0.2em] text-[10px] shadow-xl shadow-teal-100 hover:bg-teal-700 transition-all active:scale-98 flex items-center justify-center gap-3 animate-pulse hover:animate-none"
-                            >
-                                <RotateCcw className="w-4 h-4" />
-                                Practice More Questions
-                            </button>
-                            <button
-                                onClick={() => router.push(`/university/${uniId}`)}
-                                className="w-full py-5 bg-slate-900 text-white rounded-2xl font-black uppercase tracking-[0.2em] text-[10px] shadow-xl shadow-slate-100 hover:bg-slate-800 transition-all active:scale-98 flex items-center justify-center gap-3"
-                            >
-                                <ArrowRight className="w-4 h-4" />
-                                Return to Library
-                            </button>
+                        <div className="p-12">
+                            <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-12">
+                                <div className="bg-slate-50 p-6 rounded-3xl border border-slate-100 text-center hover:scale-105 transition-transform">
+                                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Score</p>
+                                    <p className="text-3xl font-black text-teal-600">{results.score}%</p>
+                                </div>
+                                <div className="bg-green-50 p-6 rounded-3xl border border-emerald-100 text-center hover:scale-105 transition-transform">
+                                    <p className="text-[10px] font-black text-emerald-400 uppercase tracking-widest mb-1">Correct</p>
+                                    <p className="text-3xl font-black text-emerald-600">{results.correct}</p>
+                                </div>
+                                <div className="bg-rose-50 p-6 rounded-3xl border border-rose-100 text-center hover:scale-105 transition-transform">
+                                    <p className="text-[10px] font-black text-rose-400 uppercase tracking-widest mb-1">Wrong</p>
+                                    <p className="text-3xl font-black text-rose-600">{results.wrong}</p>
+                                </div>
+                                <div className="bg-slate-50 p-6 rounded-3xl border border-slate-100 text-center hover:scale-105 transition-transform">
+                                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Time</p>
+                                    <p className="text-3xl font-black text-slate-900">{formatTime(results.time)}</p>
+                                </div>
+                            </div>
+
+                            <div className="space-y-4">
+                                <button
+                                    onClick={() => window.location.reload()}
+                                    className="w-full py-5 bg-teal-600 text-white rounded-2xl font-black uppercase tracking-[0.2em] text-[10px] shadow-xl shadow-teal-100 hover:bg-teal-700 transition-all flex items-center justify-center gap-3"
+                                >
+                                    <RotateCcw className="w-4 h-4" />
+                                    Practice Again
+                                </button>
+                                <button
+                                    onClick={() => router.push('/practice')}
+                                    className="w-full py-5 bg-slate-900 text-white rounded-2xl font-black uppercase tracking-[0.2em] text-[10px] shadow-xl shadow-slate-100 hover:bg-slate-800 transition-all flex items-center justify-center gap-3"
+                                >
+                                    <BookOpen className="w-4 h-4" />
+                                    Browse More Topics
+                                </button>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -351,7 +297,7 @@ export default function TopicPracticeSessionPage() {
             <header className="h-20 bg-white border-b border-slate-100 flex items-center justify-between px-8 sticky top-0 z-50">
                 <div className="flex items-center gap-6">
                     <button
-                        onClick={() => router.back()}
+                        onClick={() => router.push('/practice')}
                         className="w-10 h-10 rounded-xl border border-slate-200 flex items-center justify-center text-slate-400 hover:text-teal-600 hover:border-teal-600 transition-all"
                     >
                         <ChevronLeft className="w-5 h-5" />
@@ -368,8 +314,8 @@ export default function TopicPracticeSessionPage() {
                         <span className="text-sm font-black text-slate-700 font-mono">{formatTime(timeElapsed)}</span>
                     </div>
                     <button
-                        onClick={() => finalizeSession()}
-                        className="btn btn-primary h-10 px-6 text-[10px]"
+                        onClick={finalizeSession}
+                        className="px-6 py-2.5 rounded-xl bg-slate-900 text-white text-[10px] font-black uppercase tracking-widest hover:bg-teal-600 transition-all"
                     >
                         End Session
                     </button>
@@ -384,15 +330,16 @@ export default function TopicPracticeSessionPage() {
                 />
             </div>
 
-            <main className="flex-1 w-full mx-auto p-4 lg:p-6 overflow-y-auto [&::-webkit-scrollbar]:hidden flex justify-center">
+            {/* Main Content */}
+            <main className="flex-1 w-full mx-auto p-4 sm:p-6 overflow-y-auto [&::-webkit-scrollbar]:hidden flex justify-center">
                 <div className="w-full max-w-5xl transition-all duration-500">
                     {/* Main Column: Question, Options & Explanation */}
                     <div className="bg-white rounded-3xl shadow-sm border border-slate-100 overflow-hidden flex flex-col min-h-[400px] w-full transition-all duration-500">
                         <div className="p-6 sm:p-10 flex-1">
                             {/* Question */}
-                            <div className="mb-12">
-                                <span className="text-[10px] font-black text-teal-500 uppercase tracking-[0.2em] mb-4 block">Question</span>
-                                <div className="text-xl sm:text-2xl font-bold text-slate-900 leading-relaxed">
+                            <div className="mb-6">
+                                <span className="text-[10px] font-black text-teal-500 uppercase tracking-[0.2em] mb-3 block">Question</span>
+                                <div className="text-lg sm:text-xl font-bold text-slate-900 leading-relaxed">
                                     <MarkdownRenderer content={currentMCQ.question} />
                                 </div>
                                 {currentMCQ.question_image_url && (
@@ -403,7 +350,7 @@ export default function TopicPracticeSessionPage() {
                             </div>
 
                             {/* Options */}
-                            <div className={`grid gap-4 ${optionsGridClass}`}>
+                            <div className={`grid gap-3 ${optionsGridClass}`}>
                                 {[
                                     { key: 'A', text: currentMCQ.option_a },
                                     { key: 'B', text: currentMCQ.option_b },
@@ -421,7 +368,7 @@ export default function TopicPracticeSessionPage() {
                                             key={option.key}
                                             onClick={() => handleSelectOption(option.key)}
                                             disabled={isSubmitted}
-                                            className={`group flex items-center p-6 rounded-2xl border-2 transition-all active:scale-[0.99] text-left ${showCorrect
+                                            className={`group flex items-center p-4 rounded-2xl border-2 transition-all active:scale-[0.99] text-left ${showCorrect
                                                 ? 'bg-emerald-50 border-emerald-500 shadow-md shadow-emerald-100'
                                                 : showWrong
                                                     ? 'bg-rose-50 border-rose-500 shadow-md shadow-rose-100'
@@ -438,16 +385,9 @@ export default function TopicPracticeSessionPage() {
                                                         ? 'bg-teal-600 text-white'
                                                         : 'bg-slate-100 text-slate-400 group-hover:bg-white group-hover:text-slate-600'
                                                 }`}>
-                                                {showCorrect ? (
-                                                    <CheckCircle2 className="w-5 h-5" />
-                                                ) : showWrong ? (
-                                                    <XCircle className="w-5 h-5" />
-                                                ) : (
-                                                    option.key
-                                                )}
+                                                {showCorrect ? <CheckCircle2 className="w-5 h-5" /> : showWrong ? <XCircle className="w-5 h-5" /> : option.key}
                                             </div>
-                                            <div className={`ml-6 text-sm font-bold ${isSelected ? 'text-teal-900' : 'text-slate-600'
-                                                }`}>
+                                            <div className={`ml-6 text-sm font-bold ${isSelected ? 'text-teal-900' : 'text-slate-600'}`}>
                                                 <MarkdownRenderer content={option.text} />
                                             </div>
                                         </button>
@@ -457,10 +397,10 @@ export default function TopicPracticeSessionPage() {
 
                             {/* Explanation */}
                             {showExplanation && (
-                                <div className="mt-12 bg-slate-50 rounded-[2rem] border border-slate-100 p-8 sm:p-10 animate-fade-in">
-                                    <div className="flex items-center gap-4 mb-8">
-                                        <div className="w-12 h-12 rounded-2xl bg-teal-100 flex items-center justify-center shrink-0">
-                                            <HelpCircle className="w-6 h-6 text-teal-600" />
+                                <div className="mt-8 bg-slate-50 rounded-[2rem] border border-slate-100 p-6 sm:p-8 animate-fade-in">
+                                    <div className="flex items-center gap-3 mb-6">
+                                        <div className="w-10 h-10 rounded-xl bg-teal-100 flex items-center justify-center shrink-0">
+                                            <HelpCircle className="w-5 h-5 text-teal-600" />
                                         </div>
                                         <h4 className="text-sm font-black text-teal-600 uppercase tracking-widest">Explanation</h4>
                                     </div>
@@ -478,7 +418,7 @@ export default function TopicPracticeSessionPage() {
                         </div>
 
                         {/* Navigation Footer */}
-                        <div className="p-6 sm:p-12 bg-slate-50/50 border-t border-slate-100 flex flex-col sm:flex-row items-center justify-between gap-6">
+                        <div className="p-4 sm:p-8 bg-slate-50/50 border-t border-slate-100 flex flex-col sm:flex-row items-center justify-between gap-4">
                             <div className="flex items-center gap-3">
                                 <button
                                     onClick={prevQuestion}
@@ -513,18 +453,12 @@ export default function TopicPracticeSessionPage() {
                             ) : (
                                 <button
                                     onClick={nextQuestion}
-                                    className="w-full sm:w-auto px-10 py-4 rounded-2xl font-black uppercase tracking-[0.2em] text-[10px] transition-all flex items-center justify-center gap-3 bg-slate-900 text-white shadow-xl shadow-slate-200 hover:bg-slate-800 active:scale-95"
+                                    className="w-full sm:w-auto px-10 py-4 rounded-2xl font-black uppercase tracking-[0.2em] text-[10px] bg-slate-900 text-white shadow-xl shadow-slate-200 hover:bg-slate-800 active:scale-95 transition-all flex items-center justify-center gap-3"
                                 >
                                     {currentIndex === questions.length - 1 ? (
-                                        <>
-                                            Finish Practice
-                                            <CheckCircle2 className="w-4 h-4" />
-                                        </>
+                                        <>Finish Practice <CheckCircle2 className="w-4 h-4" /></>
                                     ) : (
-                                        <>
-                                            Next Question
-                                            <ArrowRight className="w-4 h-4" />
-                                        </>
+                                        <>Next Question <ArrowRight className="w-4 h-4" /></>
                                     )}
                                 </button>
                             )}

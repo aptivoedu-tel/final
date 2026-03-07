@@ -1,7 +1,7 @@
 // MongoDB API - Single MCQ Attempt
 import { NextRequest, NextResponse } from 'next/server';
 import connectToDatabase from '@/lib/mongodb/connection';
-import { MCQ, MCQAttempt } from '@/lib/mongodb/models';
+import { MCQ, MCQAttempt, PracticeSession } from '@/lib/mongodb/models';
 
 export async function POST(req: NextRequest) {
     try {
@@ -19,6 +19,15 @@ export async function POST(req: NextRequest) {
 
         const isCorrect = selected_option !== 'SKIPPED' && selected_option === mcq.correct_option;
 
+        // Get university_id from session if it exists
+        let universityId = undefined;
+        if (practice_session_id) {
+            const session = await PracticeSession.findOne({ id: practice_session_id });
+            if (session?.university_id) {
+                universityId = session.university_id;
+            }
+        }
+
         // Save attempt
         const count = await MCQAttempt.countDocuments({});
         const attempt = await MCQAttempt.create({
@@ -29,6 +38,9 @@ export async function POST(req: NextRequest) {
             selected_option,
             is_correct: isCorrect,
             time_spent_seconds: time_spent_seconds || 0,
+            topic_id: mcq.topic_id,
+            subtopic_id: mcq.subtopic_id,
+            university_id: universityId,
             created_at: new Date()
         });
 

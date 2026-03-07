@@ -16,6 +16,7 @@ export interface IPracticeSession extends Document {
     score_percentage?: number;
     time_spent_seconds: number;
     is_completed: boolean;
+    mcq_ids?: number[];
 }
 
 const PracticeSessionSchema: Schema = new Schema({
@@ -34,6 +35,7 @@ const PracticeSessionSchema: Schema = new Schema({
     score_percentage: { type: Number },
     time_spent_seconds: { type: Number, default: 0 },
     is_completed: { type: Boolean, default: false },
+    mcq_ids: [{ type: Number }],
 });
 
 export default mongoose.models.PracticeSession || mongoose.model<IPracticeSession>('PracticeSession', PracticeSessionSchema);

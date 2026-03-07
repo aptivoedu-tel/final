@@ -62,42 +62,82 @@ export default function PracticeSessionPage() {
                 const subtopic = stData.subtopics?.[0];
                 setSubtopicName(subtopic?.name || 'Subtopic');
 
-                // 1. Generate Questions
-                const mcqs = await PracticeService.generatePracticeSession(
-                    subtopicId,
-                    uniId,
-                    0, // subjectId will be derived in service
-                    user.id
-                );
+                // Check for existing active session
+                const activeRecord = await PracticeService.getActiveSession(user.id, { subtopicId, universityId: uniId });
+                let finalSession = activeRecord.session;
+                let finalMcqs = activeRecord.mcqs;
 
-                console.log('MCQs fetched:', mcqs?.length);
+                if (finalSession && finalMcqs && finalMcqs.length > 0) {
+                    // Resume session
+                    const priorAttempts = activeRecord.attempts || [];
+                    const newAnswers: Record<number, string> = {};
+                    const newSubmitted: Record<number, boolean> = {};
+                    const newIsCorrect: Record<number, boolean> = {};
 
-                if (!mcqs || mcqs.length === 0) {
-                    toast.error('No practice questions available for this subtopic yet.');
-                    console.warn('Redirecting back - zero questions in subtopic pool');
-                    router.push(`/university/${uniId}`);
-                    return;
+                    priorAttempts.forEach((att: any) => {
+                        const qIndex = finalMcqs.findIndex((m: any) => m.id === att.mcq_id);
+                        if (qIndex !== -1) {
+                            newAnswers[qIndex] = att.selected_option;
+                            newSubmitted[qIndex] = true;
+                            newIsCorrect[qIndex] = att.is_correct;
+                        }
+                    });
+
+                    setQuestions(finalMcqs);
+                    setAnswers(newAnswers);
+                    setSubmittedAnswer(newSubmitted);
+                    setIsCorrect(newIsCorrect);
+                    setTimeElapsed(finalSession.time_spent_seconds || 0);
+
+                    // Skip right to next unanswered
+                    const nextIndex = priorAttempts.length;
+                    setCurrentIndex(Math.min(nextIndex, finalMcqs.length - 1));
+
+                    setSession(finalSession);
+                    toast.success('Resumed previous session');
+                } else {
+                    // 1. Generate Questions
+                    const mcqs = await PracticeService.generatePracticeSession(
+                        subtopicId,
+                        uniId,
+                        0, // subjectId will be derived in service
+                        user.id
+                    );
+
+                    console.log('MCQs fetched:', mcqs?.length);
+
+                    if (!mcqs || mcqs.length === 0) {
+                        toast.error('No practice questions available for this subtopic yet.');
+                        console.warn('Redirecting back - zero questions in subtopic pool');
+                        router.push(`/university/${uniId}`);
+                        return;
+                    }
+
+                    const mcqIds = mcqs.map((m: any) => m.id);
+
+                    // 2. Create Session in DB
+                    const { session: startedSession, error } = await PracticeService.createSession(
+                        user.id,
+                        subtopicId,
+                        uniId,
+                        'practice',
+                        null,
+                        mcqIds
+                    );
+
+                    if (error) {
+                        console.error('Failed to create session record:', error);
+                        throw new Error(error);
+                    }
+
+                    if (!startedSession) {
+                        throw new Error('Could not initialize session record');
+                    }
+
+                    setSession(startedSession);
+                    setQuestions(mcqs);
                 }
 
-                setQuestions(mcqs);
-
-                // 2. Create Session in DB
-                const { session: startedSession, error } = await PracticeService.createSession(
-                    user.id,
-                    subtopicId,
-                    uniId
-                );
-
-                if (error) {
-                    console.error('Failed to create session record:', error);
-                    throw new Error(error);
-                }
-
-                if (!startedSession) {
-                    throw new Error('Could not initialize session record');
-                }
-
-                setSession(startedSession);
                 setLastInteractionTime(Date.now());
 
                 // Start Timer
@@ -259,6 +299,16 @@ export default function PracticeSessionPage() {
     const currentMCQ = questions[currentIndex];
     const progress = ((currentIndex + 1) / questions.length) * 100;
 
+    // Determine the longest option length to conditionally arrange the grid
+    const maxOptionLength = Math.max(
+        (currentMCQ?.option_a || '').length,
+        (currentMCQ?.option_b || '').length,
+        (currentMCQ?.option_c || '').length,
+        (currentMCQ?.option_d || '').length
+    );
+    const optionsGridClass = maxOptionLength > 60 ? 'grid-cols-1' : 'grid-cols-1 sm:grid-cols-2';
+    const showExplanation = submittedAnswer[currentIndex] && !!currentMCQ.explanation;
+
     return (
         <div className="min-h-screen bg-[#F8FAFC] flex flex-col">
             {/* Header */}
@@ -298,10 +348,11 @@ export default function PracticeSessionPage() {
                 />
             </div>
 
-            <main className="flex-1 max-w-4xl w-full mx-auto p-4 sm:p-8">
-                <div className="animate-fade-in">
-                    <div className="bg-white rounded-[2.5rem] shadow-xl border border-slate-100 overflow-hidden min-h-[500px] flex flex-col">
-                        <div className="p-8 sm:p-12 flex-1">
+            <main className="flex-1 w-full mx-auto p-4 lg:p-6 overflow-y-auto [&::-webkit-scrollbar]:hidden flex justify-center">
+                <div className="w-full max-w-5xl transition-all duration-500">
+                    {/* Main Column: Question, Options & Explanation */}
+                    <div className="bg-white rounded-3xl shadow-sm border border-slate-100 overflow-hidden flex flex-col min-h-[400px] w-full transition-all duration-500">
+                        <div className="p-6 sm:p-10 flex-1">
                             {/* Question */}
                             <div className="mb-12">
                                 <span className="text-[10px] font-black text-teal-500 uppercase tracking-[0.2em] mb-4 block">Question</span>
@@ -316,64 +367,80 @@ export default function PracticeSessionPage() {
                             </div>
 
                             {/* Options */}
-                            <div className="grid grid-cols-1 gap-4">
+                            <div className={`grid gap-4 ${optionsGridClass}`}>
                                 {[
                                     { key: 'A', text: currentMCQ.option_a },
                                     { key: 'B', text: currentMCQ.option_b },
                                     { key: 'C', text: currentMCQ.option_c },
                                     { key: 'D', text: currentMCQ.option_d },
-                                ].map((option) => (
-                                    <button
-                                        key={option.key}
-                                        onClick={() => handleSelectOption(option.key)}
-                                        className={`group flex items-center p-6 rounded-2xl border-2 transition-all active:scale-[0.99] text-left ${answers[currentIndex] === option.key
-                                            ? 'bg-teal-50 border-teal-500 shadow-md shadow-teal-100'
-                                            : 'bg-white border-slate-100 hover:border-slate-200 hover:bg-slate-50'
-                                            }`}
-                                    >
-                                        <div className={`w-10 h-10 rounded-xl flex items-center justify-center font-black text-sm shrink-0 transition-all ${answers[currentIndex] === option.key
-                                            ? 'bg-teal-600 text-white'
-                                            : 'bg-slate-100 text-slate-400 group-hover:bg-white group-hover:text-slate-600'
-                                            }`}>
-                                            {option.key}
-                                        </div>
-                                        <div className={`ml-6 text-sm font-bold ${answers[currentIndex] === option.key ? 'text-teal-900' : 'text-slate-600'
-                                            }`}>
-                                            <MarkdownRenderer content={option.text} />
-                                        </div>
-                                    </button>
-                                ))}
+                                ].map((option) => {
+                                    const isSubmitted = submittedAnswer[currentIndex];
+                                    const isSelected = answers[currentIndex] === option.key;
+                                    const isCorrectOpt = option.key === currentMCQ.correct_option;
+                                    const showCorrect = isSubmitted && isCorrectOpt;
+                                    const showWrong = isSubmitted && isSelected && !isCorrectOpt;
+
+                                    return (
+                                        <button
+                                            key={option.key}
+                                            onClick={() => handleSelectOption(option.key)}
+                                            disabled={isSubmitted}
+                                            className={`group flex items-center p-6 rounded-2xl border-2 transition-all active:scale-[0.99] text-left ${showCorrect
+                                                ? 'bg-emerald-50 border-emerald-500 shadow-md shadow-emerald-100'
+                                                : showWrong
+                                                    ? 'bg-rose-50 border-rose-500 shadow-md shadow-rose-100'
+                                                    : isSelected
+                                                        ? 'bg-teal-50 border-teal-500 shadow-md shadow-teal-100'
+                                                        : 'bg-white border-slate-100 hover:border-slate-200 hover:bg-slate-50'
+                                                } ${isSubmitted ? 'cursor-default' : ''}`}
+                                        >
+                                            <div className={`w-10 h-10 rounded-xl flex items-center justify-center font-black text-sm shrink-0 transition-all ${showCorrect
+                                                ? 'bg-emerald-600 text-white'
+                                                : showWrong
+                                                    ? 'bg-rose-600 text-white'
+                                                    : isSelected
+                                                        ? 'bg-teal-600 text-white'
+                                                        : 'bg-slate-100 text-slate-400 group-hover:bg-white group-hover:text-slate-600'
+                                                }`}>
+                                                {showCorrect ? (
+                                                    <CheckCircle2 className="w-5 h-5" />
+                                                ) : showWrong ? (
+                                                    <XCircle className="w-5 h-5" />
+                                                ) : (
+                                                    option.key
+                                                )}
+                                            </div>
+                                            <div className={`ml-6 text-sm font-bold ${isSelected ? 'text-teal-900' : 'text-slate-600'}`}>
+                                                <MarkdownRenderer content={option.text} />
+                                            </div>
+                                        </button>
+                                    );
+                                })}
                             </div>
+                            {/* Explanation */}
+                            {showExplanation && (
+                                <div className="mt-12 bg-slate-50 rounded-[2rem] border border-slate-100 p-8 sm:p-10 animate-fade-in">
+                                    <div className="flex items-center gap-4 mb-8">
+                                        <div className="w-12 h-12 rounded-2xl bg-teal-100 flex items-center justify-center shrink-0">
+                                            <HelpCircle className="w-6 h-6 text-teal-600" />
+                                        </div>
+                                        <h4 className="text-sm font-black text-teal-600 uppercase tracking-widest">Explanation</h4>
+                                    </div>
+                                    <div className="text-base text-slate-700 leading-relaxed font-medium">
+                                        <MarkdownRenderer content={currentMCQ.explanation || ''} />
+                                    </div>
+                                    {currentMCQ.explanation_url && (
+                                        <div className="mt-6 rounded-2xl overflow-hidden border border-slate-200 shadow-sm">
+                                            <img src={currentMCQ.explanation_url} alt="Explanation" className="w-full h-auto" />
+                                        </div>
+                                    )}
+                                </div>
+                            )}
+
                         </div>
 
                         {/* Navigation Footer */}
                         <div className="p-6 sm:p-12 bg-slate-50/50 border-t border-slate-100 flex flex-col gap-6">
-                            {/* Explanation Section */}
-                            {submittedAnswer[currentMCQ.id] && (
-                                <div className={`p-6 rounded-2xl border ${isCorrect[currentMCQ.id]
-                                    ? 'bg-emerald-50 border-emerald-100'
-                                    : 'bg-rose-50 border-rose-100'
-                                    } animate-fade-in`}>
-                                    <div className="flex items-center gap-3 mb-2">
-                                        {isCorrect[currentMCQ.id] ? (
-                                            <div className="flex items-center gap-2 text-emerald-700 font-bold">
-                                                <CheckCircle2 className="w-5 h-5" /> Correct!
-                                            </div>
-                                        ) : (
-                                            <div className="flex items-center gap-2 text-rose-700 font-bold">
-                                                <XCircle className="w-5 h-5" /> Incorrect
-                                            </div>
-                                        )}
-                                        <div className="ml-auto text-xs font-bold uppercase tracking-widest text-slate-400">
-                                            Correct Answer: {currentMCQ.correct_option}
-                                        </div>
-                                    </div>
-                                    <MarkdownRenderer
-                                        content={currentMCQ.explanation || 'No explanation provided.'}
-                                        className={`text-sm ${isCorrect[currentMCQ.id] ? 'text-emerald-800' : 'text-rose-800'}`}
-                                    />
-                                </div>
-                            )}
 
                             <div className="flex flex-col sm:flex-row items-center justify-between gap-6">
                                 <div className="flex items-center gap-3">
@@ -396,7 +463,7 @@ export default function PracticeSessionPage() {
                                 </div>
 
                                 <div className="flex gap-3 w-full sm:w-auto">
-                                    {!submittedAnswer[currentMCQ.id] ? (
+                                    {!submittedAnswer[currentIndex] ? (
                                         <button
                                             onClick={async () => {
                                                 if (answers[currentIndex]) {
@@ -414,8 +481,8 @@ export default function PracticeSessionPage() {
                                                             timeSpent
                                                         );
 
-                                                        setSubmittedAnswer(prev => ({ ...prev, [currentMCQ.id]: true }));
-                                                        setIsCorrect(prev => ({ ...prev, [currentMCQ.id]: result.isCorrect }));
+                                                        setSubmittedAnswer(prev => ({ ...prev, [currentIndex]: true }));
+                                                        setIsCorrect(prev => ({ ...prev, [currentIndex]: result.isCorrect }));
                                                         setLastInteractionTime(Date.now());
                                                     } finally {
                                                         setGlobalLoading(false);

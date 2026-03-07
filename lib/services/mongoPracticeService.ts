@@ -73,15 +73,13 @@ export class MongoPracticeService {
         }
     }
 
-    /**
-     * Create a new practice session in MongoDB
-     */
     static async createSession(
         studentId: string,
         subtopicId: number | null,
         universityId: number | null,
         sessionType: string = 'practice',
-        topicId: number | null = null
+        topicId: number | null = null,
+        mcqIds: number[] = []
     ): Promise<{ session: any | null; error: string | null }> {
         try {
             const response = await fetch('/api/mongo/practice', {
@@ -92,7 +90,8 @@ export class MongoPracticeService {
                     subtopic_id: subtopicId,
                     topic_id: topicId,
                     university_id: universityId,
-                    session_type: sessionType
+                    session_type: sessionType,
+                    mcq_ids: mcqIds
                 }),
             });
 
@@ -102,6 +101,30 @@ export class MongoPracticeService {
             return { session: data.session, error: null };
         } catch (error: any) {
             return { session: null, error: error.message };
+        }
+    }
+
+    /**
+     * Get active session (if user left mid-way)
+     */
+    static async getActiveSession(
+        studentId: string,
+        context: { topicId?: number | null, subtopicId?: number | null, universityId?: number | null }
+    ): Promise<{ session: any | null, mcqs: any[], attempts: any[] }> {
+        try {
+            const params = new URLSearchParams();
+            params.append('student_id', studentId);
+            if (context.topicId) params.append('topic_id', context.topicId.toString());
+            if (context.subtopicId) params.append('subtopic_id', context.subtopicId.toString());
+            if (context.universityId) params.append('university_id', context.universityId.toString());
+
+            const response = await fetch(`/api/mongo/practice/active?${params.toString()}`);
+            if (!response.ok) return { session: null, mcqs: [], attempts: [] };
+
+            const data = await response.json();
+            return { session: data.session, mcqs: data.mcqs || [], attempts: data.attempts || [] };
+        } catch (error) {
+            return { session: null, mcqs: [], attempts: [] };
         }
     }
 

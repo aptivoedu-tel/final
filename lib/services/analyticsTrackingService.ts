@@ -23,6 +23,21 @@ export interface BehaviorSummary {
     averageTimePerQuestion: number;
 }
 
+/** Build a Mongo filter based on the universityId mode:
+ *  - 'general'    => no university_id filter (all sessions)
+ *  - 'standalone' => only sessions WITHOUT a university_id (Direct Practice)
+ *  - <id>         => only sessions matching that university_id
+ */
+function buildAttemptFilter(studentId: string, universityId?: string): any {
+    const filter: any = { student_id: studentId };
+    if (universityId === 'standalone') {
+        filter.university_id = { $exists: false };
+    } else if (universityId && universityId !== 'general') {
+        filter.university_id = parseInt(universityId);
+    }
+    return filter;
+}
+
 export class AnalyticsTrackingService {
     /**
      * Get weak topics where accuracy < 60%
@@ -35,26 +50,23 @@ export class AnalyticsTrackingService {
         try {
             await connectToDatabase();
 
-            const filter: any = { student_id: studentId, is_completed: true };
-            if (universityId && universityId !== 'general') {
-                filter.university_id = parseInt(universityId);
-            }
+            const filter = buildAttemptFilter(studentId, universityId);
 
-            const sessions = await PracticeSession.find(filter)
-                .select('topic_id total_questions correct_answers score_percentage')
-                .lean();
+            const attempts = await MCQAttempt.find(filter)
+                .select('topic_id subtopic_id is_correct')
+                .lean() as any[];
 
-            if (!sessions || sessions.length === 0) {
+            if (!attempts || attempts.length === 0) {
                 return { data: [] };
             }
 
             // Aggregate by topic_id
             const topicMap: Record<number, { total: number; correct: number }> = {};
-            sessions.forEach((s: any) => {
-                if (!s.topic_id) return;
-                if (!topicMap[s.topic_id]) topicMap[s.topic_id] = { total: 0, correct: 0 };
-                topicMap[s.topic_id].total += s.total_questions || 0;
-                topicMap[s.topic_id].correct += s.correct_answers || 0;
+            attempts.forEach(a => {
+                if (!a.topic_id) return;
+                if (!topicMap[a.topic_id]) topicMap[a.topic_id] = { total: 0, correct: 0 };
+                topicMap[a.topic_id].total++;
+                if (a.is_correct) topicMap[a.topic_id].correct++;
             });
 
             const topicIds = Object.keys(topicMap).map(Number);
@@ -75,15 +87,13 @@ export class AnalyticsTrackingService {
                     .map(async t => {
                         // Find weakest subtopics for this topic
                         const subtopics = await Subtopic.find({ topic_id: t.topicId, is_active: true }).lean() as any[];
-                        const subtopicIds = subtopics.map((s: any) => s.id);
 
-                        const attempts = await MCQAttempt.find({
-                            student_id: studentId,
-                            subtopic_id: { $in: subtopicIds }
-                        }).lean() as any[];
+                        // Use the attempts we already fetched!
+                        const topicAttempts = attempts.filter(a => a.topic_id === t.topicId);
 
                         const subMap: Record<number, { total: number; correct: number }> = {};
-                        attempts.forEach((a: any) => {
+                        topicAttempts.forEach((a: any) => {
+                            if (!a.subtopic_id) return;
                             if (!subMap[a.subtopic_id]) subMap[a.subtopic_id] = { total: 0, correct: 0 };
                             subMap[a.subtopic_id].total++;
                             if (a.is_correct) subMap[a.subtopic_id].correct++;
@@ -127,23 +137,30 @@ export class AnalyticsTrackingService {
         try {
             await connectToDatabase();
 
-            const filter: any = { student_id: studentId, is_completed: true };
-            if (universityId && universityId !== 'general') {
-                filter.university_id = parseInt(universityId);
-            }
+            const filter = buildAttemptFilter(studentId, universityId);
 
-            const sessions = await PracticeSession.find(filter)
-                .sort({ completed_at: 1 })
-                .limit(30)
-                .select('completed_at score_percentage')
+            const attempts = await MCQAttempt.find(filter)
+                .sort({ created_at: -1 })
+                .limit(1000)
+                .select('created_at is_correct')
                 .lean() as any[];
 
-            const trend: PerformanceTrend[] = sessions
-                .filter(s => s.score_percentage != null)
-                .map(s => ({
-                    date: new Date(s.completed_at || s.started_at).toLocaleDateString(),
-                    accuracy: Math.round(s.score_percentage)
-                }));
+            const dailyStats: Record<string, { total: number; correct: number }> = {};
+            attempts.forEach(a => {
+                const dateOpts = { year: 'numeric', month: '2-digit', day: '2-digit' } as const;
+                const d = new Date(a.created_at || new Date()).toLocaleDateString(undefined, dateOpts);
+                if (!dailyStats[d]) dailyStats[d] = { total: 0, correct: 0 };
+                dailyStats[d].total++;
+                if (a.is_correct) dailyStats[d].correct++;
+            });
+
+            const trend: PerformanceTrend[] = Object.keys(dailyStats).map(date => {
+                const s = dailyStats[date];
+                return {
+                    date,
+                    accuracy: Math.round((s.correct / s.total) * 100)
+                };
+            }).sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime()).slice(-30);
 
             return { data: trend };
         } catch (error: any) {
@@ -163,29 +180,34 @@ export class AnalyticsTrackingService {
         try {
             await connectToDatabase();
 
-            const filter: any = { student_id: studentId, is_completed: true };
-            if (universityId && universityId !== 'general') {
-                filter.university_id = parseInt(universityId);
-            }
+            const filter = buildAttemptFilter(studentId, universityId);
 
-            const sessions = await PracticeSession.find(filter)
-                .select('total_questions time_spent_seconds')
+            const attempts = await MCQAttempt.find(filter)
+                .select('time_spent_seconds')
                 .lean() as any[];
 
-            if (!sessions || sessions.length === 0) {
+            if (!attempts || attempts.length === 0) {
                 return {
                     data: { totalOverthinkCount: 0, totalRushCount: 0, averageTimePerQuestion: 0 }
                 };
             }
 
-            const totalQs = sessions.reduce((sum, s) => sum + (s.total_questions || 0), 0);
-            const totalTime = sessions.reduce((sum, s) => sum + (s.time_spent_seconds || 0), 0);
+            const totalQs = attempts.length;
+            const totalTime = attempts.reduce((sum, a) => sum + (a.time_spent_seconds || 0), 0);
             const avgTime = totalQs > 0 ? Number((totalTime / totalQs).toFixed(1)) : 0;
+
+            let overthink = 0;
+            let rush = 0;
+
+            attempts.forEach(a => {
+                if (a.time_spent_seconds > 120) overthink++;
+                if (a.time_spent_seconds < 10) rush++;
+            });
 
             return {
                 data: {
-                    totalOverthinkCount: 0,
-                    totalRushCount: 0,
+                    totalOverthinkCount: overthink,
+                    totalRushCount: rush,
                     averageTimePerQuestion: avgTime
                 }
             };

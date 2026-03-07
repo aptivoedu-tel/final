@@ -205,9 +205,9 @@ export default function DeepInsightsPage() {
                                         <Sparkles className="w-3 h-3" />
                                         AI Powered Insights
                                     </div>
-                                    <div className={`inline-flex items-center gap-2 px-3 py-1 ${selectedUni === 'general' ? 'bg-indigo-50 text-indigo-600' : 'bg-amber-50 text-amber-600'} rounded-full text-[10px] font-black uppercase tracking-[0.2em] transition-all duration-500`}>
+                                    <div className={`inline-flex items-center gap-2 px-3 py-1 ${selectedUni === 'general' ? 'bg-indigo-50 text-indigo-600' : selectedUni === 'standalone' ? 'bg-purple-50 text-purple-600' : 'bg-amber-50 text-amber-600'} rounded-full text-[10px] font-black uppercase tracking-[0.2em] transition-all duration-500`}>
                                         <Target className="w-3 h-3" />
-                                        Viewing: {selectedUni === 'general' ? 'Overall Performance' : `Insights for ${universities.find(u => u.id.toString() === selectedUni)?.name || 'University'}`}
+                                        Viewing: {selectedUni === 'general' ? 'Overall Performance' : selectedUni === 'standalone' ? 'Direct Practice Only' : `Insights for ${universities.find(u => u.id.toString() === selectedUni)?.name || 'University'}`}
                                     </div>
                                     {dataLoading && (
                                         <div className="inline-flex items-center gap-2 px-3 py-1 bg-slate-100 text-slate-500 rounded-full text-[10px] font-black uppercase tracking-[0.2em] animate-pulse">
@@ -241,9 +241,9 @@ export default function DeepInsightsPage() {
                                             className="w-full bg-white border border-slate-200 text-slate-700 text-sm font-bold rounded-full p-4 px-6 flex items-center justify-between hover:border-teal-500 hover:shadow-lg hover:shadow-teal-500/5 transition-all duration-300 focus:outline-none focus:ring-4 focus:ring-teal-500/10"
                                         >
                                             <div className="flex items-center gap-3 truncate">
-                                                <Building2 className={`w-4 h-4 ${selectedUni === 'general' ? 'text-indigo-400' : 'text-teal-500'}`} />
+                                                <Building2 className={`w-4 h-4 ${selectedUni === 'general' ? 'text-indigo-400' : selectedUni === 'standalone' ? 'text-purple-500' : 'text-teal-500'}`} />
                                                 <span className="truncate">
-                                                    {selectedUni === 'general' ? 'General Analytics' : universities.find(u => u.id.toString() === selectedUni)?.name}
+                                                    {selectedUni === 'general' ? 'General Analytics' : selectedUni === 'standalone' ? 'Direct Practice' : universities.find(u => u.id.toString() === selectedUni)?.name}
                                                 </span>
                                             </div>
                                             <ChevronDown className={`w-4 h-4 transition-transform duration-500 ${isUniMenuOpen ? 'rotate-180 text-teal-500' : 'text-slate-400'}`} />
@@ -264,6 +264,17 @@ export default function DeepInsightsPage() {
                                                         General Analytics
                                                     </button>
                                                     <div className="h-px bg-slate-50 my-1 mx-4" />
+                                                    <button
+                                                        onClick={() => {
+                                                            setSelectedUni('standalone');
+                                                            setIsUniMenuOpen(false);
+                                                        }}
+                                                        className={`w-full text-left p-4 px-6 rounded-2xl text-xs font-bold transition-all flex items-center gap-3 ${selectedUni === 'standalone' ? 'bg-purple-50 text-purple-600' : 'text-slate-600 hover:bg-slate-50'}`}
+                                                    >
+                                                        <Building2 className="w-4 h-4" />
+                                                        Direct Practice
+                                                    </button>
+                                                    {universities.length > 0 && <div className="h-px bg-slate-50 my-1 mx-4" />}
                                                     {universities.map((uni) => (
                                                         <button
                                                             key={uni.id}

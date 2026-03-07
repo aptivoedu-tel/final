@@ -83,18 +83,27 @@ export class PracticeService {
         return [];
     }
 
-    /**
-     * Create a new practice session
-     */
     static async createSession(
         studentId: string,
         subtopicId: number | null,
         universityId: number | null,
         sessionType: string = 'practice',
-        topicId: number | null = null
+        topicId: number | null = null,
+        mcqIds: number[] = []
     ): Promise<{ session: PracticeSession | null; error: string | null }> {
-        if (IS_MONGO) return MongoPracticeService.createSession(studentId, subtopicId, universityId, sessionType, topicId);
+        if (IS_MONGO) return MongoPracticeService.createSession(studentId, subtopicId, universityId, sessionType, topicId, mcqIds);
         return { session: null, error: 'Database mismatch' };
+    }
+
+    /**
+     * Get active session (if user left mid-way)
+     */
+    static async getActiveSession(
+        studentId: string,
+        context: { topicId?: number | null, subtopicId?: number | null, universityId?: number | null }
+    ): Promise<{ session: PracticeSession | null, mcqs: MCQ[], attempts: MCQAttempt[] }> {
+        if (IS_MONGO) return MongoPracticeService.getActiveSession(studentId, context);
+        return { session: null, mcqs: [], attempts: [] };
     }
 
     /**

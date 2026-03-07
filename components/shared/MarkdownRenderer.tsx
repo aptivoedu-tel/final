@@ -14,7 +14,7 @@ interface MarkdownRendererProps {
     className?: string;
 }
 
-const MarkdownRenderer: React.FC<MarkdownRendererProps> = ({ content, className = '' }) => {
+const MarkdownRenderer: React.FC<MarkdownRendererProps> = React.memo(({ content, className = '' }) => {
     return (
         <div className={`prose prose-slate max-w-none ${className}`}>
             <ReactMarkdown
@@ -89,6 +89,6 @@ const MarkdownRenderer: React.FC<MarkdownRendererProps> = ({ content, className 
             </ReactMarkdown>
         </div>
     );
-};
+});
 
 export default MarkdownRenderer;
