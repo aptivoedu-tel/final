@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import {
     ChevronRight, ChevronDown,
     Layers, Hash, FileText,
@@ -36,8 +36,9 @@ type HierarchyItem = {
 
 export default function SuperAdminQuestionBankPage() {
     const [user, setUser] = useState<any>(null);
-    const [data, setData] = useState<HierarchyItem[]>([]);
     const { setLoading: setGlobalLoading, isLoading: loading } = useLoading();
+    const passageFileInputRef = useRef<HTMLInputElement>(null);
+    const [data, setData] = useState<HierarchyItem[]>([]);
     const [searchQuery, setSearchQuery] = useState('');
     const [selectedItem, setSelectedItem] = useState<HierarchyItem | null>(null);
     const [questions, setQuestions] = useState<any[]>([]);
@@ -62,18 +63,12 @@ export default function SuperAdminQuestionBankPage() {
         question_image_url: '',
         question_image_type: 'direct',
         explanation_url: '',
-        explanation_image_type: 'direct',
-        passage_id: '' as string | number
+        explanation_image_type: 'direct'
     });
 
     // Bulk Logic
     const [isBulkModalOpen, setIsBulkModalOpen] = useState(false);
     const fileInputRef = React.useRef<HTMLInputElement>(null);
-
-    const [passageForm, setPassageForm] = useState({
-        title: '',
-        content: ''
-    });
 
     const createDefaultBlockQuestion = () => ({
         question: '',
@@ -210,31 +205,6 @@ export default function SuperAdminQuestionBankPage() {
         }
     };
 
-    const handleSavePassage = async () => {
-        if (!passageForm.content) {
-            toast.error("Passage content is required");
-            return;
-        }
-
-        try {
-            const res = await fetch('/api/mongo/passages', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(passageForm)
-            });
-
-            if (!res.ok) throw new Error('Failed to create passage');
-            const data = await res.json();
-
-            toast.success("Passage created successfully");
-            setPassages([data.passage, ...passages]);
-            setIsPassageModalOpen(false);
-            setPassageForm({ title: '', content: '' });
-        } catch (error: any) {
-            toast.error(error.message);
-        }
-    };
-
     const fetchSettings = async () => {
         try {
             // Force fetch newest settings with cache-busting
@@ -329,8 +299,7 @@ export default function SuperAdminQuestionBankPage() {
             question_image_url: '',
             question_image_type: 'direct',
             explanation_url: '',
-            explanation_image_type: 'direct',
-            passage_id: ''
+            explanation_image_type: 'direct'
         });
         setIsMcqModalOpen(true);
     };
@@ -350,8 +319,7 @@ export default function SuperAdminQuestionBankPage() {
             question_image_url: q.question_image_url || '',
             question_image_type: q.question_image_url?.includes('googleusercontent.com') ? 'drive' : 'direct',
             explanation_url: q.explanation_url || '',
-            explanation_image_type: q.explanation_url?.includes('googleusercontent.com') ? 'drive' : 'direct',
-            passage_id: q.passage_id || ''
+            explanation_image_type: q.explanation_url?.includes('googleusercontent.com') ? 'drive' : 'direct'
         });
         setIsMcqModalOpen(true);
     };
@@ -431,8 +399,7 @@ export default function SuperAdminQuestionBankPage() {
                     : mcqForm.question_image_url,
                 explanation_url: mcqForm.explanation_image_type === 'drive'
                     ? convertDriveLink(mcqForm.explanation_url)
-                    : mcqForm.explanation_url,
-                passage_id: mcqForm.passage_id === '' ? null : Number(mcqForm.passage_id)
+                    : mcqForm.explanation_url
             };
 
             // Remove internal UI state before saving
@@ -463,6 +430,79 @@ export default function SuperAdminQuestionBankPage() {
             console.error("Save MCQ error:", err);
             toast.error(err.message || "Failed to save question");
         }
+    };
+
+    const handleDownloadPassageTemplate = () => {
+        const templateData = [
+            {
+                'Question': 'Based on the passage, what is the primary cause of X?',
+                'Option A': 'Factor 1',
+                'Option B': 'Factor 2',
+                'Option C': 'Factor 3',
+                'Option D': 'Factor 4',
+                'Correct Option': 'A',
+                'Difficulty': 'medium',
+                'Explanation': 'The second paragraph explicitly states factor 1.'
+            }
+        ];
+        const ws = XLSX.utils.json_to_sheet(templateData);
+        const wb = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(wb, ws, "PassageQuestionsTemplate");
+        XLSX.writeFile(wb, "aptivo_passage_questions_template.xlsx");
+    };
+
+    const handlePassageBulkUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+        if (!e.target.files?.[0]) return;
+        const file = e.target.files[0];
+        setGlobalLoading(true, 'Parsing Academic Data Stream...');
+        const reader = new FileReader();
+        reader.onload = async (evt) => {
+            try {
+                const bstr = evt.target?.result;
+                const wb = XLSX.read(bstr, { type: 'binary' });
+                const wsname = wb.SheetNames[0];
+                const ws = wb.Sheets[wsname];
+                const data: any[] = XLSX.utils.sheet_to_json(ws);
+
+                const newQuestions = data.map(row => {
+                    const rawCorrect = (row.correct_option || row.Answer || row.correct_answer || row['Correct Option'] || 'A').toString().toUpperCase().trim();
+                    let correctLabel = rawCorrect;
+                    if (rawCorrect === '1') correctLabel = 'A';
+                    else if (rawCorrect === '2') correctLabel = 'B';
+                    else if (rawCorrect === '3') correctLabel = 'C';
+                    else if (rawCorrect === '4') correctLabel = 'D';
+
+                    return {
+                        question: row.question || row.question_text || row.Question || '',
+                        difficulty: (row.difficulty || 'medium').toLowerCase(),
+                        option_a: row.option_a || row.option1 || row.A || row['Option A'] || '',
+                        option_b: row.option_b || row.option2 || row.B || row['Option B'] || '',
+                        option_c: row.option_c || row.option3 || row.C || row['Option C'] || '',
+                        option_d: row.option_d || row.option4 || row.D || row['Option D'] || '',
+                        correct_option: correctLabel,
+                        explanation: row.explanation || row.Explanation || row.reason || '',
+                        question_image_url: row.question_image || row.image_url || '',
+                        question_image_type: 'direct',
+                        explanation_url: '',
+                        explanation_image_type: 'direct',
+                    };
+                });
+
+                if (newQuestions.length > 0) {
+                    setPassageBlockForm(prev => ({
+                        ...prev,
+                        questions: [...prev.questions, ...newQuestions]
+                    }));
+                    toast.success(`Injected ${newQuestions.length} questions into the passage block.`);
+                }
+            } catch (err: any) {
+                toast.error(err.message);
+            } finally {
+                setGlobalLoading(false);
+                if (passageFileInputRef.current) passageFileInputRef.current.value = '';
+            }
+        };
+        reader.readAsBinaryString(file);
     };
 
     const handleDeleteMcq = async (id: number) => {
@@ -1122,16 +1162,37 @@ export default function SuperAdminQuestionBankPage() {
                                                         <Layers className="w-4 h-4 text-teal-600" />
                                                         Questions in Block ({passageBlockForm.questions.length})
                                                     </h4>
-                                                    <button
-                                                        onClick={() => setPassageBlockForm({
-                                                            ...passageBlockForm,
-                                                            questions: [...passageBlockForm.questions, createDefaultBlockQuestion()]
-                                                        })}
-                                                        className="px-4 py-2 bg-teal-50 text-teal-600 rounded-xl font-black text-[10px] uppercase tracking-widest hover:bg-teal-100 transition-all flex items-center gap-2 shadow-sm"
-                                                    >
-                                                        <Plus className="w-3.5 h-3.5" />
-                                                        Add Question
-                                                    </button>
+                                                    <div className="flex items-center gap-2">
+                                                        <button
+                                                            onClick={handleDownloadPassageTemplate}
+                                                            className="px-3 py-1.5 bg-white border border-slate-200 text-slate-500 rounded-lg font-bold text-[9px] uppercase tracking-widest hover:bg-slate-50 transition-all flex items-center gap-2"
+                                                        >
+                                                            <UploadCloud className="w-3 h-3" /> Template
+                                                        </button>
+                                                        <button
+                                                            onClick={() => passageFileInputRef.current?.click()}
+                                                            className="px-3 py-1.5 bg-white border border-slate-200 text-teal-600 rounded-lg font-black text-[9px] uppercase tracking-widest hover:bg-slate-50 transition-all flex items-center gap-2 shadow-sm"
+                                                        >
+                                                            <Plus className="w-3 h-3" /> Bulk Upload
+                                                        </button>
+                                                        <input
+                                                            type="file"
+                                                            ref={passageFileInputRef}
+                                                            onChange={handlePassageBulkUpload}
+                                                            className="hidden"
+                                                            accept=".xlsx, .xls, .csv"
+                                                        />
+                                                        <button
+                                                            onClick={() => setPassageBlockForm({
+                                                                ...passageBlockForm,
+                                                                questions: [...passageBlockForm.questions, createDefaultBlockQuestion()]
+                                                            })}
+                                                            className="px-4 py-2 bg-teal-50 text-teal-600 rounded-xl font-black text-[10px] uppercase tracking-widest hover:bg-teal-100 transition-all flex items-center gap-2 shadow-sm"
+                                                        >
+                                                            <Plus className="w-3.5 h-3.5" />
+                                                            Add Question
+                                                        </button>
+                                                    </div>
                                                 </div>
 
                                                 {passageBlockForm.questions.map((q, idx) => (
@@ -1243,30 +1304,7 @@ export default function SuperAdminQuestionBankPage() {
                                         </div>
                                     ) : (
                                         <>
-                                            {/* Passage Selection */}
-                                            {(mcqForm.question_type !== 'passage' || editingMcq) && (
-                                                <div>
-                                                    <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">Passage (Optional)</label>
-                                                    <div className="flex gap-2">
-                                                        <select
-                                                            value={mcqForm.passage_id}
-                                                            onChange={(e) => setMcqForm({ ...mcqForm, passage_id: e.target.value })}
-                                                            className="flex-1 px-5 py-3 bg-slate-50 border border-gray-100 rounded-xl text-slate-800 font-bold outline-none truncate"
-                                                        >
-                                                            <option value="">No Passage</option>
-                                                            {passages.map(p => (
-                                                                <option key={p.id} value={p.id}>{p.title || `Passage #${p.id}`}</option>
-                                                            ))}
-                                                        </select>
-                                                        <button
-                                                            onClick={() => setIsPassageModalOpen(true)}
-                                                            className="px-4 py-3 bg-teal-50 text-teal-600 rounded-xl font-black text-[10px] uppercase tracking-widest hover:bg-teal-100 transition-all"
-                                                        >
-                                                            <Plus className="w-4 h-4" />
-                                                        </button>
-                                                    </div>
-                                                </div>
-                                            )}                                    {/* Question Text */}
+                                            {/* Question Text */}
                                             <div>
                                                 <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">Question Prompt</label>
                                                 <RichTextEditor
@@ -1432,45 +1470,6 @@ export default function SuperAdminQuestionBankPage() {
                         </div>
                     )}
 
-                    {/* Passage Modal */}
-                    {isPassageModalOpen && (
-                        <div className="fixed inset-0 z-[70] flex items-center justify-center bg-slate-900/60 backdrop-blur-sm p-4">
-                            <div className="bg-white rounded-[2.5rem] shadow-2xl w-full max-w-2xl overflow-hidden flex flex-col animate-in fade-in zoom-in duration-200">
-                                <div className="p-8 border-b border-gray-100 flex justify-between items-center">
-                                    <h3 className="text-2xl font-black text-slate-900">Manage Passage</h3>
-                                    <button onClick={() => setIsPassageModalOpen(false)} className="p-2 hover:bg-slate-100 rounded-full text-slate-400">
-                                        <X className="w-5 h-5" />
-                                    </button>
-                                </div>
-                                <div className="p-8 space-y-6">
-                                    <div className="space-y-2">
-                                        <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Passage Title</label>
-                                        <input
-                                            value={passageForm.title}
-                                            onChange={e => setPassageForm({ ...passageForm, title: e.target.value })}
-                                            placeholder="Enter passage title (e.g. Reading Comprehension 1)"
-                                            className="w-full px-6 py-4 bg-slate-50 border border-gray-100 rounded-2xl font-bold outline-none focus:ring-2 focus:ring-teal-600/20"
-                                        />
-                                    </div>
-                                    <div className="space-y-2">
-                                        <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Passage Content</label>
-                                        <RichTextEditor
-                                            value={passageForm.content}
-                                            onChange={(val) => setPassageForm({ ...passageForm, content: val })}
-                                            placeholder="Enter the full passage content (Markdown & LaTeX supported)..."
-                                            height="h-64"
-                                        />
-                                    </div>
-                                    <button
-                                        onClick={handleSavePassage}
-                                        className="w-full py-5 bg-teal-600 text-white rounded-2xl font-black uppercase tracking-widest text-xs shadow-xl shadow-teal-600/20 hover:scale-[1.02] active:scale-[0.98] transition-all"
-                                    >
-                                        Deploy Passage to Repository
-                                    </button>
-                                </div>
-                            </div>
-                        </div>
-                    )}
                     {/* Transfer Modal */}
                     {isTransferModalOpen && (
                         <div className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-900/60 backdrop-blur-sm p-4">

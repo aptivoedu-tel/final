@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import {
     Plus, Search, Trash2, Edit2, X, FileText, Save, ChevronLeft,
     Clock, AlertCircle, Layout, BookOpen, ChevronRight,
@@ -11,6 +11,8 @@ import { toast } from 'sonner';
 import { AuthService } from '@/lib/services/authService';
 import * as XLSX from 'xlsx';
 import { useLoading } from '@/lib/context/LoadingContext';
+import RichTextEditor from '@/components/shared/RichTextEditor';
+import MarkdownRenderer from '@/components/shared/MarkdownRenderer';
 
 type ExamType = 'mock' | 'module' | 'final';
 type QuestionType = 'mcq_single' | 'mcq_multiple' | 'true_false' | 'numerical' | 'essay' | 'passage' | 'short_answer' | 'fill_blank' | 'matching' | 'ordering' | 'hotspot' | 'case_study';
@@ -69,6 +71,7 @@ interface UniversityExamManagerProps {
 
 export default function UniversityExamManager({ uniId, userRole, onBack }: UniversityExamManagerProps) {
     const { setLoading: setGlobalLoading, isLoading: loading } = useLoading();
+    const passageFileInputRef = useRef<HTMLInputElement>(null);
     const [university, setUniversity] = useState<any>(null);
     const [exams, setExams] = useState<Exam[]>([]);
     const [searchTerm, setSearchTerm] = useState('');
@@ -92,7 +95,6 @@ export default function UniversityExamManager({ uniId, userRole, onBack }: Unive
     const [isSectionModalOpen, setIsSectionModalOpen] = useState(false);
     const [isQuestionModalOpen, setIsQuestionModalOpen] = useState(false);
     const [isBulkModalOpen, setIsBulkModalOpen] = useState(false);
-    const [isPassageModalOpen, setIsPassageModalOpen] = useState(false);
 
     // Form States
     const [examForm, setExamForm] = useState<any>({
@@ -114,16 +116,23 @@ export default function UniversityExamManager({ uniId, userRole, onBack }: Unive
         options: ['Option A', 'Option B', 'Option C', 'Option D'],
         correct_answer: '',
         marks: 1,
-        explanation: '',
-        passage_id: '' as string | number
+        explanation: ''
     });
 
-    const [passageForm, setPassageForm] = useState({
-        title: '',
-        content: ''
+    const createDefaultBlockQuestion = () => ({
+        question_text: '',
+        options: ['Option A', 'Option B', 'Option C', 'Option D'],
+        correct_answer: '1',
+        explanation: '',
+        marks: 1
     });
-    const [activePassage, setActivePassage] = useState<Passage | null>(null);
-    const [passageQuestions, setPassageQuestions] = useState<Question[]>([]);
+
+    const [passageBlockForm, setPassageBlockForm] = useState({
+        title: '',
+        content: '',
+        questions: [createDefaultBlockQuestion()]
+    });
+
     const [imageUploading, setImageUploading] = useState(false);
 
     useEffect(() => {
@@ -157,7 +166,7 @@ export default function UniversityExamManager({ uniId, userRole, onBack }: Unive
             const examsData = await examsRes.json();
             if (examsData.exams) setExams(examsData.exams);
 
-            // Fetch Passages
+            // Fetch Passages (Always fetch to show in lists, but we won't allow management)
             const passagesRes = await fetch('/api/mongo/passages');
             const passagesData = await passagesRes.json();
             if (passagesData.passages) setPassages(passagesData.passages);
@@ -166,44 +175,6 @@ export default function UniversityExamManager({ uniId, userRole, onBack }: Unive
             toast.error('Failed to load exam data');
         } finally {
             setTimeout(() => setGlobalLoading(false), 800);
-        }
-    };
-
-    const handleSavePassage = async () => {
-        if (!passageForm.content) {
-            toast.error("Passage content is required");
-            return;
-        }
-
-        setGlobalLoading(true, 'Synchronizing Passage Asset...');
-        try {
-            if (activePassage) {
-                const res = await fetch('/api/mongo/passages', {
-                    method: 'PATCH',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ id: activePassage.id, ...passageForm })
-                });
-                if (!res.ok) throw new Error("Failed to update passage");
-                toast.success("Passage updated");
-                setPassages(passages.map(p => p.id === activePassage.id ? { ...p, ...passageForm } : p));
-            } else {
-                const res = await fetch('/api/mongo/passages', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(passageForm)
-                });
-                if (!res.ok) throw new Error("Failed to create passage");
-                const data = await res.json();
-                toast.success("Passage created successfully");
-                setPassages([data.passage, ...passages]);
-            }
-            setIsPassageModalOpen(false);
-            setPassageForm({ title: '', content: '' });
-            setActivePassage(null);
-        } catch (error: any) {
-            toast.error(error.message);
-        } finally {
-            setGlobalLoading(false);
         }
     };
 
@@ -408,12 +379,72 @@ export default function UniversityExamManager({ uniId, userRole, onBack }: Unive
             toast.error('You do not have permission to modify this exam.');
             return;
         }
+
+        // Handle Passage-Based Block creation
+        if (questionForm.question_type === 'passage' && !questionForm.id) {
+            if (!passageBlockForm.content) {
+                toast.error("Passage content is required");
+                return;
+            }
+            if (passageBlockForm.questions.length === 0) {
+                toast.error("Add at least one question to the passage");
+                return;
+            }
+
+            setGlobalLoading(true, 'Constructing Intellectual Block...');
+            try {
+                // 1. Create Passage
+                const passageRes = await fetch('/api/mongo/passages', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        title: passageBlockForm.title,
+                        content: passageBlockForm.content
+                    })
+                });
+
+                if (!passageRes.ok) throw new Error('Failed to create passage asset');
+                const passageData = await passageRes.json();
+                const newPassageId = passageData.passage.id;
+
+                // 2. Create Questions linked to this passage
+                const questionPromises = passageBlockForm.questions.map(q => {
+                    const payload = {
+                        ...q,
+                        question_type: 'passage',
+                        passage_id: newPassageId,
+                        section_id: activeSection.id
+                    };
+                    return fetch('/api/mongo/exams/questions', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(payload)
+                    });
+                });
+
+                await Promise.all(questionPromises);
+
+                toast.success("Passage block synthesized successfully");
+                setIsQuestionModalOpen(false);
+                setPassages([passageData.passage, ...passages]);
+                fetchQuestions(activeSection.id);
+
+                // Reset Block Form
+                setPassageBlockForm({ title: '', content: '', questions: [createDefaultBlockQuestion()] });
+            } catch (error: any) {
+                console.error("Save Passage Block error:", error);
+                toast.error(error.message || "Failed to save passage block");
+            } finally {
+                setGlobalLoading(false);
+            }
+            return;
+        }
+
         setGlobalLoading(true, 'Injecting Intellectual Material...');
         try {
             const payload = {
                 ...questionForm,
-                section_id: activeSection.id,
-                passage_id: questionForm.passage_id === '' ? null : Number(questionForm.passage_id)
+                section_id: activeSection.id
             };
 
             if (questionForm.id) {
@@ -446,8 +477,7 @@ export default function UniversityExamManager({ uniId, userRole, onBack }: Unive
                 options: ['Option A', 'Option B', 'Option C', 'Option D'],
                 correct_answer: '',
                 marks: 1,
-                explanation: '',
-                passage_id: ''
+                explanation: ''
             });
             if (activeSection) fetchQuestions(activeSection.id);
         } catch (error: any) {
@@ -555,6 +585,77 @@ export default function UniversityExamManager({ uniId, userRole, onBack }: Unive
         const wb = XLSX.utils.book_new();
         XLSX.utils.book_append_sheet(wb, ws, "Template");
         XLSX.writeFile(wb, "aptivo_exam_mcq_template.xlsx");
+    };
+
+    const handleDownloadPassageTemplate = () => {
+        const templateData = [
+            {
+                'Question': 'Based on the passage, what is the primary cause of X?',
+                'Option A': 'Factor 1',
+                'Option B': 'Factor 2',
+                'Option C': 'Factor 3',
+                'Option D': 'Factor 4',
+                'Correct Option': 'A',
+                'Marks': 2,
+                'Explanation': 'The second paragraph explicitly states factor 1.'
+            }
+        ];
+        const ws = XLSX.utils.json_to_sheet(templateData);
+        const wb = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(wb, ws, "PassageQuestionsTemplate");
+        XLSX.writeFile(wb, "aptivo_passage_questions_template.xlsx");
+    };
+
+    const handlePassageBulkUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+        if (!e.target.files?.[0]) return;
+        const file = e.target.files[0];
+        setGlobalLoading(true, 'Analyzing Comprehension Data source...');
+        const reader = new FileReader();
+        reader.onload = async (evt) => {
+            try {
+                const bstr = evt.target?.result;
+                const wb = XLSX.read(bstr, { type: 'binary' });
+                const wsname = wb.SheetNames[0];
+                const ws = wb.Sheets[wsname];
+                const data: any[] = XLSX.utils.sheet_to_json(ws);
+
+                const newQuestions = data.map(row => {
+                    const rawCorrect = (row.correct_option || row.Answer || row.correct_answer || row['Correct Option'] || '1').toString().toUpperCase().trim();
+                    let correctIndex = rawCorrect;
+                    if (rawCorrect === 'A') correctIndex = '1';
+                    else if (rawCorrect === 'B') correctIndex = '2';
+                    else if (rawCorrect === 'C') correctIndex = '3';
+                    else if (rawCorrect === 'D') correctIndex = '4';
+
+                    return {
+                        question_text: row.question_text || row.Question || row.question || '',
+                        options: [
+                            row.option1 || row.option_a || row.A || row['Option A'] || '',
+                            row.option2 || row.option_b || row.B || row['Option B'] || '',
+                            row.option3 || row.option_c || row.C || row['Option C'] || '',
+                            row.option4 || row.option_d || row.D || row['Option D'] || ''
+                        ],
+                        correct_answer: correctIndex,
+                        marks: row.marks || row.Marks || 1,
+                        explanation: row.explanation || row.Explanation || row.reason || ''
+                    };
+                });
+
+                if (newQuestions.length > 0) {
+                    setPassageBlockForm(prev => ({
+                        ...prev,
+                        questions: [...prev.questions, ...newQuestions]
+                    }));
+                    toast.success(`Successfully imported ${newQuestions.length} segments to block.`);
+                }
+            } catch (err: any) {
+                toast.error(err.message);
+            } finally {
+                setGlobalLoading(false);
+                if (passageFileInputRef.current) passageFileInputRef.current.value = '';
+            }
+        };
+        reader.readAsBinaryString(file);
     };
 
     const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -691,21 +792,12 @@ export default function UniversityExamManager({ uniId, userRole, onBack }: Unive
                         </button>
                         <button
                             onClick={() => {
-                                setPassageForm({ title: '', content: '' });
-                                setActivePassage(null);
-                                setIsPassageModalOpen(true);
-                            }}
-                            className="px-6 py-3.5 bg-white border border-slate-200 text-slate-600 rounded-2xl font-black uppercase tracking-widest text-[10px] hover:bg-slate-50 transition-all flex items-center gap-2"
-                        >
-                            <BookOpen className="w-4 h-4" /> Manage Passages
-                        </button>
-                        <button
-                            onClick={() => {
                                 setQuestionForm({
                                     question_text: '', question_type: 'mcq_single',
                                     options: ['', '', '', ''], correct_answer: 0,
                                     marks: 1, explanation: ''
                                 });
+                                setPassageBlockForm({ title: '', content: '', questions: [createDefaultBlockQuestion()] });
                                 setIsQuestionModalOpen(true);
                             }}
                             className="px-8 py-3.5 bg-emerald-600 text-white rounded-2xl font-black uppercase tracking-widest text-[10px] hover:bg-emerald-900 transition-all shadow-xl shadow-emerald-100 flex items-center gap-2"
@@ -1029,129 +1121,153 @@ export default function UniversityExamManager({ uniId, userRole, onBack }: Unive
                             </div>
 
                             <div className="grid grid-cols-1 gap-6">
-                                {questions.map((q, idx) => (
-                                    <div
-                                        key={q.id}
-                                        className="bg-white overflow-hidden rounded-[2.5rem] border border-slate-100 shadow-sm hover:shadow-2xl transition-all group flex flex-col md:flex-row"
-                                    >
-                                        <div className="md:w-32 bg-slate-50 flex items-center justify-center p-8 md:p-0 border-r border-slate-100 relative group/card">
-                                            {(userRole === 'super_admin' || (activeExam?.institution_id && activeExam.institution_id === user?.institution_id)) && (
-                                                <div className="absolute top-4 left-4 z-10">
-                                                    <div className="relative flex items-center">
-                                                        <input
-                                                            type="checkbox"
-                                                            className="peer h-6 w-6 cursor-pointer appearance-none rounded-xl border-2 border-slate-200 bg-white transition-all checked:bg-emerald-600 checked:border-emerald-600 hover:border-emerald-300"
-                                                            checked={selectedQuestions.includes(q.id!)}
-                                                            onChange={(e) => {
-                                                                if (e.target.checked) {
-                                                                    setSelectedQuestions([...selectedQuestions, q.id!]);
-                                                                } else {
-                                                                    setSelectedQuestions(selectedQuestions.filter(id => id !== q.id!));
-                                                                }
-                                                            }}
-                                                        />
-                                                        <CheckCircle className="pointer-events-none absolute left-1/2 top-1/2 h-4 w-4 -translate-x-1/2 -translate-y-1/2 text-white opacity-0 transition-opacity peer-checked:opacity-100" />
+                                {questions.map((q, idx) => {
+                                    const showPassageHeader = q.passage_id && (idx === 0 || questions[idx - 1].passage_id !== q.passage_id);
+                                    const passage = showPassageHeader ? passages.find(p => p.id === q.passage_id) : null;
+
+                                    return (
+                                        <React.Fragment key={q.id}>
+                                            {showPassageHeader && passage && (
+                                                <div className="bg-slate-900 overflow-hidden rounded-[2.5rem] border border-slate-800 shadow-2xl p-10 animate-in fade-in zoom-in-95 duration-500">
+                                                    <div className="flex items-center gap-3 mb-6">
+                                                        <div className="w-12 h-12 bg-emerald-500/10 rounded-2xl flex items-center justify-center text-emerald-400">
+                                                            <FileText className="w-6 h-6" />
+                                                        </div>
+                                                        <div>
+                                                            <h3 className="text-2xl font-black text-white tracking-tight">
+                                                                {passage.title || `Passage #${passage.id}`}
+                                                            </h3>
+                                                            <p className="text-slate-500 text-[10px] font-black uppercase tracking-[0.2em] mt-1">Foundational Context & Intellectual Asset</p>
+                                                        </div>
+                                                    </div>
+                                                    <div className="prose prose-invert max-w-none text-slate-300 leading-relaxed font-medium">
+                                                        <MarkdownRenderer content={passage.content} />
                                                     </div>
                                                 </div>
                                             )}
-                                            <div className="flex flex-col items-center">
-                                                <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Q-Index</span>
-                                                <span className="text-3xl font-black text-slate-900">{idx + 1}</span>
-                                            </div>
-                                        </div>
-                                        <div className="flex-1 p-10">
-                                            <div className="flex items-start justify-between gap-6 mb-8">
-                                                <div className="flex-1">
-                                                    <div className="flex items-center gap-3 mb-4">
-                                                        <span className="px-3 py-1 bg-emerald-100 text-emerald-700 text-[10px] font-black uppercase tracking-widest rounded-lg">
-                                                            {q.question_type.replace('_', ' ')}
-                                                        </span>
-                                                        <span className="px-3 py-1 bg-slate-100 text-slate-600 text-[10px] font-black uppercase tracking-widest rounded-lg">
-                                                            {q.marks} Marks
-                                                        </span>
-                                                    </div>
-                                                    <h4 className="text-2xl font-bold text-slate-900 leading-relaxed">{q.question_text}</h4>
-                                                    {q.image_url && (
-                                                        <div className="mt-6 rounded-2xl overflow-hidden border border-slate-100 max-w-sm">
-                                                            <img src={q.image_url} alt="Question Asset" className="w-full h-auto object-cover" />
-                                                        </div>
-                                                    )}
-                                                </div>
-                                                <div className="flex gap-2">
+                                            <div
+                                                className={`bg-white overflow-hidden rounded-[2.5rem] border border-slate-100 shadow-sm hover:shadow-2xl transition-all group flex flex-col md:flex-row ${q.passage_id ? 'ml-8 border-l-4 border-l-emerald-500' : ''}`}
+                                            >
+                                                <div className="md:w-32 bg-slate-50 flex items-center justify-center p-8 md:p-0 border-r border-slate-100 relative group/card">
                                                     {(userRole === 'super_admin' || (activeExam?.institution_id && activeExam.institution_id === user?.institution_id)) && (
-                                                        <>
-                                                            <button
-                                                                onClick={() => { setQuestionForm({ ...q, passage_id: q.passage_id || '' }); setIsQuestionModalOpen(true); }}
-                                                                className="p-3 bg-slate-50 text-slate-400 hover:text-emerald-600 hover:bg-emerald-50 rounded-xl transition-all"
-                                                            >
-                                                                <Edit2 className="w-4 h-4" />
-                                                            </button>
-                                                            <button
-                                                                onClick={async () => {
-                                                                    if (!confirm('Remove this question?')) return;
-                                                                    setGlobalLoading(true, 'Eliminating Question Entity...');
-                                                                    try {
-                                                                        const res = await fetch(`/api/mongo/exams/questions?id=${q.id}`, { method: 'DELETE' });
-                                                                        if (!res.ok) throw new Error('Failed to delete question');
-                                                                        toast.success('Question removed');
-                                                                        setSelectedQuestions(selectedQuestions.filter(id => id !== q.id));
-                                                                        fetchQuestions(activeSection!.id);
-                                                                    } catch (error: any) {
-                                                                        toast.error(error.message);
-                                                                    } finally {
-                                                                        setGlobalLoading(false);
-                                                                    }
-                                                                }}
-                                                                className="p-3 bg-slate-50 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-xl transition-all"
-                                                            >
-                                                                <Trash2 className="w-4 h-4" />
-                                                            </button>
-                                                        </>
+                                                        <div className="absolute top-4 left-4 z-10">
+                                                            <div className="relative flex items-center">
+                                                                <input
+                                                                    type="checkbox"
+                                                                    className="peer h-6 w-6 cursor-pointer appearance-none rounded-xl border-2 border-slate-200 bg-white transition-all checked:bg-emerald-600 checked:border-emerald-600 hover:border-emerald-300"
+                                                                    checked={selectedQuestions.includes(q.id!)}
+                                                                    onChange={(e) => {
+                                                                        if (e.target.checked) {
+                                                                            setSelectedQuestions([...selectedQuestions, q.id!]);
+                                                                        } else {
+                                                                            setSelectedQuestions(selectedQuestions.filter(id => id !== q.id!));
+                                                                        }
+                                                                    }}
+                                                                />
+                                                                <CheckCircle className="pointer-events-none absolute left-1/2 top-1/2 h-4 w-4 -translate-x-1/2 -translate-y-1/2 text-white opacity-0 transition-opacity peer-checked:opacity-100" />
+                                                            </div>
+                                                        </div>
+                                                    )}
+                                                    <div className="flex flex-col items-center">
+                                                        <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Q-Index</span>
+                                                        <span className="text-3xl font-black text-slate-900">{idx + 1}</span>
+                                                    </div>
+                                                </div>
+                                                <div className="flex-1 p-10">
+                                                    <div className="flex items-start justify-between gap-6 mb-8">
+                                                        <div className="flex-1">
+                                                            <div className="flex items-center gap-3 mb-4">
+                                                                <span className="px-3 py-1 bg-emerald-100 text-emerald-700 text-[10px] font-black uppercase tracking-widest rounded-lg">
+                                                                    {q.question_type.replace('_', ' ')}
+                                                                </span>
+                                                                <span className="px-3 py-1 bg-slate-100 text-slate-600 text-[10px] font-black uppercase tracking-widest rounded-lg">
+                                                                    {q.marks} Marks
+                                                                </span>
+                                                            </div>
+                                                            <h4 className="text-2xl font-bold text-slate-900 leading-relaxed">{q.question_text}</h4>
+                                                            {q.image_url && (
+                                                                <div className="mt-6 rounded-2xl overflow-hidden border border-slate-100 max-w-sm">
+                                                                    <img src={q.image_url} alt="Question Asset" className="w-full h-auto object-cover" />
+                                                                </div>
+                                                            )}
+                                                        </div>
+                                                        <div className="flex gap-2">
+                                                            {(userRole === 'super_admin' || (activeExam?.institution_id && activeExam.institution_id === user?.institution_id)) && (
+                                                                <>
+                                                                    <button
+                                                                        onClick={() => { setQuestionForm({ ...q, passage_id: q.passage_id || '' }); setIsQuestionModalOpen(true); }}
+                                                                        className="p-3 bg-slate-50 text-slate-400 hover:text-emerald-600 hover:bg-emerald-50 rounded-xl transition-all"
+                                                                    >
+                                                                        <Edit2 className="w-4 h-4" />
+                                                                    </button>
+                                                                    <button
+                                                                        onClick={async () => {
+                                                                            if (!confirm('Remove this question?')) return;
+                                                                            setGlobalLoading(true, 'Eliminating Question Entity...');
+                                                                            try {
+                                                                                const res = await fetch(`/api/mongo/exams/questions?id=${q.id}`, { method: 'DELETE' });
+                                                                                if (!res.ok) throw new Error('Failed to delete question');
+                                                                                toast.success('Question removed');
+                                                                                setSelectedQuestions(selectedQuestions.filter(id => id !== q.id));
+                                                                                fetchQuestions(activeSection!.id);
+                                                                            } catch (error: any) {
+                                                                                toast.error(error.message);
+                                                                            } finally {
+                                                                                setGlobalLoading(false);
+                                                                            }
+                                                                        }}
+                                                                        className="p-3 bg-slate-50 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-xl transition-all"
+                                                                    >
+                                                                        <Trash2 className="w-4 h-4" />
+                                                                    </button>
+                                                                </>
+                                                            )}
+                                                        </div>
+                                                    </div>
+
+                                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                                        {q.options.map((opt, i) => {
+                                                            const correctStr = String(q.correct_answer || '');
+                                                            const isCorrect = correctStr.split(',').includes(String(i + 1));
+
+                                                            return (
+                                                                <div
+                                                                    key={i}
+                                                                    className={`p-5 rounded-2xl border-2 transition-all flex items-center gap-4 ${isCorrect ? 'bg-emerald-50 border-emerald-500/20 text-emerald-900' : 'bg-slate-50 border-slate-100 text-slate-600'}`}
+                                                                >
+                                                                    <div className={`w-8 h-8 rounded-lg flex items-center justify-center font-black text-[10px] ${isCorrect ? 'bg-emerald-600 text-white shadow-lg' : 'bg-white border border-slate-200 text-slate-400'}`}>
+                                                                        {String.fromCharCode(65 + i)}
+                                                                    </div>
+                                                                    <span className="font-bold">{opt}</span>
+                                                                    {isCorrect && <CheckCircle className="w-4 h-4 ml-auto text-emerald-600" />}
+                                                                </div>
+                                                            );
+                                                        })}
+                                                    </div>
+
+                                                    {q.passage_id && (
+                                                        <div className="mt-4 flex items-center gap-2 px-4 py-2 bg-emerald-50 text-emerald-700 rounded-xl border border-emerald-100 w-fit">
+                                                            <BookOpen className="w-3 h-3" />
+                                                            <span className="text-[10px] font-black uppercase tracking-widest">
+                                                                Linked to Passage #{q.passage_id}: {passages.find(p => p.id === q.passage_id)?.title || 'Reference Context'}
+                                                            </span>
+                                                        </div>
+                                                    )}
+
+                                                    {q.explanation && (
+                                                        <div className="mt-8 p-6 bg-slate-900 rounded-2xl text-slate-300">
+                                                            <div className="flex items-center gap-2 mb-2 text-emerald-400">
+                                                                <Zap className="w-4 h-4" />
+                                                                <span className="text-[10px] font-black uppercase tracking-[0.2em]">Solution Insight</span>
+                                                            </div>
+                                                            <p className="text-sm font-medium leading-relaxed">{q.explanation}</p>
+                                                        </div>
                                                     )}
                                                 </div>
                                             </div>
-
-                                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                                {q.options.map((opt, i) => {
-                                                    const correctStr = String(q.correct_answer || '');
-                                                    const isCorrect = correctStr.split(',').includes(String(i + 1));
-
-                                                    return (
-                                                        <div
-                                                            key={i}
-                                                            className={`p-5 rounded-2xl border-2 transition-all flex items-center gap-4 ${isCorrect ? 'bg-emerald-50 border-emerald-500/20 text-emerald-900' : 'bg-slate-50 border-slate-100 text-slate-600'}`}
-                                                        >
-                                                            <div className={`w-8 h-8 rounded-lg flex items-center justify-center font-black text-[10px] ${isCorrect ? 'bg-emerald-600 text-white shadow-lg' : 'bg-white border border-slate-200 text-slate-400'}`}>
-                                                                {String.fromCharCode(65 + i)}
-                                                            </div>
-                                                            <span className="font-bold">{opt}</span>
-                                                            {isCorrect && <CheckCircle className="w-4 h-4 ml-auto text-emerald-600" />}
-                                                        </div>
-                                                    );
-                                                })}
-                                            </div>
-
-                                            {q.passage_id && (
-                                                <div className="mt-4 flex items-center gap-2 px-4 py-2 bg-emerald-50 text-emerald-700 rounded-xl border border-emerald-100 w-fit">
-                                                    <BookOpen className="w-3 h-3" />
-                                                    <span className="text-[10px] font-black uppercase tracking-widest">
-                                                        Linked to Passage #{q.passage_id}: {passages.find(p => p.id === q.passage_id)?.title || 'Reference Context'}
-                                                    </span>
-                                                </div>
-                                            )}
-
-                                            {q.explanation && (
-                                                <div className="mt-8 p-6 bg-slate-900 rounded-2xl text-slate-300">
-                                                    <div className="flex items-center gap-2 mb-2 text-emerald-400">
-                                                        <Zap className="w-4 h-4" />
-                                                        <span className="text-[10px] font-black uppercase tracking-[0.2em]">Solution Insight</span>
-                                                    </div>
-                                                    <p className="text-sm font-medium leading-relaxed">{q.explanation}</p>
-                                                </div>
-                                            )}
-                                        </div>
-                                    </div>
-                                ))}
+                                        </React.Fragment>
+                                    );
+                                })}
 
                                 {questions.length === 0 && (
                                     <div className="py-32 bg-slate-50 rounded-[3rem] border-2 border-dashed border-slate-200 text-center">
@@ -1428,142 +1544,313 @@ export default function UniversityExamManager({ uniId, userRole, onBack }: Unive
                             </button>
                         </div>
 
-                        <div className="p-6 overflow-y-auto space-y-6">
-                            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-                                <div className="space-y-6">
-                                    <div>
-                                        <label className="block text-sm font-bold text-slate-700 mb-2">Question Text</label>
-                                        <textarea
-                                            value={questionForm.question_text}
-                                            onChange={(e) => setQuestionForm({ ...questionForm, question_text: e.target.value })}
-                                            className="w-full p-4 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none transition-all font-medium min-h-[120px] resize-none"
-                                            placeholder="Enter your question here..."
+                        <div className="p-6 overflow-y-auto space-y-6 custom-scrollbar flex-1">
+                            {/* Question Type Selection always prominent at top */}
+                            <div className="bg-slate-50 p-6 rounded-2xl border border-slate-100 flex flex-col md:flex-row md:items-center gap-6">
+                                <div className="flex-1">
+                                    <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">Subject Matter Strategy</label>
+                                    <div className="relative">
+                                        <Layers className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-emerald-600 z-10" />
+                                        <select
+                                            value={questionForm.question_type}
+                                            onChange={(e) => setQuestionForm({ ...questionForm, question_type: e.target.value })}
+                                            className="w-full pl-12 pr-10 py-3 bg-white border border-slate-200 rounded-xl text-slate-800 font-bold outline-none appearance-none cursor-pointer focus:ring-2 focus:ring-emerald-500/10 transition-all"
+                                            disabled={!!questionForm.id}
+                                        >
+                                            <option value="mcq_single">Single Choice MCQ</option>
+                                            <option value="mcq_multiple">Multiple Choice MCQ</option>
+                                            <option value="passage">Passage-Based Block</option>
+                                            <option value="true_false">True / False</option>
+                                            <option value="short_answer">Short Answer</option>
+                                        </select>
+                                    </div>
+                                </div>
+                                {!(questionForm.question_type === 'passage' && !questionForm.id) && (
+                                    <div className="w-full md:w-32">
+                                        <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">Marks</label>
+                                        <input
+                                            type="number"
+                                            value={questionForm.marks}
+                                            onChange={(e) => setQuestionForm({ ...questionForm, marks: parseInt(e.target.value) })}
+                                            className="w-full p-3 bg-white border border-slate-200 rounded-xl focus:ring-2 focus:ring-emerald-500 outline-none transition-all font-bold text-center"
                                         />
                                     </div>
+                                )}
+                            </div>
 
-                                    <div className="grid grid-cols-2 gap-4">
-                                        <div>
-                                            <label className="block text-sm font-bold text-slate-700 mb-2">Question Type</label>
-                                            <select
-                                                value={questionForm.question_type}
-                                                onChange={(e) => setQuestionForm({ ...questionForm, question_type: e.target.value })}
-                                                className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none transition-all font-medium"
-                                            >
-                                                <option value="mcq_single">Single Choice MCQ</option>
-                                                <option value="mcq_multiple">Multiple Choice MCQ</option>
-                                                <option value="passage">Passage Question</option>
-                                                <option value="true_false">True / False</option>
-                                                <option value="short_answer">Short Answer</option>
-                                            </select>
-                                        </div>
-                                        <div>
-                                            <label className="block text-sm font-bold text-slate-700 mb-2">Marks</label>
+                            {/* SPECIAL PASSAGE BLOCK UI */}
+                            {questionForm.question_type === 'passage' && !questionForm.id ? (
+                                <div className="space-y-8 pb-10">
+                                    {/* Passage Details */}
+                                    <div className="p-8 bg-emerald-50/30 border border-emerald-100/50 rounded-[2rem] space-y-6">
+                                        <h4 className="text-sm font-black text-emerald-900 uppercase tracking-widest flex items-center gap-3">
+                                            <div className="p-2 bg-emerald-100 text-emerald-600 rounded-lg">
+                                                <FileText className="w-4 h-4" />
+                                            </div>
+                                            Passage Context Assets
+                                        </h4>
+                                        <div className="space-y-2">
+                                            <label className="block text-[10px] font-black text-emerald-600/60 uppercase tracking-widest ml-1">Asset Heading / Title</label>
                                             <input
-                                                type="number"
-                                                value={questionForm.marks}
-                                                onChange={(e) => setQuestionForm({ ...questionForm, marks: parseInt(e.target.value) })}
-                                                className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none transition-all font-medium"
+                                                value={passageBlockForm.title}
+                                                onChange={e => setPassageBlockForm({ ...passageBlockForm, title: e.target.value })}
+                                                placeholder="e.g. Critical Reasoning - Environmental Policy Analysis"
+                                                className="w-full px-5 py-4 bg-white border border-emerald-100 rounded-2xl font-bold text-emerald-950 outline-none focus:ring-2 focus:ring-emerald-500/20 shadow-sm"
+                                            />
+                                        </div>
+                                        <div className="space-y-2">
+                                            <label className="block text-[10px] font-black text-emerald-600/60 uppercase tracking-widest ml-1">Contextual Content (Markdown Support)</label>
+                                            <RichTextEditor
+                                                value={passageBlockForm.content}
+                                                onChange={val => setPassageBlockForm({ ...passageBlockForm, content: val })}
+                                                placeholder="Enter the reading material here..."
+                                                height="h-64"
                                             />
                                         </div>
                                     </div>
 
-                                    {(questionForm.question_type === 'passage' || passages.length > 0) && (
-                                        <div>
-                                            <label className="block text-sm font-bold text-slate-700 mb-2">Linked Passage (Optional)</label>
-                                            <select
-                                                value={questionForm.passage_id || ''}
-                                                onChange={(e) => setQuestionForm({ ...questionForm, passage_id: e.target.value })}
-                                                className="w-full p-4 bg-emerald-50/50 border border-emerald-100 rounded-2xl focus:ring-2 focus:ring-emerald-500 outline-none transition-all font-bold text-emerald-900"
-                                            >
-                                                <option value="">No Passage Linked</option>
-                                                {passages.map(p => (
-                                                    <option key={p.id} value={p.id}>{p.title || `Passage #${p.id}`}</option>
-                                                ))}
-                                            </select>
-                                            <p className="mt-2 text-[10px] font-bold text-slate-400 italic">Select a passage to display it alongside this question.</p>
-                                        </div>
-                                    )}
-
-                                    <div>
-                                        <label className="block text-sm font-bold text-slate-700 mb-2">Image Attachment</label>
-                                        <div className="flex items-center gap-4">
-                                            <label className="flex items-center gap-2 px-6 py-3 bg-slate-100 text-slate-600 rounded-xl font-bold cursor-pointer hover:bg-slate-200 transition-all">
-                                                <ImageIcon className="w-4 h-4" />
-                                                Choose Image
-                                                <input type="file" accept="image/*" className="hidden" onChange={handleImageUpload} />
-                                            </label>
-                                            {questionForm.image_url && (
-                                                <div className="text-xs text-emerald-600 font-bold flex items-center gap-1">
-                                                    <CheckCircle className="w-3 h-3" /> Uploaded
-                                                </div>
-                                            )}
-                                        </div>
-                                    </div>
-                                </div>
-
-                                <div className="space-y-6">
-                                    {(['mcq_single', 'mcq_multiple', 'passage'].includes(questionForm.question_type)) && (
-                                        <div>
-                                            <label className="block text-sm font-bold text-slate-700 mb-4">Options & Answer {questionForm.question_type === 'mcq_multiple' ? '(Select Multiple)' : '(Select One)'}</label>
-                                            <div className="space-y-3">
-                                                {questionForm.options.map((opt: string, idx: number) => {
-                                                    const isSelected = questionForm.question_type === 'mcq_multiple'
-                                                        ? String(questionForm.correct_answer).split(',').includes(String(idx + 1))
-                                                        : parseInt(questionForm.correct_answer) === idx + 1;
-
-                                                    return (
-                                                        <div key={idx} className="flex items-center gap-3">
-                                                            <div className="w-8 h-8 flex items-center justify-center font-bold text-slate-400 bg-slate-100 rounded-lg text-xs">
-                                                                {String.fromCharCode(65 + idx)}
-                                                            </div>
-                                                            <input
-                                                                type="text"
-                                                                value={opt}
-                                                                onChange={(e) => {
-                                                                    const newOptions = [...questionForm.options];
-                                                                    newOptions[idx] = e.target.value;
-                                                                    setQuestionForm({ ...questionForm, options: newOptions });
-                                                                }}
-                                                                className="flex-1 p-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none transition-all font-medium text-sm"
-                                                                placeholder={`Option ${idx + 1}`}
-                                                            />
-                                                            <input
-                                                                type={questionForm.question_type === 'mcq_multiple' ? "checkbox" : "radio"}
-                                                                name="correct_answer"
-                                                                checked={isSelected}
-                                                                onChange={() => {
-                                                                    if (questionForm.question_type === 'mcq_multiple') {
-                                                                        let current = String(questionForm.correct_answer).split(',').filter(x => x);
-                                                                        if (current.includes(String(idx + 1))) {
-                                                                            current = current.filter(x => x !== String(idx + 1));
-                                                                        } else {
-                                                                            current.push(String(idx + 1));
-                                                                        }
-                                                                        setQuestionForm({ ...questionForm, correct_answer: current.sort().join(',') });
-                                                                    } else {
-                                                                        setQuestionForm({ ...questionForm, correct_answer: idx + 1 });
-                                                                    }
-                                                                }}
-                                                                className={`w-5 h-5 ${questionForm.question_type === 'mcq_multiple' ? 'rounded' : 'rounded-full'} text-emerald-600 focus:ring-blue-500 border-gray-300`}
-                                                            />
-                                                        </div>
-                                                    );
-                                                })}
+                                    {/* Passage Questions List */}
+                                    <div className="space-y-6">
+                                        <div className="flex justify-between items-center px-4">
+                                            <h4 className="text-sm font-black text-slate-900 uppercase tracking-widest flex items-center gap-2">
+                                                <Zap className="w-5 h-5 text-amber-500" />
+                                                Associated Question Metrics ({passageBlockForm.questions.length})
+                                            </h4>
+                                            <div className="flex items-center gap-2">
+                                                <button
+                                                    onClick={handleDownloadPassageTemplate}
+                                                    className="px-4 py-2 bg-white border border-slate-200 text-slate-500 rounded-xl font-bold text-[10px] uppercase tracking-widest hover:bg-slate-50 transition-all flex items-center gap-2"
+                                                >
+                                                    <FileSpreadsheet className="w-3.5 h-3.5" /> Template
+                                                </button>
+                                                <button
+                                                    onClick={() => passageFileInputRef.current?.click()}
+                                                    className="px-4 py-2 bg-white border border-slate-200 text-slate-900 rounded-xl font-black text-[10px] uppercase tracking-widest hover:bg-slate-50 transition-all flex items-center gap-2 shadow-sm"
+                                                >
+                                                    <Upload className="w-3.5 h-3.5" /> Bulk Upload Segments
+                                                </button>
+                                                <input
+                                                    type="file"
+                                                    ref={passageFileInputRef}
+                                                    onChange={handlePassageBulkUpload}
+                                                    className="hidden"
+                                                    accept=".xlsx, .xls, .csv"
+                                                />
+                                                <button
+                                                    onClick={() => setPassageBlockForm({
+                                                        ...passageBlockForm,
+                                                        questions: [...passageBlockForm.questions, createDefaultBlockQuestion()]
+                                                    })}
+                                                    className="px-6 py-2.5 bg-emerald-600 text-white rounded-xl font-black text-[10px] uppercase tracking-widest hover:bg-emerald-700 transition-all flex items-center gap-2 shadow-lg"
+                                                >
+                                                    <Plus className="w-4 h-4" />
+                                                    Append Question
+                                                </button>
                                             </div>
                                         </div>
-                                    )}
 
-                                    <div>
-                                        <label className="block text-sm font-bold text-slate-700 mb-2">Explanation</label>
-                                        <textarea
-                                            value={questionForm.explanation}
-                                            onChange={(e) => setQuestionForm({ ...questionForm, explanation: e.target.value })}
-                                            className="w-full p-4 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none transition-all font-medium min-h-[100px] resize-none"
-                                            placeholder="Explain why the answer is correct..."
-                                        />
+                                        {passageBlockForm.questions.map((q, idx) => (
+                                            <div key={idx} className="p-8 bg-white border border-slate-200 rounded-[2.5rem] space-y-6 relative group shadow-sm hover:border-emerald-400 transition-all">
+                                                {passageBlockForm.questions.length > 1 && (
+                                                    <div className="absolute top-6 right-6 opacity-0 group-hover:opacity-100 transition-opacity">
+                                                        <button
+                                                            onClick={() => {
+                                                                const newQs = [...passageBlockForm.questions];
+                                                                newQs.splice(idx, 1);
+                                                                setPassageBlockForm({ ...passageBlockForm, questions: newQs });
+                                                            }}
+                                                            className="p-3 text-rose-500 hover:text-white bg-rose-50 hover:bg-rose-500 rounded-2xl transition-all"
+                                                        >
+                                                            <Trash2 className="w-5 h-5" />
+                                                        </button>
+                                                    </div>
+                                                )}
+
+                                                <div className="flex items-center gap-4">
+                                                    <div className="w-12 h-12 bg-slate-100 rounded-2xl flex items-center justify-center font-black text-slate-400 text-lg">
+                                                        {idx + 1}
+                                                    </div>
+                                                    <div>
+                                                        <h5 className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Question Segment</h5>
+                                                        <p className="text-sm font-bold text-slate-700">Comprehension Check #{idx + 1}</p>
+                                                    </div>
+                                                </div>
+
+                                                <div className="space-y-2">
+                                                    <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Question Prompt</label>
+                                                    <RichTextEditor
+                                                        value={q.question_text}
+                                                        onChange={(val) => {
+                                                            const newQs = [...passageBlockForm.questions];
+                                                            newQs[idx].question_text = val;
+                                                            setPassageBlockForm({ ...passageBlockForm, questions: newQs });
+                                                        }}
+                                                        placeholder="Ask a question based on the passage..."
+                                                        height="h-32"
+                                                    />
+                                                </div>
+
+                                                <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+                                                    {['1', '2', '3', '4'].map((optNum, optIdx) => (
+                                                        <div key={optIdx} className="space-y-2">
+                                                            <label className={`block text-[10px] font-black uppercase tracking-widest ml-1 ${String(q.correct_answer) === optNum ? 'text-emerald-600' : 'text-slate-400'}`}>
+                                                                Option {String.fromCharCode(65 + optIdx)}
+                                                            </label>
+                                                            <div className="relative group">
+                                                                <input
+                                                                    type="text"
+                                                                    value={q.options[optIdx]}
+                                                                    onChange={(e) => {
+                                                                        const newQs = [...passageBlockForm.questions];
+                                                                        newQs[idx].options[optIdx] = e.target.value;
+                                                                        setPassageBlockForm({ ...passageBlockForm, questions: newQs });
+                                                                    }}
+                                                                    className={`w-full px-4 py-3 bg-slate-50 border rounded-xl text-sm font-bold outline-none transition-all ${String(q.correct_answer) === optNum ? 'border-emerald-500 ring-2 ring-emerald-500/10' : 'border-slate-100 group-hover:border-slate-300'}`}
+                                                                    placeholder={`Choice ${optNum}`}
+                                                                />
+                                                                <button
+                                                                    onClick={() => {
+                                                                        const newQs = [...passageBlockForm.questions];
+                                                                        newQs[idx].correct_answer = optNum;
+                                                                        setPassageBlockForm({ ...passageBlockForm, questions: newQs });
+                                                                    }}
+                                                                    className={`absolute right-2 top-1/2 -translate-y-1/2 w-6 h-6 rounded-lg border-2 transition-all flex items-center justify-center ${String(q.correct_answer) === optNum ? 'bg-emerald-500 border-emerald-500 text-white' : 'border-slate-200 text-transparent'}`}
+                                                                >
+                                                                    <CheckCircle className="w-3.5 h-3.5" />
+                                                                </button>
+                                                            </div>
+                                                        </div>
+                                                    ))}
+                                                </div>
+
+                                                <div className="grid grid-cols-2 gap-6">
+                                                    <div className="space-y-2">
+                                                        <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Segment Weightage (Marks)</label>
+                                                        <input
+                                                            type="number"
+                                                            value={q.marks}
+                                                            onChange={(e) => {
+                                                                const newQs = [...passageBlockForm.questions];
+                                                                newQs[idx].marks = parseInt(e.target.value);
+                                                                setPassageBlockForm({ ...passageBlockForm, questions: newQs });
+                                                            }}
+                                                            className="w-full px-5 py-3 bg-slate-50 border border-slate-100 rounded-xl font-bold text-slate-800 outline-none focus:ring-2 focus:ring-emerald-500/10 transition-all"
+                                                        />
+                                                    </div>
+                                                    <div className="space-y-2">
+                                                        <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Academic Rationale</label>
+                                                        <input
+                                                            type="text"
+                                                            value={q.explanation}
+                                                            onChange={(e) => {
+                                                                const newQs = [...passageBlockForm.questions];
+                                                                newQs[idx].explanation = e.target.value;
+                                                                setPassageBlockForm({ ...passageBlockForm, questions: newQs });
+                                                            }}
+                                                            placeholder="Why is this answer correct?"
+                                                            className="w-full px-5 py-3 bg-slate-50 border border-slate-100 rounded-xl font-medium text-slate-600 outline-none focus:ring-2 focus:ring-emerald-500/10 transition-all"
+                                                        />
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        ))}
                                     </div>
                                 </div>
-                            </div>
+                            ) : (
+                                <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                                    <div className="space-y-6">
+                                        <div>
+                                            <label className="block text-sm font-bold text-slate-700 mb-2">Question Text</label>
+                                            <RichTextEditor
+                                                value={questionForm.question_text}
+                                                onChange={(val) => setQuestionForm({ ...questionForm, question_text: val })}
+                                                placeholder="Enter your question here (Markdown & LaTeX supported)..."
+                                                height="h-64"
+                                            />
+                                        </div>
+
+
+                                        <div>
+                                            <label className="block text-sm font-bold text-slate-700 mb-2">Image Attachment</label>
+                                            <div className="flex items-center gap-4">
+                                                <label className="flex items-center gap-2 px-6 py-3 bg-slate-100 text-slate-600 rounded-xl font-bold cursor-pointer hover:bg-slate-200 transition-all">
+                                                    <ImageIcon className="w-4 h-4" />
+                                                    Choose Image
+                                                    <input type="file" accept="image/*" className="hidden" onChange={handleImageUpload} />
+                                                </label>
+                                                {questionForm.image_url && (
+                                                    <div className="text-xs text-emerald-600 font-bold flex items-center gap-1">
+                                                        <CheckCircle className="w-3 h-3" /> Uploaded
+                                                    </div>
+                                                )}
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <div className="space-y-6">
+                                        {(['mcq_single', 'mcq_multiple', 'passage'].includes(questionForm.question_type)) && (
+                                            <div>
+                                                <label className="block text-sm font-bold text-slate-700 mb-4">Options & Answer {questionForm.question_type === 'mcq_multiple' ? '(Select Multiple)' : '(Select One)'}</label>
+                                                <div className="space-y-3">
+                                                    {questionForm.options.map((opt: string, idx: number) => {
+                                                        const isSelected = questionForm.question_type === 'mcq_multiple'
+                                                            ? String(questionForm.correct_answer).split(',').includes(String(idx + 1))
+                                                            : parseInt(questionForm.correct_answer) === idx + 1;
+
+                                                        return (
+                                                            <div key={idx} className="flex items-center gap-3">
+                                                                <div className="w-8 h-8 flex items-center justify-center font-bold text-slate-400 bg-slate-100 rounded-lg text-xs">
+                                                                    {String.fromCharCode(65 + idx)}
+                                                                </div>
+                                                                <input
+                                                                    type="text"
+                                                                    value={opt}
+                                                                    onChange={(e) => {
+                                                                        const newOptions = [...questionForm.options];
+                                                                        newOptions[idx] = e.target.value;
+                                                                        setQuestionForm({ ...questionForm, options: newOptions });
+                                                                    }}
+                                                                    className="flex-1 p-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none transition-all font-medium text-sm"
+                                                                    placeholder={`Option ${idx + 1}`}
+                                                                />
+                                                                <input
+                                                                    type={questionForm.question_type === 'mcq_multiple' ? "checkbox" : "radio"}
+                                                                    name="correct_answer"
+                                                                    checked={isSelected}
+                                                                    onChange={() => {
+                                                                        if (questionForm.question_type === 'mcq_multiple') {
+                                                                            let current = String(questionForm.correct_answer).split(',').filter(x => x);
+                                                                            if (current.includes(String(idx + 1))) {
+                                                                                current = current.filter(x => x !== String(idx + 1));
+                                                                            } else {
+                                                                                current.push(String(idx + 1));
+                                                                            }
+                                                                            setQuestionForm({ ...questionForm, correct_answer: current.sort().join(',') });
+                                                                        } else {
+                                                                            setQuestionForm({ ...questionForm, correct_answer: idx + 1 });
+                                                                        }
+                                                                    }}
+                                                                    className={`w-5 h-5 ${questionForm.question_type === 'mcq_multiple' ? 'rounded' : 'rounded-full'} text-emerald-600 focus:ring-blue-500 border-gray-300`}
+                                                                />
+                                                            </div>
+                                                        );
+                                                    })}
+                                                </div>
+                                            </div>
+                                        )}
+
+                                        <div>
+                                            <label className="block text-sm font-bold text-slate-700 mb-2">Explanation</label>
+                                            <RichTextEditor
+                                                value={questionForm.explanation}
+                                                onChange={(val) => setQuestionForm({ ...questionForm, explanation: val })}
+                                                placeholder="Explain why the answer is correct..."
+                                                height="h-48"
+                                            />
+                                        </div>
+                                    </div>
+                                </div>
+                            )}
                         </div>
 
                         <div className="p-6 border-t border-slate-100 bg-slate-50 flex justify-end gap-3">
@@ -1577,7 +1864,7 @@ export default function UniversityExamManager({ uniId, userRole, onBack }: Unive
                                 onClick={handleSaveQuestion}
                                 className="px-8 py-3 bg-emerald-600 text-white rounded-xl font-bold hover:bg-emerald-700 transition-all shadow-lg shadow-emerald-200"
                             >
-                                Save Question
+                                {questionForm.question_type === 'passage' && !questionForm.id ? 'Synthesize Passage Block' : (questionForm.id ? 'Update Question' : 'Save Question')}
                             </button>
                         </div>
                     </div>
@@ -1622,87 +1909,6 @@ export default function UniversityExamManager({ uniId, userRole, onBack }: Unive
                 </div>
             )}
 
-            {/* PASSAGE MODAL */}
-            {isPassageModalOpen && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm">
-                    <div className="bg-white rounded-2xl shadow-xl w-full max-w-2xl overflow-hidden flex flex-col max-h-[90vh]">
-                        <div className="p-6 border-b border-slate-100 flex justify-between items-center bg-slate-50">
-                            <h3 className="text-xl font-bold text-slate-900">
-                                {activePassage ? `Edit Passage Context (#${activePassage.id})` : 'New Passage Context'}
-                            </h3>
-                            <button onClick={() => setIsPassageModalOpen(false)} className="p-2 hover:bg-slate-200 rounded-full transition-colors">
-                                <X className="w-5 h-5 text-slate-500" />
-                            </button>
-                        </div>
-
-                        <div className="p-8 overflow-y-auto space-y-6">
-                            {!activePassage && passages.length > 0 && (
-                                <div className="space-y-3">
-                                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Existing Passages (Select to Edit)</label>
-                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                                        {passages.map(p => (
-                                            <button
-                                                key={p.id}
-                                                onClick={() => {
-                                                    setActivePassage(p);
-                                                    setPassageForm({ title: p.title, content: p.content });
-                                                }}
-                                                className="p-4 bg-slate-50 border border-slate-100 rounded-xl text-left hover:bg-emerald-50 hover:border-emerald-200 transition-all group"
-                                            >
-                                                <div className="font-bold text-slate-700 group-hover:text-emerald-900 truncate">{p.title || 'Untitled Passage'}</div>
-                                                <div className="text-[10px] text-slate-400 mt-1 uppercase font-black">Linked to {questions.filter(q => q.passage_id === p.id).length} Questions</div>
-                                            </button>
-                                        ))}
-                                    </div>
-                                    <div className="py-4 border-b border-slate-100"></div>
-                                </div>
-                            )}
-
-                            <div className="space-y-6">
-                                <div>
-                                    <label className="block text-sm font-bold text-slate-700 mb-2">Passage Title</label>
-                                    <input
-                                        type="text"
-                                        value={passageForm.title}
-                                        onChange={(e) => setPassageForm({ ...passageForm, title: e.target.value })}
-                                        className="w-full p-4 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-emerald-500 outline-none transition-all font-medium"
-                                        placeholder="e.g. Critical Thinking Test - Abstract Reasoning"
-                                    />
-                                </div>
-                                <div>
-                                    <label className="block text-sm font-bold text-slate-700 mb-2">Passage Content</label>
-                                    <textarea
-                                        value={passageForm.content}
-                                        onChange={(e) => setPassageForm({ ...passageForm, content: e.target.value })}
-                                        className="w-full p-6 bg-slate-50 border border-slate-200 rounded-2xl focus:ring-2 focus:ring-emerald-500 outline-none transition-all font-medium min-h-[300px] leading-relaxed"
-                                        placeholder="Enter the passage or text that questions will refer to..."
-                                    />
-                                </div>
-                            </div>
-                        </div>
-
-                        <div className="p-6 border-t border-slate-100 bg-slate-50 flex justify-end gap-3">
-                            {activePassage && (
-                                <button
-                                    onClick={() => {
-                                        setActivePassage(null);
-                                        setPassageForm({ title: '', content: '' });
-                                    }}
-                                    className="px-6 py-3 text-[10px] font-black uppercase text-slate-400 hover:text-slate-600 transition-all"
-                                >
-                                    Cancel Selection
-                                </button>
-                            )}
-                            <button
-                                onClick={handleSavePassage}
-                                className="px-10 py-3 bg-emerald-600 text-white rounded-xl font-black uppercase tracking-[0.2em] text-[10px] hover:bg-emerald-700 transition-all shadow-xl shadow-emerald-500/20"
-                            >
-                                {activePassage ? 'Update Asset' : 'Register Asset'}
-                            </button>
-                        </div>
-                    </div>
-                </div>
-            )}
         </div>
     );
 }
