@@ -691,6 +691,16 @@ export default function UniversityExamManager({ uniId, userRole, onBack }: Unive
                         </button>
                         <button
                             onClick={() => {
+                                setPassageForm({ title: '', content: '' });
+                                setActivePassage(null);
+                                setIsPassageModalOpen(true);
+                            }}
+                            className="px-6 py-3.5 bg-white border border-slate-200 text-slate-600 rounded-2xl font-black uppercase tracking-widest text-[10px] hover:bg-slate-50 transition-all flex items-center gap-2"
+                        >
+                            <BookOpen className="w-4 h-4" /> Manage Passages
+                        </button>
+                        <button
+                            onClick={() => {
                                 setQuestionForm({
                                     question_text: '', question_type: 'mcq_single',
                                     options: ['', '', '', ''], correct_answer: 0,
@@ -1103,9 +1113,9 @@ export default function UniversityExamManager({ uniId, userRole, onBack }: Unive
 
                                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                                 {q.options.map((opt, i) => {
-                                                    const isCorrect = Array.isArray(q.correct_answer)
-                                                        ? q.correct_answer.includes(i + 1)
-                                                        : Number(q.correct_answer) === i + 1;
+                                                    const correctStr = String(q.correct_answer || '');
+                                                    const isCorrect = correctStr.split(',').includes(String(i + 1));
+
                                                     return (
                                                         <div
                                                             key={i}
@@ -1120,6 +1130,15 @@ export default function UniversityExamManager({ uniId, userRole, onBack }: Unive
                                                     );
                                                 })}
                                             </div>
+
+                                            {q.passage_id && (
+                                                <div className="mt-4 flex items-center gap-2 px-4 py-2 bg-emerald-50 text-emerald-700 rounded-xl border border-emerald-100 w-fit">
+                                                    <BookOpen className="w-3 h-3" />
+                                                    <span className="text-[10px] font-black uppercase tracking-widest">
+                                                        Linked to Passage #{q.passage_id}: {passages.find(p => p.id === q.passage_id)?.title || 'Reference Context'}
+                                                    </span>
+                                                </div>
+                                            )}
 
                                             {q.explanation && (
                                                 <div className="mt-8 p-6 bg-slate-900 rounded-2xl text-slate-300">
@@ -1431,6 +1450,8 @@ export default function UniversityExamManager({ uniId, userRole, onBack }: Unive
                                                 className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none transition-all font-medium"
                                             >
                                                 <option value="mcq_single">Single Choice MCQ</option>
+                                                <option value="mcq_multiple">Multiple Choice MCQ</option>
+                                                <option value="passage">Passage Question</option>
                                                 <option value="true_false">True / False</option>
                                                 <option value="short_answer">Short Answer</option>
                                             </select>
@@ -1445,6 +1466,23 @@ export default function UniversityExamManager({ uniId, userRole, onBack }: Unive
                                             />
                                         </div>
                                     </div>
+
+                                    {(questionForm.question_type === 'passage' || passages.length > 0) && (
+                                        <div>
+                                            <label className="block text-sm font-bold text-slate-700 mb-2">Linked Passage (Optional)</label>
+                                            <select
+                                                value={questionForm.passage_id || ''}
+                                                onChange={(e) => setQuestionForm({ ...questionForm, passage_id: e.target.value })}
+                                                className="w-full p-4 bg-emerald-50/50 border border-emerald-100 rounded-2xl focus:ring-2 focus:ring-emerald-500 outline-none transition-all font-bold text-emerald-900"
+                                            >
+                                                <option value="">No Passage Linked</option>
+                                                {passages.map(p => (
+                                                    <option key={p.id} value={p.id}>{p.title || `Passage #${p.id}`}</option>
+                                                ))}
+                                            </select>
+                                            <p className="mt-2 text-[10px] font-bold text-slate-400 italic">Select a passage to display it alongside this question.</p>
+                                        </div>
+                                    )}
 
                                     <div>
                                         <label className="block text-sm font-bold text-slate-700 mb-2">Image Attachment</label>
@@ -1464,35 +1502,53 @@ export default function UniversityExamManager({ uniId, userRole, onBack }: Unive
                                 </div>
 
                                 <div className="space-y-6">
-                                    {(questionForm.question_type === 'mcq_single' || questionForm.question_type === 'mcq_multiple') && (
+                                    {(['mcq_single', 'mcq_multiple', 'passage'].includes(questionForm.question_type)) && (
                                         <div>
-                                            <label className="block text-sm font-bold text-slate-700 mb-4">Options & Answer</label>
+                                            <label className="block text-sm font-bold text-slate-700 mb-4">Options & Answer {questionForm.question_type === 'mcq_multiple' ? '(Select Multiple)' : '(Select One)'}</label>
                                             <div className="space-y-3">
-                                                {questionForm.options.map((opt: string, idx: number) => (
-                                                    <div key={idx} className="flex items-center gap-3">
-                                                        <div className="w-8 h-8 flex items-center justify-center font-bold text-slate-400 bg-slate-100 rounded-lg text-xs">
-                                                            {String.fromCharCode(65 + idx)}
+                                                {questionForm.options.map((opt: string, idx: number) => {
+                                                    const isSelected = questionForm.question_type === 'mcq_multiple'
+                                                        ? String(questionForm.correct_answer).split(',').includes(String(idx + 1))
+                                                        : parseInt(questionForm.correct_answer) === idx + 1;
+
+                                                    return (
+                                                        <div key={idx} className="flex items-center gap-3">
+                                                            <div className="w-8 h-8 flex items-center justify-center font-bold text-slate-400 bg-slate-100 rounded-lg text-xs">
+                                                                {String.fromCharCode(65 + idx)}
+                                                            </div>
+                                                            <input
+                                                                type="text"
+                                                                value={opt}
+                                                                onChange={(e) => {
+                                                                    const newOptions = [...questionForm.options];
+                                                                    newOptions[idx] = e.target.value;
+                                                                    setQuestionForm({ ...questionForm, options: newOptions });
+                                                                }}
+                                                                className="flex-1 p-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none transition-all font-medium text-sm"
+                                                                placeholder={`Option ${idx + 1}`}
+                                                            />
+                                                            <input
+                                                                type={questionForm.question_type === 'mcq_multiple' ? "checkbox" : "radio"}
+                                                                name="correct_answer"
+                                                                checked={isSelected}
+                                                                onChange={() => {
+                                                                    if (questionForm.question_type === 'mcq_multiple') {
+                                                                        let current = String(questionForm.correct_answer).split(',').filter(x => x);
+                                                                        if (current.includes(String(idx + 1))) {
+                                                                            current = current.filter(x => x !== String(idx + 1));
+                                                                        } else {
+                                                                            current.push(String(idx + 1));
+                                                                        }
+                                                                        setQuestionForm({ ...questionForm, correct_answer: current.sort().join(',') });
+                                                                    } else {
+                                                                        setQuestionForm({ ...questionForm, correct_answer: idx + 1 });
+                                                                    }
+                                                                }}
+                                                                className={`w-5 h-5 ${questionForm.question_type === 'mcq_multiple' ? 'rounded' : 'rounded-full'} text-emerald-600 focus:ring-blue-500 border-gray-300`}
+                                                            />
                                                         </div>
-                                                        <input
-                                                            type="text"
-                                                            value={opt}
-                                                            onChange={(e) => {
-                                                                const newOptions = [...questionForm.options];
-                                                                newOptions[idx] = e.target.value;
-                                                                setQuestionForm({ ...questionForm, options: newOptions });
-                                                            }}
-                                                            className="flex-1 p-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none transition-all font-medium text-sm"
-                                                            placeholder={`Option ${idx + 1}`}
-                                                        />
-                                                        <input
-                                                            type="radio"
-                                                            name="correct_answer"
-                                                            checked={parseInt(questionForm.correct_answer) === idx + 1}
-                                                            onChange={() => setQuestionForm({ ...questionForm, correct_answer: idx + 1 })}
-                                                            className="w-5 h-5 text-emerald-600 focus:ring-blue-500 border-gray-300"
-                                                        />
-                                                    </div>
-                                                ))}
+                                                    );
+                                                })}
                                             </div>
                                         </div>
                                     )}
@@ -1560,6 +1616,88 @@ export default function UniversityExamManager({ uniId, userRole, onBack }: Unive
 
                             <button onClick={handleDownloadTemplate} className="inline-block text-xs font-bold text-emerald-600 hover:underline">
                                 Download Template
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* PASSAGE MODAL */}
+            {isPassageModalOpen && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm">
+                    <div className="bg-white rounded-2xl shadow-xl w-full max-w-2xl overflow-hidden flex flex-col max-h-[90vh]">
+                        <div className="p-6 border-b border-slate-100 flex justify-between items-center bg-slate-50">
+                            <h3 className="text-xl font-bold text-slate-900">
+                                {activePassage ? `Edit Passage Context (#${activePassage.id})` : 'New Passage Context'}
+                            </h3>
+                            <button onClick={() => setIsPassageModalOpen(false)} className="p-2 hover:bg-slate-200 rounded-full transition-colors">
+                                <X className="w-5 h-5 text-slate-500" />
+                            </button>
+                        </div>
+
+                        <div className="p-8 overflow-y-auto space-y-6">
+                            {!activePassage && passages.length > 0 && (
+                                <div className="space-y-3">
+                                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Existing Passages (Select to Edit)</label>
+                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                        {passages.map(p => (
+                                            <button
+                                                key={p.id}
+                                                onClick={() => {
+                                                    setActivePassage(p);
+                                                    setPassageForm({ title: p.title, content: p.content });
+                                                }}
+                                                className="p-4 bg-slate-50 border border-slate-100 rounded-xl text-left hover:bg-emerald-50 hover:border-emerald-200 transition-all group"
+                                            >
+                                                <div className="font-bold text-slate-700 group-hover:text-emerald-900 truncate">{p.title || 'Untitled Passage'}</div>
+                                                <div className="text-[10px] text-slate-400 mt-1 uppercase font-black">Linked to {questions.filter(q => q.passage_id === p.id).length} Questions</div>
+                                            </button>
+                                        ))}
+                                    </div>
+                                    <div className="py-4 border-b border-slate-100"></div>
+                                </div>
+                            )}
+
+                            <div className="space-y-6">
+                                <div>
+                                    <label className="block text-sm font-bold text-slate-700 mb-2">Passage Title</label>
+                                    <input
+                                        type="text"
+                                        value={passageForm.title}
+                                        onChange={(e) => setPassageForm({ ...passageForm, title: e.target.value })}
+                                        className="w-full p-4 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-emerald-500 outline-none transition-all font-medium"
+                                        placeholder="e.g. Critical Thinking Test - Abstract Reasoning"
+                                    />
+                                </div>
+                                <div>
+                                    <label className="block text-sm font-bold text-slate-700 mb-2">Passage Content</label>
+                                    <textarea
+                                        value={passageForm.content}
+                                        onChange={(e) => setPassageForm({ ...passageForm, content: e.target.value })}
+                                        className="w-full p-6 bg-slate-50 border border-slate-200 rounded-2xl focus:ring-2 focus:ring-emerald-500 outline-none transition-all font-medium min-h-[300px] leading-relaxed"
+                                        placeholder="Enter the passage or text that questions will refer to..."
+                                    />
+                                </div>
+                            </div>
+                        </div>
+
+                        <div className="p-6 border-t border-slate-100 bg-slate-50 flex justify-end gap-3">
+                            {activePassage && (
+                                <button
+                                    onClick={() => {
+                                        setActivePassage(null);
+                                        setPassageForm({ title: '', content: '' });
+                                    }}
+                                    className="px-6 py-3 text-[10px] font-black uppercase text-slate-400 hover:text-slate-600 transition-all"
+                                >
+                                    Cancel Selection
+                                </button>
+                            )}
+                            <button
+                                onClick={handleSavePassage}
+                                className="px-10 py-3 bg-emerald-600 text-white rounded-xl font-black uppercase tracking-[0.2em] text-[10px] hover:bg-emerald-700 transition-all shadow-xl shadow-emerald-500/20"
+                            >
+                                {activePassage ? 'Update Asset' : 'Register Asset'}
                             </button>
                         </div>
                     </div>
