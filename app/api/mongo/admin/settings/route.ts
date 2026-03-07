@@ -13,35 +13,32 @@ export async function GET() {
     try {
         await connectToDatabase();
 
-        // 1. Fetch exactly the global record
-        let settings = await SystemSettings.findOne({ setting_id: 'global_settings' });
+        console.log('[API/Settings] GET global_settings...');
+        let settings = await SystemSettings.findOne({ setting_id: 'global_settings' }).lean();
 
-        // 2. If it doesn't exist, create it once
         if (!settings) {
-            console.log('[PlatformSettings] No global record detected. Seeding...');
-            settings = await SystemSettings.create({
+            console.log('[API/Settings] No global record detected. Seeding...');
+            const newDoc = await SystemSettings.create({
                 setting_id: 'global_settings',
                 practice_mcqs_limit: 20,
                 ai_chatbot_active: true,
                 updated_at: new Date()
             });
+            settings = newDoc.toObject ? newDoc.toObject() : newDoc;
         }
 
-        // 3. Optional: Background cleanup for orphaned docs (without id being global_settings)
-        // Only run if we actually have extra docs
+        // Integrity check — prune orphans if mongo somehow duplicated unique index record
         const totalDocs = await SystemSettings.countDocuments({});
         if (totalDocs > 1) {
-            console.warn(`[PlatformSettings] Redundant records (${totalDocs}) detected. Purging orphans...`);
+            console.warn(`[API/Settings] Redundant records (${totalDocs}) detected. Purging orphans...`);
             await SystemSettings.deleteMany({ setting_id: { $ne: 'global_settings' } });
         }
 
-        console.log('[PlatformSettings] Delivering current limit:', settings.practice_mcqs_limit);
+        console.log('[API/Settings] Delivering current limit:', settings.practice_mcqs_limit);
 
-        return new NextResponse(JSON.stringify({ settings }), {
-            status: 200,
+        return NextResponse.json({ settings }, {
             headers: {
                 'Cache-Control': 'no-store, no-cache, must-revalidate, proxy-revalidate',
-                'Content-Type': 'application/json',
                 'Pragma': 'no-cache',
                 'Expires': '0',
             }
@@ -65,12 +62,12 @@ export async function PATCH(req: NextRequest) {
         const body = await req.json();
         await connectToDatabase();
 
-        console.log('[PlatformSettings] Attempting sync with body:', body);
+        console.log('[API/Settings] PATCH Sync request body:', JSON.stringify(body));
 
         // Targeted upsert ensuring setting_id is preserved
         const updateData: any = {
             updated_at: new Date(),
-            setting_id: 'global_settings' // Explicitly set even on update to be safe
+            setting_id: 'global_settings'
         };
 
         if (body.practice_mcqs_limit !== undefined) {
@@ -78,6 +75,9 @@ export async function PATCH(req: NextRequest) {
         }
         if (body.ai_chatbot_active !== undefined) {
             updateData.ai_chatbot_active = !!body.ai_chatbot_active;
+        }
+        if (body.maintenance_mode !== undefined) {
+            updateData.maintenance_mode = !!body.maintenance_mode;
         }
 
         const updatedSettings = await SystemSettings.findOneAndUpdate(
@@ -89,24 +89,23 @@ export async function PATCH(req: NextRequest) {
                 setDefaultsOnInsert: true,
                 runValidators: true
             }
-        );
+        ).lean();
 
-        console.log('[PlatformSettings] Sync completed successfully. DB Value:', updatedSettings.practice_mcqs_limit);
+        console.log('[API/Settings] Sync completed successfully. DB Value:', updatedSettings.practice_mcqs_limit);
 
         revalidatePath('/', 'layout');
         revalidatePath('/admin/question-bank');
+        revalidatePath('/practice');
 
-        return new NextResponse(JSON.stringify({ settings: updatedSettings }), {
-            status: 200,
+        return NextResponse.json({ settings: updatedSettings }, {
             headers: {
                 'Cache-Control': 'no-store, no-cache, must-revalidate, proxy-revalidate',
-                'Content-Type': 'application/json',
                 'Pragma': 'no-cache',
                 'Expires': '0',
             }
         });
     } catch (error: any) {
-        console.error('[PlatformSettings] Sync Failure:', error);
+        console.error('[API/Settings] PATCH Sync Failure:', error);
         return NextResponse.json({ error: error.message }, { status: 500 });
     }
 }

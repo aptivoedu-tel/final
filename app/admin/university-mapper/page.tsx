@@ -37,6 +37,7 @@ export default function UniversityContentMapperPage() {
     const [hierarchy, setHierarchy] = useState<HierarchyNode[]>([]);
     const [saving, setSaving] = useState(false);
     const [statusMsg, setStatusMsg] = useState<{ type: 'success' | 'error', text: string } | null>(null);
+    const [mappingLoadFailed, setMappingLoadFailed] = useState(false);
     const { isSidebarCollapsed } = useUI();
 
     // Load initial data (only once)
@@ -150,6 +151,7 @@ export default function UniversityContentMapperPage() {
         if (!uniId || baseTree.length === 0) return;
         setLoading(true);
         setStatusMsg(null);
+        setMappingLoadFailed(false);
         try {
             const instParam = instId === 'none' ? 'null' : String(instId);
             const res = await fetch(`/api/content-mapper?university_id=${uniId}&institution_id=${instParam}`);
@@ -193,7 +195,8 @@ export default function UniversityContentMapperPage() {
             setHierarchy(applySelection(baseTree, selectedSubtopicIds, selectedTopicIds, false));
         } catch (e) {
             console.error('Load mappings error:', e);
-            setStatusMsg({ type: 'error', text: 'Failed to load existing mappings.' });
+            setStatusMsg({ type: 'error', text: 'CRITICAL: Failed to load existing mappings. Please do not save to avoid overwriting data.' });
+            setMappingLoadFailed(true);
             // Still show tree, just with no selection
             setHierarchy(applySelection(baseTree, new Set(), new Set(), false));
         } finally {
@@ -465,7 +468,7 @@ export default function UniversityContentMapperPage() {
 
                                         <button
                                             onClick={handleSave}
-                                            disabled={saving || loading}
+                                            disabled={saving || loading || mappingLoadFailed}
                                             className="w-full sm:w-auto flex items-center justify-center gap-2 px-6 py-2.5 bg-teal-600 text-white font-black uppercase tracking-wider text-[11px] rounded-xl hover:bg-slate-900 transition-all shadow-lg shadow-teal-100 active:scale-95 disabled:opacity-50"
                                         >
                                             {saving ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}

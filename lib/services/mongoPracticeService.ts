@@ -24,12 +24,17 @@ export class MongoPracticeService {
             const response = await fetch(`/api/mongo/mcqs?${params.toString()}`, {
                 cache: 'no-store'
             });
-            const data = await response.json();
 
+            if (!response.ok) {
+                const errorData = await response.json().catch(() => ({ error: 'Unknown server error' }));
+                throw new Error(errorData.error || `Server responded with ${response.status}`);
+            }
+
+            const data = await response.json();
             return data.mcqs || [];
-        } catch (error) {
+        } catch (error: any) {
             console.error('Mongo generatePracticeSession error:', error);
-            return [];
+            throw error; // Let caller handle differentiation
         }
     }
 

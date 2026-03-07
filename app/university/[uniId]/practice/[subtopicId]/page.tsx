@@ -48,13 +48,13 @@ export default function PracticeSessionPage() {
             setGlobalLoading(true, 'Initializing Practice Session...');
             try {
                 console.log('Practicing Subtopic:', subtopicId, 'Uni:', uniId);
-                const user = AuthService.getCurrentUser() || await AuthService.syncSession();
-                if (!user) {
+                const currentUser = AuthService.getCurrentUser() || await AuthService.syncSession();
+                if (!currentUser) {
                     console.error('No user found for practice session');
                     router.push('/login');
                     return;
                 }
-                setUser(user);
+                setUser(currentUser);
 
                 // Fetch subtopic info from MongoDB
                 const stRes = await fetch(`/api/mongo/content?type=subtopics&id=${subtopicId}`);
@@ -63,7 +63,7 @@ export default function PracticeSessionPage() {
                 setSubtopicName(subtopic?.name || 'Subtopic');
 
                 // Check for existing active session
-                const activeRecord = await PracticeService.getActiveSession(user.id, { subtopicId, universityId: uniId });
+                const activeRecord = await PracticeService.getActiveSession(currentUser.id, { subtopicId, universityId: uniId });
                 let finalSession = activeRecord.session;
                 let finalMcqs = activeRecord.mcqs;
 
@@ -96,46 +96,46 @@ export default function PracticeSessionPage() {
                     setSession(finalSession);
                     toast.success('Resumed previous session');
                 } else {
-                    // 1. Generate Questions
-                    const mcqs = await PracticeService.generatePracticeSession(
-                        subtopicId,
-                        uniId,
-                        0, // subjectId will be derived in service
-                        user.id
-                    );
+                    try {
+                        // 1. Generate Questions
+                        const mcqs = await PracticeService.generatePracticeSession(
+                            subtopicId,
+                            uniId,
+                            0, // subjectId will be derived in service
+                            currentUser.id
+                        );
 
-                    console.log('MCQs fetched:', mcqs?.length);
+                        if (!mcqs || mcqs.length === 0) {
+                            toast.error('No practice questions available for this subtopic yet.');
+                            console.warn('Redirecting back - zero questions in subtopic pool');
+                            router.push(`/university/${uniId}`);
+                            return;
+                        }
 
-                    if (!mcqs || mcqs.length === 0) {
-                        toast.error('No practice questions available for this subtopic yet.');
-                        console.warn('Redirecting back - zero questions in subtopic pool');
+                        // 2. Create Session in DB
+                        const { session: startedSession, error: createError } = await PracticeService.createSession(
+                            currentUser.id,
+                            subtopicId,
+                            uniId,
+                            'practice',
+                            null,
+                            mcqs.map((m: any) => m.id)
+                        );
+
+                        if (createError || !startedSession) {
+                            toast.error(createError || 'Failed to create practice session');
+                            router.push(`/university/${uniId}`);
+                            return;
+                        }
+
+                        setSession(startedSession);
+                        setQuestions(mcqs);
+                    } catch (apiErr: any) {
+                        console.error('Session creation failed:', apiErr);
+                        toast.error('Could not initialize session: ' + (apiErr.message || 'Server error'));
                         router.push(`/university/${uniId}`);
                         return;
                     }
-
-                    const mcqIds = mcqs.map((m: any) => m.id);
-
-                    // 2. Create Session in DB
-                    const { session: startedSession, error } = await PracticeService.createSession(
-                        user.id,
-                        subtopicId,
-                        uniId,
-                        'practice',
-                        null,
-                        mcqIds
-                    );
-
-                    if (error) {
-                        console.error('Failed to create session record:', error);
-                        throw new Error(error);
-                    }
-
-                    if (!startedSession) {
-                        throw new Error('Could not initialize session record');
-                    }
-
-                    setSession(startedSession);
-                    setQuestions(mcqs);
                 }
 
                 setLastInteractionTime(Date.now());

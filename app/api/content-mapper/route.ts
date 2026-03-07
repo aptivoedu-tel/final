@@ -25,7 +25,8 @@ export async function POST(req: NextRequest) {
 
         // 2. Insert new rows
         if (rows && rows.length > 0) {
-            const lastMapping = await UniversityContentAccess.findOne().sort({ id: -1 });
+            console.log(`[API/ContentMapper] Inserting ${rows.length} new mappings for University ${university_id}...`);
+            const lastMapping = await UniversityContentAccess.findOne({}, { id: 1 }).sort({ id: -1 });
             let nextId = (lastMapping?.id || 0) + 1;
 
             const rowsToInsert = rows.map((row: any) => {
@@ -33,23 +34,31 @@ export async function POST(req: NextRequest) {
                     ? (row.difficulty_level === 'all' ? ['easy', 'medium', 'hard'] : row.difficulty_level.split(','))
                     : (row.allowed_difficulties || ['easy', 'medium', 'hard']);
 
+                // Ensure we don't accidentally carry over a wrong ID from frontend
+                const { id: dummyId, ...restOfRow } = row;
+
                 return {
-                    ...row,
+                    ...restOfRow,
                     id: nextId++,
                     university_id: parseInt(university_id),
-                    institution_id: institution_id === null || institution_id === 'null' ? null : parseInt(institution_id),
+                    institution_id: (institution_id === null || institution_id === 'null' || institution_id === undefined) ? null : parseInt(institution_id),
                     difficulty_level: diffs.length === 3 ? 'all' : diffs.join(','),
-                    allowed_difficulties: diffs
+                    allowed_difficulties: diffs,
+                    is_active: true
                 };
             });
 
             await UniversityContentAccess.insertMany(rowsToInsert);
+            console.log(`[API/ContentMapper] Bulk insertion complete.`);
         }
 
         return NextResponse.json({ success: true, count: rows?.length || 0 });
-    } catch (e: any) {
-        console.error('Content mapper API error:', e);
-        return NextResponse.json({ error: e.message }, { status: 500 });
+    } catch (error: any) {
+        console.error('[API/ContentMapper] POST Internal Error:', error);
+        return NextResponse.json({
+            error: error.message || 'Mapping persistence failure',
+            stack: process.env.NODE_ENV === 'development' ? error.stack : undefined
+        }, { status: 500 });
     }
 }
 
@@ -69,7 +78,7 @@ export async function GET(req: NextRequest) {
             is_active: true
         };
 
-        if (!institution_id || institution_id === 'null') {
+        if (institution_id === null || institution_id === 'null' || !institution_id || institution_id === 'undefined') {
             filter.institution_id = null;
         } else {
             filter.institution_id = parseInt(institution_id);
@@ -77,8 +86,11 @@ export async function GET(req: NextRequest) {
 
         const data = await UniversityContentAccess.find(filter).lean();
         return NextResponse.json({ data });
-    } catch (e: any) {
-        console.error('Content mapper GET error:', e);
-        return NextResponse.json({ error: e.message }, { status: 500 });
+    } catch (error: any) {
+        console.error('[API/ContentMapper] GET Internal Error:', error);
+        return NextResponse.json({
+            error: error.message || 'Mapping retrieval failure',
+            stack: process.env.NODE_ENV === 'development' ? error.stack : undefined
+        }, { status: 500 });
     }
 }

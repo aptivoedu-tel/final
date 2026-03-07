@@ -107,47 +107,47 @@ export default function TopicPracticeSessionPage() {
                     setSession(finalSession);
                     toast.success('Resumed previous session');
                 } else {
-                    // 1. Generate Questions (Topic Mode)
-                    const mcqs = await PracticeService.generatePracticeSession(
-                        null, // No subtopicId
-                        uniId,
-                        0, // subjectId derived in service
-                        currentUser.id,
-                        topicId // Pass topicId
-                    );
+                    try {
+                        // 1. Generate Questions (Topic Mode)
+                        const mcqs = await PracticeService.generatePracticeSession(
+                            null, // No subtopicId
+                            uniId,
+                            0, // subjectId derived in service
+                            currentUser.id,
+                            topicId // Pass topicId
+                        );
 
-                    console.log('Topic MCQs fetched:', mcqs?.length);
+                        if (!mcqs || mcqs.length === 0) {
+                            toast.error('No practice questions available for this topic yet.');
+                            console.warn('Redirecting back - zero questions in topic pool');
+                            router.push(`/university/${uniId}`);
+                            return;
+                        }
 
-                    if (!mcqs || mcqs.length === 0) {
-                        toast.error('No practice questions available for this topic yet.');
-                        console.warn('Redirecting back - zero questions in topic pool');
+                        // 2. Create Session in DB
+                        const { session: startedSession, error: createError } = await PracticeService.createSession(
+                            currentUser.id,
+                            null, // No subtopicId
+                            uniId,
+                            'practice',
+                            topicId, // Pass topicId
+                            mcqs.map((m: any) => m.id)
+                        );
+
+                        if (createError || !startedSession) {
+                            toast.error(createError || 'Failed to create practice session');
+                            router.push(`/university/${uniId}`);
+                            return;
+                        }
+
+                        setSession(startedSession);
+                        setQuestions(mcqs);
+                    } catch (apiErr: any) {
+                        console.error('Topic practice init failure:', apiErr);
+                        toast.error('Could not initialize session: ' + (apiErr.message || 'Server error'));
                         router.push(`/university/${uniId}`);
                         return;
                     }
-
-                    const mcqIds = mcqs.map((m: any) => m.id);
-
-                    // 2. Create Session in DB
-                    const { session: startedSession, error } = await PracticeService.createSession(
-                        currentUser.id,
-                        null, // No subtopicId
-                        uniId,
-                        'practice',
-                        topicId, // Pass topicId
-                        mcqIds
-                    );
-
-                    if (error) {
-                        console.error('Failed to create topic session:', error);
-                        throw new Error(error);
-                    }
-
-                    if (!startedSession) {
-                        throw new Error('Could not initialize session record');
-                    }
-
-                    setSession(startedSession);
-                    setQuestions(mcqs);
                 }
 
                 setLastInteractionTime(Date.now());
@@ -223,7 +223,7 @@ export default function TopicPracticeSessionPage() {
     };
 
     const finalizeSession = async () => {
-        if (isCompleted) return;
+        if (isCompleted || !session) return;
 
         setIsCompleted(true);
         if (timerRef.current) clearInterval(timerRef.current);

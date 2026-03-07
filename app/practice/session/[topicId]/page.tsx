@@ -93,37 +93,46 @@ export default function DirectTopicPracticePage() {
                     setSession(finalSession);
                     toast.success('Resumed previous session');
                 } else {
-                    // Generate MCQs — no university_id needed for direct practice
-                    const mcqs = await PracticeService.generatePracticeSession(
-                        null,
-                        null, // no university
-                        0,
-                        currentUser.id,
-                        topicId
-                    );
+                    try {
+                        // Generate MCQs — no university_id needed for direct practice
+                        const mcqs = await PracticeService.generatePracticeSession(
+                            null,
+                            null, // no university
+                            0,
+                            currentUser.id,
+                            topicId
+                        );
 
-                    if (!mcqs || mcqs.length === 0) {
-                        toast.error('No practice questions available for this topic yet.');
+                        if (!mcqs || mcqs.length === 0) {
+                            toast.error('No practice questions available for this topic yet.');
+                            router.push('/practice');
+                            return;
+                        }
+
+                        // Create session (no university_id)
+                        const { session: startedSession, error: createError } = await PracticeService.createSession(
+                            currentUser.id,
+                            null,
+                            null, // no university
+                            'practice',
+                            topicId,
+                            mcqs.map((m: any) => m.id)
+                        );
+
+                        if (createError || !startedSession) {
+                            toast.error(createError || 'Failed to create session');
+                            router.push('/practice');
+                            return;
+                        }
+
+                        setSession(startedSession);
+                        setQuestions(mcqs);
+                    } catch (apiErr: any) {
+                        console.error('Session init failed:', apiErr);
+                        toast.error('Could not initialize session: ' + (apiErr.message || 'Server error'));
                         router.push('/practice');
                         return;
                     }
-
-                    const mcqIds = mcqs.map((m: any) => m.id);
-
-                    // Create session (no university_id)
-                    const { session: startedSession, error } = await PracticeService.createSession(
-                        currentUser.id,
-                        null,
-                        null, // no university
-                        'practice',
-                        topicId,
-                        mcqIds
-                    );
-
-                    if (error || !startedSession) throw new Error(error || 'Could not initialize session');
-
-                    setSession(startedSession);
-                    setQuestions(mcqs);
                 }
 
                 setLastInteractionTime(Date.now());

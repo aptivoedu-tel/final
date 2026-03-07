@@ -156,22 +156,23 @@ export default function UniversityDetailPage() {
             const data = await res.json();
             const access = data.mappings || [];
 
-            // Fetch MCQ counts
-            // For performance, we could have an API that returns counts, but for now we fetch mappings
+            // 2. Fetch MCQ counts (efficiently using counts_only=true)
+            const mcqRes = await fetch(`/api/mongo/mcqs?counts_only=true`);
+            const mcqData = await mcqRes.json();
+
             const mcqSubtopicMap: Record<number, number> = {};
             const mcqTopicMap: Record<number, number> = {};
 
-            // Fetch mcqs to get counts (removed limit to ensure all subjects get their counts)
-            const mcqRes = await fetch(`/api/mongo/mcqs`);
-            const mcqData = await mcqRes.json();
-            mcqData.mcqs?.forEach((m: any) => {
-                if (m.subtopic_id) {
-                    mcqSubtopicMap[m.subtopic_id] = (mcqSubtopicMap[m.subtopic_id] || 0) + 1;
-                }
-                if (m.topic_id) {
-                    mcqTopicMap[m.topic_id] = (mcqTopicMap[m.topic_id] || 0) + 1;
-                }
-            });
+            if (mcqData.allMcqs) {
+                mcqData.allMcqs.forEach((m: any) => {
+                    if (m.subtopic_id) {
+                        mcqSubtopicMap[m.subtopic_id] = (mcqSubtopicMap[m.subtopic_id] || 0) + 1;
+                    }
+                    if (m.topic_id) {
+                        mcqTopicMap[m.topic_id] = (mcqTopicMap[m.topic_id] || 0) + 1;
+                    }
+                });
+            }
 
             const subjectMap = new Map<number, ContentMap>();
             access.forEach((row: any) => {
@@ -659,12 +660,14 @@ export default function UniversityDetailPage() {
                                                                                             <BookOpen className="w-4 h-4 text-slate-400 group-hover/read:text-teal-600 transition-colors" />
                                                                                             <span className="text-[10px] font-black uppercase tracking-widest">Read</span>
                                                                                         </button>
-                                                                                        <button
-                                                                                            onClick={(e) => { e.stopPropagation(); router.push(`/university/${uniId}/practice/topic/${topic.id}`); }}
-                                                                                            className="px-6 py-2.5 bg-teal-600 text-white rounded-xl text-[10px] font-black uppercase tracking-[0.2em] hover:bg-teal-700 active:scale-95 transition-all shadow-lg shadow-teal-900/10 flex items-center gap-2.5"
-                                                                                        >
-                                                                                            Practice <ArrowRight className="w-3.5 h-3.5" />
-                                                                                        </button>
+                                                                                        {(topic.mcqCount || 0) > 0 && (
+                                                                                            <button
+                                                                                                onClick={(e) => { e.stopPropagation(); router.push(`/university/${uniId}/practice/topic/${topic.id}`); }}
+                                                                                                className="px-6 py-2.5 bg-teal-600 text-white rounded-xl text-[10px] font-black uppercase tracking-[0.2em] hover:bg-teal-700 active:scale-95 transition-all shadow-lg shadow-teal-900/10 flex items-center gap-2.5"
+                                                                                            >
+                                                                                                Practice <ArrowRight className="w-3.5 h-3.5" />
+                                                                                            </button>
+                                                                                        )}
                                                                                     </>
                                                                                 ) : (
                                                                                     <span className="text-[10px] font-black text-slate-300 uppercase tracking-widest px-4">{isExpanded ? 'Collapse' : 'Expand'}</span>
@@ -713,12 +716,14 @@ export default function UniversityDetailPage() {
                                                                                                     <BookOpen className="w-3.5 h-3.5 text-slate-400 group-hover/read:text-teal-600 transition-colors" />
                                                                                                     <span className="text-[10px] font-black uppercase tracking-widest">Read</span>
                                                                                                 </button>
-                                                                                                <button
-                                                                                                    onClick={() => router.push(`/university/${uniId}/practice/${st.id}`)}
-                                                                                                    className="px-5 py-2 bg-teal-600 text-white rounded-xl text-[10px] font-black uppercase tracking-[0.2em] hover:bg-teal-700 active:scale-95 transition-all shadow-md flex items-center gap-2"
-                                                                                                >
-                                                                                                    Practice <ArrowRight className="w-3 h-3" />
-                                                                                                </button>
+                                                                                                {(st.mcqCount || 0) > 0 && (
+                                                                                                    <button
+                                                                                                        onClick={() => router.push(`/university/${uniId}/practice/${st.id}`)}
+                                                                                                        className="px-5 py-2 bg-teal-600 text-white rounded-xl text-[10px] font-black uppercase tracking-[0.2em] hover:bg-teal-700 active:scale-95 transition-all shadow-md flex items-center gap-2"
+                                                                                                    >
+                                                                                                        Practice <ArrowRight className="w-3 h-3" />
+                                                                                                    </button>
+                                                                                                )}
                                                                                             </div>
                                                                                         </div>
                                                                                     );

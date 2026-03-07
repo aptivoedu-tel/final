@@ -38,25 +38,32 @@ export async function POST(req: NextRequest) {
 
         // Handle bulk or single
         if (Array.isArray(body)) {
-            const lastQ = await ExamQuestion.findOne().sort({ id: -1 });
+            const lastQ = await ExamQuestion.findOne({}, { id: 1 }).sort({ id: -1 });
             let nextId = (lastQ?.id || 0) + 1;
 
-            const questions = body.map(q => ({
-                ...q,
-                id: nextId++,
-                created_at: new Date()
-            }));
+            const questions = body.map(q => {
+                // Strip incoming ID to prevent collisions
+                const { id: dummyId, ...rest } = q;
+                return {
+                    ...rest,
+                    id: nextId++,
+                    created_at: new Date()
+                };
+            });
 
             await ExamQuestion.insertMany(questions);
             return NextResponse.json({ success: true, count: questions.length });
         }
 
-        const lastQ = await ExamQuestion.findOne().sort({ id: -1 });
+        const lastQ = await ExamQuestion.findOne({}, { id: 1 }).sort({ id: -1 });
         const nextId = (lastQ?.id || 0) + 1;
+
+        // Strip incoming ID to prevent collisions
+        const { id: dummyId, ...rest } = body;
 
         const question = await ExamQuestion.create({
             id: nextId,
-            ...body,
+            ...rest,
             created_at: new Date()
         });
 

@@ -16,9 +16,10 @@ export async function GET(req: NextRequest) {
         const subject_id = searchParams.get('subject_id');
         const counts_only = searchParams.get('counts_only') === 'true';
 
+        console.log(`[API/MCQs] GET request: subtopic=${subtopic_id}, topic=${topic_id}, subject=${subject_id}, counts_only=${counts_only}`);
+
         // Return counts summary (for hierarchy tree MCQ counts)
         if (counts_only) {
-            console.log('[API/MCQs] Generating hierarchy counts...');
             try {
                 const [subjects, topics, subtopics, allMcqs] = await Promise.all([
                     Subject.find({ is_active: true }, { id: 1, name: 1, display_order: 1 }).sort({ display_order: 1 }).lean(),
@@ -34,25 +35,29 @@ export async function GET(req: NextRequest) {
         }
 
         const filter: any = { is_active: true };
-        if (subtopic_id) {
+
+        if (subtopic_id && subtopic_id !== 'undefined' && subtopic_id !== 'null' && subtopic_id !== '') {
             filter.subtopic_id = parseInt(subtopic_id);
-        } else if (topic_id) {
+        } else if (topic_id && topic_id !== 'undefined' && topic_id !== 'null' && topic_id !== '') {
+            const topicIdNum = parseInt(topic_id);
             // Include MCQs directly on topic AND MCQs on its subtopics
-            const childSubtopics = await Subtopic.find({ topic_id: parseInt(topic_id) }).select('id');
+            const childSubtopics = await Subtopic.find({ topic_id: topicIdNum }).select('id').lean();
             const childSubtopicIds = childSubtopics.map(st => st.id);
+
             if (childSubtopicIds.length > 0) {
                 filter.$or = [
-                    { topic_id: parseInt(topic_id) },
+                    { topic_id: topicIdNum },
                     { subtopic_id: { $in: childSubtopicIds } },
                 ];
             } else {
-                filter.topic_id = parseInt(topic_id);
+                filter.topic_id = topicIdNum;
             }
-        } else if (subject_id) {
+        } else if (subject_id && subject_id !== 'undefined' && subject_id !== 'null' && subject_id !== '') {
+            const subjectIdNum = parseInt(subject_id);
             // Find all subtopics under this subject
-            const subjectTopics = await Topic.find({ subject_id: parseInt(subject_id) }).select('id');
+            const subjectTopics = await Topic.find({ subject_id: subjectIdNum }).select('id').lean();
             const topicIds = subjectTopics.map(t => t.id);
-            const subSubtopics = await Subtopic.find({ topic_id: { $in: topicIds } }).select('id');
+            const subSubtopics = await Subtopic.find({ topic_id: { $in: topicIds } }).select('id').lean();
             const subtopicIds = subSubtopics.map(st => st.id);
             filter.$or = [
                 { topic_id: { $in: topicIds } },
@@ -60,10 +65,13 @@ export async function GET(req: NextRequest) {
             ];
         }
 
-        const limit = searchParams.get('limit') ? parseInt(searchParams.get('limit')!) : null;
+        const limitStr = searchParams.get('limit');
+        const limit = (limitStr && limitStr !== 'null') ? parseInt(limitStr) : null;
         const shuffle = searchParams.get('shuffle') === 'true';
 
-        let rawMcqs = await MCQ.find(filter).sort({ created_at: -1 });
+        console.log(`[API/MCQs] Executing query with filter:`, JSON.stringify(filter));
+        let rawMcqs = await MCQ.find(filter).sort({ created_at: -1 }).lean();
+        console.log(`[API/MCQs] Found ${rawMcqs.length} raw MCQs`);
 
         // Group by passage_id to keep passage questions strictly together
         const groupedMcqs: any[] = [];
@@ -83,8 +91,11 @@ export async function GET(req: NextRequest) {
             if (mcq.passage_id) {
                 if (!seenPassages.has(mcq.passage_id)) {
                     seenPassages.add(mcq.passage_id);
-                    // Instead of raw items, keep the grouped blocks for shuffling
-                    groupedMcqs.push({ type: 'passage', id: mcq.passage_id, items: passageMap.get(mcq.passage_id)! });
+                    groupedMcqs.push({
+                        type: 'passage',
+                        id: mcq.passage_id,
+                        items: passageMap.get(mcq.passage_id)!
+                    });
                 }
             } else {
                 groupedMcqs.push({ type: 'single', items: [mcq] });
@@ -94,20 +105,21 @@ export async function GET(req: NextRequest) {
         let finalSet: any[] = [];
         if (shuffle) {
             const shuffleArray = (array: any[]) => {
-                for (let i = array.length - 1; i > 0; i--) {
+                const newArray = [...array];
+                for (let i = newArray.length - 1; i > 0; i--) {
                     const j = Math.floor(Math.random() * (i + 1));
-                    [array[i], array[j]] = [array[j], array[i]];
+                    [newArray[i], newArray[j]] = [newArray[j], newArray[i]];
                 }
-                return array;
+                return newArray;
             };
 
-            // 1. Randomize items within each group (especially for 'single' groups which only have 1 item, but good for passages)
+            // 1. Randomize items within each group
             groupedMcqs.forEach(group => {
-                group.items = shuffleArray([...group.items]);
+                group.items = shuffleArray(group.items);
             });
 
-            // 2. Shuffle the primary pool (independent blocks or passages)
-            let pool = shuffleArray([...groupedMcqs]);
+            // 2. Shuffle the primary pool
+            let pool = shuffleArray(groupedMcqs);
 
             // 3. Populate finalSet up to limit
             if (pool.length > 0) {
@@ -116,13 +128,10 @@ export async function GET(req: NextRequest) {
                     let passCount = 0;
 
                     while (totalPushed < limit) {
-                        // For each pass through the pool, reshuffle the pool for extra variety
-                        if (passCount > 0) pool = shuffleArray([...pool]);
+                        if (passCount > 0) pool = shuffleArray(pool);
 
                         for (const block of pool) {
                             if (totalPushed >= limit) break;
-
-                            // Add all questions from the block (passage or single)
                             for (const item of block.items) {
                                 if (totalPushed >= limit) break;
                                 finalSet.push(item);
@@ -130,24 +139,27 @@ export async function GET(req: NextRequest) {
                             }
                         }
                         passCount++;
-                        // Emergency break to prevent infinite loop (shouldn't happen with pool.length > 0)
-                        if (passCount > 100) break;
+                        if (passCount > 50) break; // Increased safety
                     }
                 } else {
                     finalSet = pool.flatMap(g => g.items);
                 }
             }
         } else {
-            // No shuffle: just flatten and slice
+            // No shuffle
             finalSet = groupedMcqs.flatMap(g => g.items);
             if (limit) finalSet = finalSet.slice(0, limit);
         }
 
         return NextResponse.json({ mcqs: finalSet });
     } catch (error: any) {
-        console.error('MCQs GET error:', error);
-        return NextResponse.json({ error: error.message }, { status: 500 });
+        console.error('[API/MCQs] GET Internal Error:', error);
+        return NextResponse.json({
+            error: error.message || 'Failed to fetch MCQs',
+            stack: process.env.NODE_ENV === 'development' ? error.stack : undefined
+        }, { status: 500 });
     }
+
 }
 
 export async function POST(req: NextRequest) {

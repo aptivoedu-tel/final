@@ -76,6 +76,33 @@ export default function UniversityExamManager({ uniId, userRole, onBack }: Unive
     const [exams, setExams] = useState<Exam[]>([]);
     const [searchTerm, setSearchTerm] = useState('');
     const [user, setUser] = useState<any>(null);
+    const [mappingLoadFailed, setMappingLoadFailed] = useState(false);
+
+    // Helpers for Excel robustness
+    const normalizeRow = (row: any) => {
+        const normalized: any = {};
+        Object.keys(row).forEach(key => {
+            const normalizedKey = key.toLowerCase().replace(/\s+/g, '_');
+            normalized[normalizedKey] = row[key];
+        });
+        return normalized;
+    };
+
+    const mapCorrectOption = (raw: any): string => {
+        if (raw === undefined || raw === null) return '1';
+        const str = raw.toString().trim().toUpperCase();
+
+        // Handle direct digit (1-4)
+        if (/^[1-4]$/.test(str)) return str;
+
+        // Handle common descriptive labels: "Option A", "A", "(A)", "1."
+        if (str.includes('A') || str === '1') return '1';
+        if (str.includes('B') || str === '2') return '2';
+        if (str.includes('C') || str === '3') return '3';
+        if (str.includes('D') || str === '4') return '4';
+
+        return '1'; // Default fallback
+    };
 
     // View State
     const [view, setView] = useState<'exams' | 'sections' | 'questions' | 'results'>('exams');
@@ -512,26 +539,23 @@ export default function UniversityExamManager({ uniId, userRole, onBack }: Unive
                 const data: any[] = XLSX.utils.sheet_to_json(ws);
 
                 const questions_to_insert = data.map(row => {
-                    const rawCorrect = (row.correct_option || row.Answer || row.correct_answer || '1').toString().toUpperCase().trim();
-                    let correctIndex = rawCorrect;
-                    if (rawCorrect === 'A') correctIndex = '1';
-                    else if (rawCorrect === 'B') correctIndex = '2';
-                    else if (rawCorrect === 'C') correctIndex = '3';
-                    else if (rawCorrect === 'D') correctIndex = '4';
+                    const normalized = normalizeRow(row);
+                    const rawCorrect = normalized.correct_option || normalized.answer || normalized.correct_answer || '1';
+                    const correctIndex = mapCorrectOption(rawCorrect);
 
                     return {
                         section_id: activeSection.id,
-                        question_text: row.question_text || row.Question || row.question || '',
+                        question_text: normalized.question_text || normalized.question || '',
                         options: [
-                            row.option1 || row.option_a || row.A || row['Option A'],
-                            row.option2 || row.option_b || row.B || row['Option B'],
-                            row.option3 || row.option_c || row.C || row['Option C'],
-                            row.option4 || row.option_d || row.D || row['Option D']
+                            normalized.option1 || normalized.option_a || normalized.a || normalized.option_a || '',
+                            normalized.option2 || normalized.option_b || normalized.b || normalized.option_b || '',
+                            normalized.option3 || normalized.option_c || normalized.c || normalized.option_c || '',
+                            normalized.option4 || normalized.option_d || normalized.d || normalized.option_d || ''
                         ].filter(Boolean),
                         correct_answer: correctIndex,
-                        marks: row.marks || 1,
-                        explanation: row.explanation || row.Explanation || row.reason || '',
-                        image_url: row.image_url || row.question_image || row['Question Image'] || '',
+                        marks: normalized.marks || 1,
+                        explanation: normalized.explanation || normalized.reason || '',
+                        image_url: normalized.image_url || normalized.question_image || '',
                         question_type: 'mcq_single'
                     };
                 });
@@ -606,24 +630,21 @@ export default function UniversityExamManager({ uniId, userRole, onBack }: Unive
                 const data: any[] = XLSX.utils.sheet_to_json(ws);
 
                 const newQuestions = data.map(row => {
-                    const rawCorrect = (row.correct_option || row.Answer || row.correct_answer || row['Correct Option'] || '1').toString().toUpperCase().trim();
-                    let correctIndex = rawCorrect;
-                    if (rawCorrect === 'A') correctIndex = '1';
-                    else if (rawCorrect === 'B') correctIndex = '2';
-                    else if (rawCorrect === 'C') correctIndex = '3';
-                    else if (rawCorrect === 'D') correctIndex = '4';
+                    const normalized = normalizeRow(row);
+                    const rawCorrect = normalized.correct_option || normalized.answer || normalized.correct_answer || '1';
+                    const correctIndex = mapCorrectOption(rawCorrect);
 
                     return {
-                        question_text: row.question_text || row.Question || row.question || '',
+                        question_text: normalized.question_text || normalized.question || '',
                         options: [
-                            row.option1 || row.option_a || row.A || row['Option A'] || '',
-                            row.option2 || row.option_b || row.B || row['Option B'] || '',
-                            row.option3 || row.option_c || row.C || row['Option C'] || '',
-                            row.option4 || row.option_d || row.D || row['Option D'] || ''
+                            normalized.option1 || normalized.option_a || normalized.a || normalized.option_a || '',
+                            normalized.option2 || normalized.option_b || normalized.b || normalized.option_b || '',
+                            normalized.option3 || normalized.option_c || normalized.c || normalized.option_c || '',
+                            normalized.option4 || normalized.option_d || normalized.d || normalized.option_d || ''
                         ],
                         correct_answer: correctIndex,
-                        marks: row.marks || row.Marks || 1,
-                        explanation: row.explanation || row.Explanation || row.reason || ''
+                        marks: normalized.marks || 1,
+                        explanation: normalized.explanation || normalized.reason || ''
                     };
                 });
 
