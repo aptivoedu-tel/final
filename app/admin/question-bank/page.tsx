@@ -104,6 +104,36 @@ export default function SuperAdminQuestionBankPage() {
     const [isBulkTransfer, setIsBulkTransfer] = useState(false);
     const [transferringMcqId, setTransferringMcqId] = useState<number | null>(null);
 
+    // Helpers
+    const normalizeRow = (row: any) => {
+        const normalized: any = {};
+        Object.keys(row).forEach(key => {
+            const normalizedKey = key.toLowerCase().replace(/\s+/g, '_').replace(/_+/g, '_').trim();
+            normalized[normalizedKey] = row[key];
+        });
+        return normalized;
+    };
+
+    const mapCorrectOption = (raw: any): string => {
+        if (raw === undefined || raw === null) return 'A';
+        const str = raw.toString().trim().toUpperCase();
+
+        // 1. Direct A/B/C/D
+        if (['A', 'B', 'C', 'D'].includes(str)) return str;
+
+        // 2. Numeric 1-4
+        if (str === '1') return 'A';
+        if (str === '2') return 'B';
+        if (str === '3') return 'C';
+        if (str === '4') return 'D';
+
+        // 3. Regex find first A/B/C/D in string (e.g., "Option A", "(B)")
+        const match = str.match(/[A-D]/);
+        if (match) return match[0];
+
+        return 'A'; // Default
+    };
+
     // Rename State
     const [isRenameModalOpen, setIsRenameModalOpen] = useState(false);
     const [editingHierarchyItem, setEditingHierarchyItem] = useState<HierarchyItem | null>(null);
@@ -350,26 +380,28 @@ export default function SuperAdminQuestionBankPage() {
                 const passageData = await passageRes.json();
                 const newPassageId = passageData.passage.id;
 
-                // 2. Create MCQs
-                const mcqPromises = passageBlockForm.questions.map(q => {
-                    const payload = {
-                        ...q,
-                        question_type: 'passage',
-                        passage_id: newPassageId,
-                        question_image_url: q.question_image_type === 'drive' ? convertDriveLink(q.question_image_url) : q.question_image_url,
-                        explanation_url: q.explanation_image_type === 'drive' ? convertDriveLink(q.explanation_url) : q.explanation_url,
-                        subtopic_id: selectedItem?.type === 'subtopic' ? selectedItem.dbId : null,
-                        topic_id: selectedItem?.type === 'topic' ? selectedItem.dbId : null,
-                        is_active: true
-                    };
-                    return fetch('/api/mongo/mcqs', {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify(payload)
-                    });
+                // 2. Create MCQs in Bulk
+                const questionsToInsert = passageBlockForm.questions.map(q => ({
+                    ...q,
+                    question_type: 'passage',
+                    passage_id: newPassageId,
+                    question_image_url: q.question_image_type === 'drive' ? convertDriveLink(q.question_image_url) : q.question_image_url,
+                    explanation_url: q.explanation_image_type === 'drive' ? convertDriveLink(q.explanation_url) : q.explanation_url,
+                    subtopic_id: selectedItem?.type === 'subtopic' ? selectedItem.dbId : null,
+                    topic_id: selectedItem?.type === 'topic' ? selectedItem.dbId : null,
+                    is_active: true
+                }));
+
+                const mcqRes = await fetch('/api/mongo/mcqs', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(questionsToInsert)
                 });
 
-                await Promise.all(mcqPromises);
+                if (!mcqRes.ok) {
+                    const errData = await mcqRes.json();
+                    throw new Error(errData.error || 'Failed to create passage questions');
+                }
 
                 toast.success("Passage and block created successfully");
                 setIsMcqModalOpen(false);
@@ -465,23 +497,21 @@ export default function SuperAdminQuestionBankPage() {
                 const data: any[] = XLSX.utils.sheet_to_json(ws);
 
                 const newQuestions = data.map(row => {
-                    const rawCorrect = (row.correct_option || row.Answer || row.correct_answer || row['Correct Option'] || 'A').toString().toUpperCase().trim();
-                    let correctLabel = rawCorrect;
-                    if (rawCorrect === '1') correctLabel = 'A';
-                    else if (rawCorrect === '2') correctLabel = 'B';
-                    else if (rawCorrect === '3') correctLabel = 'C';
-                    else if (rawCorrect === '4') correctLabel = 'D';
+                    const normalized = normalizeRow(row);
+                    const correct_option = mapCorrectOption(
+                        normalized.correct_option || normalized.correct_answer || normalized.answer || normalized.correct
+                    );
 
                     return {
-                        question: row.question || row.question_text || row.Question || '',
-                        difficulty: (row.difficulty || 'medium').toLowerCase(),
-                        option_a: row.option_a || row.option1 || row.A || row['Option A'] || '',
-                        option_b: row.option_b || row.option2 || row.B || row['Option B'] || '',
-                        option_c: row.option_c || row.option3 || row.C || row['Option C'] || '',
-                        option_d: row.option_d || row.option4 || row.D || row['Option D'] || '',
-                        correct_option: correctLabel,
-                        explanation: row.explanation || row.Explanation || row.reason || '',
-                        question_image_url: row.question_image || row.image_url || '',
+                        question: normalized.question || normalized.question_text || '',
+                        difficulty: (normalized.difficulty || 'medium').toLowerCase(),
+                        option_a: normalized.option_a || normalized.option1 || normalized.a || '',
+                        option_b: normalized.option_b || normalized.option2 || normalized.b || '',
+                        option_c: normalized.option_c || normalized.option3 || normalized.c || '',
+                        option_d: normalized.option_d || normalized.option4 || normalized.d || '',
+                        correct_option,
+                        explanation: normalized.explanation || normalized.reason || '',
+                        question_image_url: normalized.question_image || normalized.image_url || '',
                         question_image_type: 'direct',
                         explanation_url: '',
                         explanation_image_type: 'direct',
@@ -613,29 +643,25 @@ export default function SuperAdminQuestionBankPage() {
 
                 // Auto-map based on selected node
                 const questions_to_insert = rawData.map(row => {
-                    // Try to find correct option (A, B, C, D)
-                    let correct = 'A';
-                    const rawCorrect = (row.correct_option || row.Answer || row.correct_answer || 'A').toString().trim().toUpperCase();
-                    if (['A', 'B', 'C', 'D'].includes(rawCorrect)) correct = rawCorrect;
-                    else if (rawCorrect === '1') correct = 'A';
-                    else if (rawCorrect === '2') correct = 'B';
-                    else if (rawCorrect === '3') correct = 'C';
-                    else if (rawCorrect === '4') correct = 'D';
+                    const normalized = normalizeRow(row);
+                    const correct_option = mapCorrectOption(
+                        normalized.correct_option || normalized.correct_answer || normalized.answer || normalized.correct
+                    );
 
                     return {
-                        question: row.question || row.question_text || row.Question || '',
-                        difficulty: (row.difficulty || 'medium').toLowerCase(),
-                        question_type: row.question_type || 'mcq_single',
-                        option_a: (row.option_a || row.A || row.option1 || '').toString(),
-                        option_b: (row.option_b || row.B || row.option2 || '').toString(),
-                        option_c: (row.option_c || row.C || row.option3 || '').toString(),
-                        option_d: (row.option_d || row.D || row.option4 || '').toString(),
-                        correct_option: correct,
-                        explanation: row.explanation || row.Explanation || row.reason || '',
+                        question: normalized.question || normalized.question_text || '',
+                        difficulty: (normalized.difficulty || 'medium').toLowerCase(),
+                        question_type: normalized.question_type || 'mcq_single',
+                        option_a: (normalized.option_a || normalized.option1 || normalized.a || '').toString(),
+                        option_b: (normalized.option_b || normalized.option2 || normalized.b || '').toString(),
+                        option_c: (normalized.option_c || normalized.option3 || normalized.c || '').toString(),
+                        option_d: (normalized.option_d || normalized.option4 || normalized.d || '').toString(),
+                        correct_option,
+                        explanation: normalized.explanation || normalized.reason || '',
                         topic_id: selectedItem.type === 'topic' ? selectedItem.dbId : (selectedItem.type === 'subtopic' ? selectedItem.parentId : null),
                         subtopic_id: selectedItem.type === 'subtopic' ? selectedItem.dbId : null,
-                        subject_id: selectedItem.type === 'subject' ? selectedItem.dbId : null, // Though we usually upload to topic/subtopic
-                        marks: row.marks || 1,
+                        subject_id: selectedItem.type === 'subject' ? selectedItem.dbId : null,
+                        marks: normalized.marks || 1,
                         times_attempted: 0,
                         times_correct: 0
                     };

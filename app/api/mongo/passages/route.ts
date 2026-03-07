@@ -22,18 +22,18 @@ export async function POST(req: NextRequest) {
     try {
         await connectToDatabase();
         const body = await req.json();
-
-        const last = await Passage.findOne().sort({ id: -1 });
+        const last = await Passage.findOne({}, { id: 1 }).sort({ id: -1 });
         const newId = (last?.id || 0) + 1;
 
         const passage = await Passage.create({
-            id: newId,
             ...body,
+            id: newId, // If body has id, this ensures we override it with a fresh one to avoid duplicate key errors
             created_at: new Date()
         });
         return NextResponse.json({ passage }, { status: 201 });
     } catch (error: any) {
-        return NextResponse.json({ error: error.message }, { status: 500 });
+        console.error('[API/Passage] POST failure:', error);
+        return NextResponse.json({ error: error.message || 'Storage write failed' }, { status: 500 });
     }
 }
 

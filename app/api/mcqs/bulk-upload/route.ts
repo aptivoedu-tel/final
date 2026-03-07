@@ -17,7 +17,7 @@ export async function POST(req: NextRequest) {
         await connectToDatabase();
 
         // 1. Create Upload record
-        const uploadId = Math.floor(Date.now() / 1000);
+        const uploadId = Date.now(); // Using full timestamp to avoid collisions
         const uploadRecord = await Upload.create({
             id: uploadId,
             upload_type: uploadType || 'mcq_excel',
@@ -148,27 +148,38 @@ export async function POST(req: NextRequest) {
         }
 
         // Apply any collected mappings
-        for (const mapping of mappingsToCreate) {
-            // Upsert rule: match university_id, subject_id, topic_id (and subtopic_id or null)
-            const matchCondition: any = {
-                university_id: mapping.university_id,
-                subject_id: mapping.subject_id,
-                topic_id: mapping.topic_id
-            };
-            if (mapping.subtopic_id) {
-                matchCondition.subtopic_id = mapping.subtopic_id;
-            } else {
-                matchCondition.subtopic_id = null;
-            }
+        if (mappingsToCreate.length > 0) {
+            console.log(`[BulkUpload] Processing ${mappingsToCreate.length} content access mappings...`);
 
-            // We need an ID for insertion if it doesn't exist
-            const existingMapping = await UniversityContentAccess.findOne(matchCondition);
-            if (!existingMapping) {
-                const lastMapping = await UniversityContentAccess.findOne().sort({ id: -1 });
-                mapping.id = (lastMapping?.id || 0) + 1;
-                await UniversityContentAccess.create(mapping);
-            } else {
-                await UniversityContentAccess.updateOne(matchCondition, { $set: { is_active: true } });
+            // 1. Fetch ALL existing mappings for the target topic to avoid thousands of findOne calls
+            const uniqueTopicIds = [...new Set(mappingsToCreate.map(m => m.topic_id))];
+            const existingMappings = await UniversityContentAccess.find({
+                topic_id: { $in: uniqueTopicIds }
+            }).lean();
+
+            // 2. Create a fast lookup map
+            const existingSet = new Set(existingMappings.map(m =>
+                `${m.university_id}-${m.topic_id}-${m.subtopic_id || 'null'}`
+            ));
+
+            // 3. Filter only those that don't exist
+            const toCreate = mappingsToCreate.filter(m =>
+                !existingSet.has(`${m.university_id}-${m.topic_id}-${m.subtopic_id || 'null'}`)
+            );
+
+            if (toCreate.length > 0) {
+                const lastMapping = await UniversityContentAccess.findOne({}, { id: 1 }).sort({ id: -1 });
+                let currentMappingId = (lastMapping?.id || 0) + 1;
+
+                const mappingsWithIds = toCreate.map(m => ({
+                    ...m,
+                    id: currentMappingId++
+                }));
+
+                await UniversityContentAccess.insertMany(mappingsWithIds, { ordered: false }).catch(err => {
+                    console.warn('[BulkUpload] insertMany mapping partial failure (likely duplicates):', err.message);
+                });
+                console.log(`[BulkUpload] Created ${toCreate.length} new content access mappings.`);
             }
         }
 
@@ -182,7 +193,7 @@ export async function POST(req: NextRequest) {
         });
 
     } catch (error: any) {
-        console.error('MCQ Bulk Upload Error:', error);
-        return NextResponse.json({ error: error.message }, { status: 500 });
+        console.error('MCQ Bulk Upload CRITICAL Error:', error);
+        return NextResponse.json({ error: error.message || 'System error during ingestion' }, { status: 500 });
     }
 }

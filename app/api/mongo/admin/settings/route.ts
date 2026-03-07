@@ -47,8 +47,11 @@ export async function GET() {
             }
         });
     } catch (error: any) {
-        console.error('[PlatformSettings] Retrieve Failure:', error);
-        return NextResponse.json({ error: error.message }, { status: 500 });
+        console.error('[API/Settings] GET Internal Error:', error);
+        return NextResponse.json({
+            error: error.message || 'Settings retrieval failed',
+            stack: process.env.NODE_ENV === 'development' ? error.stack : undefined
+        }, { status: 500 });
     }
 }
 

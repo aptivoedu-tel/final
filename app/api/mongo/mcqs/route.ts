@@ -18,13 +18,19 @@ export async function GET(req: NextRequest) {
 
         // Return counts summary (for hierarchy tree MCQ counts)
         if (counts_only) {
-            const [subjects, topics, subtopics, allMcqs] = await Promise.all([
-                Subject.find({ is_active: true }).sort({ display_order: 1 }),
-                Topic.find({ is_active: true }).sort({ sequence_order: 1 }),
-                Subtopic.find({ is_active: true }).sort({ sequence_order: 1 }),
-                MCQ.find({ is_active: true }).select('id subtopic_id topic_id'),
-            ]);
-            return NextResponse.json({ subjects, topics, subtopics, allMcqs });
+            console.log('[API/MCQs] Generating hierarchy counts...');
+            try {
+                const [subjects, topics, subtopics, allMcqs] = await Promise.all([
+                    Subject.find({ is_active: true }, { id: 1, name: 1, display_order: 1 }).sort({ display_order: 1 }).lean(),
+                    Topic.find({ is_active: true }, { id: 1, name: 1, subject_id: 1, sequence_order: 1 }).sort({ sequence_order: 1 }).lean(),
+                    Subtopic.find({ is_active: true }, { id: 1, name: 1, topic_id: 1, sequence_order: 1 }).sort({ sequence_order: 1 }).lean(),
+                    MCQ.find({ is_active: true }, { id: 1, subtopic_id: 1, topic_id: 1 }).lean(),
+                ]);
+                return NextResponse.json({ subjects, topics, subtopics, allMcqs });
+            } catch (err: any) {
+                console.error('[API/MCQs] Hierarchy count failure:', err);
+                throw err;
+            }
         }
 
         const filter: any = { is_active: true };
@@ -152,16 +158,20 @@ export async function POST(req: NextRequest) {
         // Support for single or multiple creation
         if (Array.isArray(body)) {
             // Bulk Create
-            const last = await MCQ.findOne().sort({ id: -1 });
+            const last = await MCQ.findOne({}, { id: 1 }).sort({ id: -1 });
             let nextId = (last?.id || 0) + 1;
-            const questionsWithIds = body.map(q => ({ ...q, id: nextId++ }));
+            const questionsWithIds = body.map(q => {
+                const { id, ...rest } = q; // Strip any provided id to prevent collisions
+                return { ...rest, id: nextId++ };
+            });
             const mcqs = await MCQ.insertMany(questionsWithIds);
             return NextResponse.json({ success: true, count: mcqs.length }, { status: 201 });
         } else {
             // Single Create
-            const last = await MCQ.findOne().sort({ id: -1 });
+            const last = await MCQ.findOne({}, { id: 1 }).sort({ id: -1 });
             const newId = (last?.id || 0) + 1;
-            const mcq = await MCQ.create({ id: newId, ...body });
+            const { id, ...payload } = body; // Ensure no ID conflict
+            const mcq = await MCQ.create({ id: newId, ...payload });
             return NextResponse.json({ mcq }, { status: 201 });
         }
     } catch (error: any) {

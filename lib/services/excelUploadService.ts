@@ -187,11 +187,17 @@ export class ExcelUploadService {
             // Robust correct_option extraction
             let rawOption = normalizedRow.correct_option?.toString().trim().toUpperCase() || '';
 
-            // Extract the first letter A, B, C, or D
+            // Extract the first letter A, B, C, or D, or Map 1-4
             let correctOption = '';
-            const match = rawOption.match(/[A-D]/);
-            if (match) {
-                correctOption = match[0];
+            const numericMap: Record<string, string> = { '1': 'A', '2': 'B', '3': 'C', '4': 'D' };
+
+            if (numericMap[rawOption]) {
+                correctOption = numericMap[rawOption];
+            } else {
+                const match = rawOption.match(/[A-D]/);
+                if (match) {
+                    correctOption = match[0];
+                }
             }
 
             if (!['A', 'B', 'C', 'D'].includes(correctOption)) {
